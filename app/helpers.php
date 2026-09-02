@@ -957,6 +957,28 @@ function admin_sub_module_permission($admin_type, $module_id, $sub_module_id){
     return AdminPermission::where('admin_type', $admin_type)->where('module_id', $module_id)->where('sub_module_id', $sub_module_id)->first();
 }
 
+if (!function_exists('wu_service_image')) {
+    // Used throughout the marketplace (WuServiceController + views) to resolve a
+    // service's stored image path to a public URL, falling back to a default image.
+    function wu_service_image($path){
+        if (!$path || trim($path) === '') {
+            return asset('frontend/assets/img/default-service.jpg');
+        }
+
+        $path = ltrim($path, '/');
+
+        if (\Illuminate\Support\Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (file_exists(public_path($path))) {
+            return asset($path);
+        }
+
+        return asset('frontend/assets/img/default-service.jpg');
+    }
+}
+
 
 
 
