@@ -999,25 +999,39 @@
         fetch(form.action, {
             method: "POST",
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: formData
         })
-        .then(res => res.json())
+        .then(res => {
+            if (res.status === 413) {
+                throw new Error('ভিডিও/ছবির সাইজ সার্ভারের আপলোড সীমার চেয়ে বড়। ছোট ফাইল দিয়ে চেষ্টা করুন।');
+            }
+            return res.json().catch(() => {
+                throw new Error('সার্ভারে সমস্যা হয়েছে (HTTP ' + res.status + ')। ফাইলের সাইজ কমিয়ে আবার চেষ্টা করুন।');
+            });
+        })
         .then(data => {
             if (data.status) {
                 // alert(data.message);
                 form.reset();
-                removeSelectedImage();                
+                removeSelectedImage();
+                removeSelectedVideo();
                 toastr.success(data.message);
                 toggleEditor(false);
+            } else if (data.errors) {
+                // Laravel validation error response shape
+                const firstError = Object.values(data.errors)[0][0];
+                toastr.error(firstError || data.message || 'Validation failed.');
             } else {
-                toastr.error(data.message);
+                toastr.error(data.message || 'Something went wrong. Try again.');
             }
         })
         .catch(err => {
             console.error(err);
-            toastr.error('Something went wrong. Try again.');
+            toastr.error(err.message || 'Something went wrong. Try again.');
         });
     });
     $(document).on('click', '.like-btn', function () {
