@@ -795,3 +795,23 @@ Route::get('/marketplace/service/{slug}', [WuServiceController::class, 'publicSh
 
 //servay page route
 Route::get('/surveys-home', [HomeController::class, 'surveysHome'])->name('surveys.home');
+
+/*
+|--------------------------------------------------------------------------
+| Safe cache clear (no shell/SSH access on this server) — visit the URL
+| below whenever deployed code doesn't seem to take effect. Protected by
+| a secret token so it can't be triggered by a random visitor.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-cache-clear/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+
+    return 'Cache cleared successfully at ' . now();
+});
