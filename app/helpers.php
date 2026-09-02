@@ -979,6 +979,33 @@ if (!function_exists('wu_service_image')) {
     }
 }
 
+if (!function_exists('wu_marketplace_unread_inquiries')) {
+    // Count of unread pre-order inquiries addressed to the logged-in user, shown as a
+    // sidebar badge next to "Marketplace".
+    function wu_marketplace_unread_inquiries(){
+        if (!auth()->check()) {
+            return 0;
+        }
+        return \Illuminate\Support\Facades\DB::table('wu_service_inquiries')
+            ->where('receiver_id', auth()->id())
+            ->where('is_seen', 0)
+            ->count();
+    }
+}
+
+if (!function_exists('wu_marketplace_unread_order_messages')) {
+    // Count of unread order-chat messages addressed to the logged-in user, shown as a
+    // sidebar badge next to "Marketplace".
+    function wu_marketplace_unread_order_messages(){
+        if (!auth()->check()) {
+            return 0;
+        }
+        return \Illuminate\Support\Facades\DB::table('wu_service_messages')
+            ->where('receiver_id', auth()->id())
+            ->where('is_seen', 0)
+            ->count();
+    }
+}
 
 
 
