@@ -350,8 +350,12 @@
 
                     <div class="mp-service-meta">
                         <span class="mp-meta-pill">Category: {{ $service->category ?: 'General' }}</span>
-                        <span class="mp-meta-pill">Delivery: {{ $service->delivery_days }} day(s)</span>
-                        <span class="mp-meta-pill">Revisions: {{ $service->revision_limit }}</span>
+                        @if(($service->type ?? 'service') == 'digital_product')
+                            <span class="mp-meta-pill">⚡ Instant Delivery</span>
+                        @else
+                            <span class="mp-meta-pill">Delivery: {{ $service->delivery_days }} day(s)</span>
+                            <span class="mp-meta-pill">Revisions: {{ $service->revision_limit }}</span>
+                        @endif
                         <button type="button" class="mp-meta-pill" style="cursor:pointer; border:none;" onclick="shareMarketplaceService()">
                             Share
                         </button>
@@ -485,9 +489,13 @@
         <div class="mp-side-short">{{ $service->short_description }}</div>
 
         <ul class="mp-side-list">
-            <li><span>Service Price</span> <span>${{ number_format($service->price, 2) }}</span></li>
-            <li><span>Delivery Time</span> <span>{{ $service->delivery_days }} day(s)</span></li>
-            <li><span>Revisions</span> <span>{{ $service->revision_limit }}</span></li>
+            <li><span>Price</span> <span>${{ number_format($service->price, 2) }}</span></li>
+            @if(($service->type ?? 'service') == 'digital_product')
+                <li><span>Delivery</span> <span>Instant download</span></li>
+            @else
+                <li><span>Delivery Time</span> <span>{{ $service->delivery_days }} day(s)</span></li>
+                <li><span>Revisions</span> <span>{{ $service->revision_limit }}</span></li>
+            @endif
             <li><span>Category</span> <span>{{ $service->category ?: 'General' }}</span></li>
         </ul>
 
@@ -496,12 +504,14 @@
         @else
             <form action="{{ route('user.marketplace.order', $service->id) }}" method="POST">
     @csrf
-    <div class="mb-3">
-        <label class="form-label fw-bold">Requirements</label>
-        <textarea name="requirements" class="form-control" rows="5" style="border-radius:12px;" placeholder="Write the requirements you want the seller to follow."></textarea>
-    </div>
+    @if(($service->type ?? 'service') != 'digital_product')
+        <div class="mb-3">
+            <label class="form-label fw-bold">Requirements</label>
+            <textarea name="requirements" class="form-control" rows="5" style="border-radius:12px;" placeholder="Write the requirements you want the seller to follow."></textarea>
+        </div>
+    @endif
 
-    <button type="submit" class="mp-order-btn">Order Now</button>
+    <button type="submit" class="mp-order-btn">{{ ($service->type ?? 'service') == 'digital_product' ? 'Buy Now' : 'Order Now' }}</button>
 </form>
         @endif
     </div>

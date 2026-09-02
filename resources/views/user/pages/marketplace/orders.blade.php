@@ -63,6 +63,10 @@
                         <div class="d-flex flex-wrap gap-2">
                             <a href="{{ route('user.marketplace.order_chat', $order->id) }}" class="btn btn-info mp-btn">Open Order</a>
 
+                            @if($order->service_type == 'digital_product' && in_array($order->status, ['delivered', 'completed']))
+                                <a href="{{ route('user.marketplace.download_product', $order->id) }}" class="btn btn-primary mp-btn">Download</a>
+                            @endif
+
                             @if($order->status == 'delivered')
                                 <form action="{{ route('user.marketplace.complete', $order->id) }}" method="POST" class="d-inline">
                                     @csrf

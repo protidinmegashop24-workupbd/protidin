@@ -176,7 +176,11 @@
                 <div class="row">
                     <div class="col-lg-8">
                         <div class="mb-4">
-                            <label class="mp-label">Service Title</label>
+                            <span class="mp-form-badge">{{ $service->type == 'digital_product' ? 'Digital Product' : 'Service' }}</span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="mp-label">{{ $service->type == 'digital_product' ? 'Product Title' : 'Service Title' }}</label>
                             <input type="text" name="title" class="form-control mp-input" value="{{ old('title', $service->title) }}" required>
                         </div>
 
@@ -199,17 +203,25 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label class="mp-label">Delivery Days</label>
-                                <input type="number" name="delivery_days" class="form-control mp-input" value="{{ old('delivery_days', $service->delivery_days) }}" required>
+                        @if($service->type == 'digital_product')
+                            <div class="mb-4">
+                                <label class="mp-label">Replace Product File</label>
+                                <input type="file" name="product_file" class="form-control mp-file">
+                                <div class="mp-help">Leave empty to keep the currently uploaded file. Uploading a new file replaces it.</div>
                             </div>
+                        @else
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <label class="mp-label">Delivery Days</label>
+                                    <input type="number" name="delivery_days" class="form-control mp-input" value="{{ old('delivery_days', $service->delivery_days) }}" required>
+                                </div>
 
-                            <div class="col-md-6 mb-4">
-                                <label class="mp-label">Revision Limit</label>
-                                <input type="number" name="revision_limit" class="form-control mp-input" value="{{ old('revision_limit', $service->revision_limit) }}">
+                                <div class="col-md-6 mb-4">
+                                    <label class="mp-label">Revision Limit</label>
+                                    <input type="number" name="revision_limit" class="form-control mp-input" value="{{ old('revision_limit', $service->revision_limit) }}">
+                                </div>
                             </div>
-                        </div>
+                        @endif
 
                         <div class="mb-4">
                             <label class="mp-label">Short Description</label>
@@ -222,12 +234,12 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="mp-label">Change Service Image</label>
+                            <label class="mp-label">Change Thumbnail / Cover Image</label>
                             <input type="file" name="image" class="form-control mp-file">
                             <div class="mp-help">Uploading a new image will replace the current preview image.</div>
                         </div>
 
-                        <button type="submit" class="btn mp-submit-btn">Update Service</button>
+                        <button type="submit" class="btn mp-submit-btn">Update Listing</button>
                     </div>
 
                     <div class="col-lg-4">

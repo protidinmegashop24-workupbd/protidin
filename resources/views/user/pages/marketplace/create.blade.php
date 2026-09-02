@@ -166,7 +166,15 @@
                 <div class="row">
                     <div class="col-lg-8">
                         <div class="mb-4">
-                            <label class="mp-label">Service Title</label>
+                            <label class="mp-label">Listing Type</label>
+                            <select name="type" id="listing-type" class="form-control mp-input" onchange="toggleListingType()">
+                                <option value="service" {{ old('type', 'service') == 'service' ? 'selected' : '' }}>Service (custom work, you deliver manually)</option>
+                                <option value="digital_product" {{ old('type') == 'digital_product' ? 'selected' : '' }}>Digital Product (a file, delivered instantly)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="mp-label" id="title-label">Service Title</label>
                             <input type="text" name="title" class="form-control mp-input" value="{{ old('title') }}" placeholder="Example: I will customize your WordPress website professionally" required>
                             <div class="mp-help">Use a clear title that tells buyers exactly what you offer.</div>
                         </div>
@@ -190,16 +198,22 @@
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row" id="service-fields">
                             <div class="col-md-6 mb-4">
                                 <label class="mp-label">Delivery Days</label>
-                                <input type="number" name="delivery_days" class="form-control mp-input" value="{{ old('delivery_days') }}" placeholder="3" required>
+                                <input type="number" name="delivery_days" id="delivery_days" class="form-control mp-input" value="{{ old('delivery_days') }}" placeholder="3" required>
                             </div>
 
                             <div class="col-md-6 mb-4">
                                 <label class="mp-label">Revision Limit</label>
                                 <input type="number" name="revision_limit" class="form-control mp-input" value="{{ old('revision_limit', 0) }}" placeholder="0">
                             </div>
+                        </div>
+
+                        <div class="mb-4" id="digital-fields" style="display:none;">
+                            <label class="mp-label">Product File</label>
+                            <input type="file" name="product_file" id="product_file" class="form-control mp-file">
+                            <div class="mp-help">This file is delivered to the buyer automatically after purchase. It is never publicly accessible before that.</div>
                         </div>
 
                         <div class="mb-4">
@@ -214,12 +228,12 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="mp-label">Service Image</label>
+                            <label class="mp-label">Thumbnail / Cover Image</label>
                             <input type="file" name="image" class="form-control mp-file">
-                            <div class="mp-help">Use a clean and high-quality image to make your service look more professional.</div>
+                            <div class="mp-help">Use a clean and high-quality image to make your listing look more professional.</div>
                         </div>
 
-                        <button type="submit" class="btn mp-submit-btn">Publish Service for Review</button>
+                        <button type="submit" class="btn mp-submit-btn">Publish Listing for Review</button>
                     </div>
 
                     <div class="col-lg-4">
@@ -250,4 +264,29 @@
 
     </div>
 </div>
+
+@section('js')
+<script>
+    function toggleListingType() {
+        const type = document.getElementById('listing-type').value;
+        const serviceFields = document.getElementById('service-fields');
+        const digitalFields = document.getElementById('digital-fields');
+        const deliveryDays = document.getElementById('delivery_days');
+        const titleLabel = document.getElementById('title-label');
+
+        if (type === 'digital_product') {
+            serviceFields.style.display = 'none';
+            digitalFields.style.display = 'block';
+            deliveryDays.removeAttribute('required');
+            titleLabel.textContent = 'Product Title';
+        } else {
+            serviceFields.style.display = 'flex';
+            digitalFields.style.display = 'none';
+            deliveryDays.setAttribute('required', 'required');
+            titleLabel.textContent = 'Service Title';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', toggleListingType);
+</script>
+@endsection
 @endsection

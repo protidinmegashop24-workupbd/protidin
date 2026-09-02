@@ -536,7 +536,11 @@
 
                                 <div class="wu-service-meta">
                                     <div class="wu-price">${{ number_format($service->price, 2) }}</div>
-                                    <div class="wu-delivery">Delivery: {{ $service->delivery_days }} day(s)</div>
+                                    @if(($service->type ?? 'service') == 'digital_product')
+                                        <div class="wu-delivery">⚡ Instant Delivery</div>
+                                    @else
+                                        <div class="wu-delivery">Delivery: {{ $service->delivery_days }} day(s)</div>
+                                    @endif
                                 </div>
 
                                 <a href="{{ route('marketplace.service.show', $service->slug) }}" class="wu-card-btn">View Service</a>

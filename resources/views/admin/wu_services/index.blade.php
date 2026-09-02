@@ -22,6 +22,7 @@
             <th>Image</th>
             <th>Seller</th>
             <th>Title</th>
+            <th>Type</th>
             <th>Category</th>
             <th>Price</th>
             <th>Delivery</th>
@@ -41,9 +42,10 @@
                 <small>{{ $service->user_email ?? '' }}</small>
               </td>
               <td>{{ $service->title }}</td>
+              <td>{{ ($service->type ?? 'service') == 'digital_product' ? 'Digital Product' : 'Service' }}</td>
               <td>{{ $service->category }}</td>
               <td>${{ number_format((float)$service->price, 2) }}</td>
-              <td>{{ (int)$service->delivery_days }} day(s)</td>
+              <td>{{ ($service->type ?? 'service') == 'digital_product' ? 'Instant' : (int)$service->delivery_days . ' day(s)' }}</td>
               <td>
                 @if($service->status == 'active')
                   <span class="badge bg-success">Active</span>

@@ -738,6 +738,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
 
     Route::get('/marketplace/message-file/{id}', [WuServiceController::class, 'messageFile'])->name('marketplace.message_file');
     Route::get('/marketplace/delivery-file/{id}', [WuServiceController::class, 'deliveryFile'])->name('marketplace.delivery_file');
+    Route::get('/marketplace/download-product/{orderId}', [WuServiceController::class, 'downloadProduct'])->name('marketplace.download_product');
 });
 
 /*

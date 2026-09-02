@@ -83,6 +83,18 @@
             </div>
         </div>
 
+        @if($order->service_type == 'digital_product' && auth()->id() == $order->buyer_id && in_array($order->status, ['delivered', 'completed']))
+            <div class="mp-side-card mt-4">
+                <div class="card-header bg-success text-white">
+                    Your Digital Product
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Your file is ready.</p>
+                    <a href="{{ route('user.marketplace.download_product', $order->id) }}" class="btn btn-success mp-btn">Download File</a>
+                </div>
+            </div>
+        @endif
+
         @if(auth()->id() == $order->seller_id && in_array($order->status, ['in_progress', 'revision_requested']))
             <div class="mp-side-card mt-4">
                 <div class="card-header bg-warning">

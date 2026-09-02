@@ -125,6 +125,10 @@
                         <div class="mp-service-title">{{ $service->title }}</div>
 
                         <div class="mb-2">
+                            <span class="mp-mini-badge" style="background:#eef2ff;color:#4338ca;">
+                                {{ ($service->type ?? 'service') == 'digital_product' ? 'Digital Product' : 'Service' }}
+                            </span>
+
                             @if($service->status == 'active')
                                 <span class="mp-status-badge mp-status-active">Active</span>
                             @elseif($service->status == 'pending')

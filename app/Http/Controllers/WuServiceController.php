@@ -325,16 +325,25 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     public function store(Request $request)
 {
-    $request->validate([
+    $type = $request->type === 'digital_product' ? 'digital_product' : 'service';
+
+    $rules = [
         'title' => 'required|max:255',
         'category' => 'required|max:100',
         'price' => 'required|numeric|min:1',
-        'delivery_days' => 'required|integer|min:1',
-        'revision_limit' => 'nullable|integer|min:0',
         'short_description' => 'nullable|max:500',
         'description' => 'required',
         'image' => 'nullable|image|max:4096',
-    ]);
+    ];
+
+    if ($type === 'digital_product') {
+        $rules['product_file'] = 'required|file|max:51200';
+    } else {
+        $rules['delivery_days'] = 'required|integer|min:1';
+        $rules['revision_limit'] = 'nullable|integer|min:0';
+    }
+
+    $request->validate($rules);
 
     $slug = Str::slug($request->title) . '-' . rand(1000, 9999);
     $imagePath = null;
@@ -350,25 +359,50 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
         $imagePath = 'uploads/wu-services/' . $filename;
     }
 
+    $filePath = null;
+    if ($type === 'digital_product' && $request->hasFile('product_file')) {
+        $filePath = $this->storeProductFile($request->file('product_file'));
+    }
+
     DB::table('wu_services')->insert([
         'user_id' => auth()->id(),
+        'type' => $type,
         'title' => $request->title,
         'slug' => $slug,
         'category' => $request->category,
         'price' => $request->price,
-        'delivery_days' => $request->delivery_days,
-        'revision_limit' => $request->revision_limit ?? 0,
+        'delivery_days' => $type === 'digital_product' ? 0 : $request->delivery_days,
+        'revision_limit' => $type === 'digital_product' ? 0 : ($request->revision_limit ?? 0),
         'short_description' => $request->short_description,
         'description' => $request->description,
         'image' => $imagePath,
+        'file_path' => $filePath,
         'status' => 'pending',
         'featured' => 0,
         'created_at' => now(),
         'updated_at' => now(),
     ]);
 
-    return redirect()->route('user.marketplace.my_services')->with('success', 'Service submitted successfully.');
+    $label = $type === 'digital_product' ? 'Digital product' : 'Service';
+    return redirect()->route('user.marketplace.my_services')->with('success', "{$label} submitted successfully.");
 }
+
+    /**
+     * Store an uploaded digital product file in a private (non-public) directory
+     * so it can only be reached through the authenticated download route.
+     */
+    private function storeProductFile($file)
+    {
+        $dir = storage_path('app/private/wu-products');
+        if (!file_exists($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
+        $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $file->move($dir, $filename);
+
+        return $filename;
+    }
 
     public function myServices()
 {
@@ -426,16 +460,25 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
         abort(404);
     }
 
-    $request->validate([
+    $type = $service->type ?? 'service';
+
+    $rules = [
         'title' => 'required|max:255',
         'category' => 'required|max:100',
         'price' => 'required|numeric|min:1',
-        'delivery_days' => 'required|integer|min:1',
-        'revision_limit' => 'nullable|integer|min:0',
         'short_description' => 'nullable|max:500',
         'description' => 'required',
         'image' => 'nullable|image|max:4096',
-    ]);
+    ];
+
+    if ($type === 'digital_product') {
+        $rules['product_file'] = 'nullable|file|max:51200';
+    } else {
+        $rules['delivery_days'] = 'required|integer|min:1';
+        $rules['revision_limit'] = 'nullable|integer|min:0';
+    }
+
+    $request->validate($rules);
 
     $imagePath = $service->image;
 
@@ -450,22 +493,28 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
         $imagePath = 'uploads/wu-services/' . $filename;
     }
 
+    $filePath = $service->file_path;
+    if ($type === 'digital_product' && $request->hasFile('product_file')) {
+        $filePath = $this->storeProductFile($request->file('product_file'));
+    }
+
     DB::table('wu_services')
         ->where('id', $id)
         ->update([
             'title' => $request->title,
             'category' => $request->category,
             'price' => $request->price,
-            'delivery_days' => $request->delivery_days,
-            'revision_limit' => $request->revision_limit ?? 0,
+            'delivery_days' => $type === 'digital_product' ? 0 : $request->delivery_days,
+            'revision_limit' => $type === 'digital_product' ? 0 : ($request->revision_limit ?? 0),
             'short_description' => $request->short_description,
             'description' => $request->description,
             'image' => $imagePath,
+            'file_path' => $filePath,
             'status' => 'pending',
             'updated_at' => now(),
         ]);
 
-    return redirect()->route('user.marketplace.my_services')->with('success', 'Service updated and sent for review.');
+    return redirect()->route('user.marketplace.my_services')->with('success', 'Listing updated and sent for review.');
 }
 
     public function delete($id)
@@ -779,6 +828,44 @@ public function deliveryFile($id)
     return response()->file($path);
 }
 
+public function downloadProduct($orderId)
+{
+    $order = \Illuminate\Support\Facades\DB::table('wu_service_orders')
+        ->where('id', $orderId)
+        ->where(function ($q) {
+            $q->where('buyer_id', auth()->id())
+              ->orWhere('seller_id', auth()->id());
+        })
+        ->first();
+
+    if (!$order) {
+        abort(403);
+    }
+
+    // Only paid orders (escrow held or already released) can download.
+    if (!in_array($order->status, ['delivered', 'completed'])) {
+        abort(403);
+    }
+
+    $service = \Illuminate\Support\Facades\DB::table('wu_services')
+        ->where('id', $order->service_id)
+        ->first();
+
+    if (!$service || $service->type !== 'digital_product' || empty($service->file_path)) {
+        abort(404);
+    }
+
+    $path = storage_path('app/private/wu-products/' . $service->file_path);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    $downloadName = \Illuminate\Support\Str::slug($service->title) . '.' . pathinfo($path, PATHINFO_EXTENSION);
+
+    return response()->download($path, $downloadName);
+}
+
     /*
     |--------------------------------------------------------------------------
     | Orders
@@ -792,7 +879,8 @@ public function deliveryFile($id)
         ->select(
             'wu_service_orders.*',
             'wu_services.title as service_title',
-            'wu_services.image as service_image'
+            'wu_services.image as service_image',
+            'wu_services.type as service_type'
         )
         ->latest('wu_service_orders.id')
         ->paginate(12);
@@ -845,6 +933,8 @@ public function deliveryFile($id)
         $buyer->deposit_balance = (float)$buyer->deposit_balance - $price;
         $buyer->save();
 
+        $isDigitalProduct = ($service->type ?? 'service') === 'digital_product';
+
         $orderId = \Illuminate\Support\Facades\DB::table('wu_service_orders')->insertGetId([
             'service_id' => $service->id,
             'buyer_id' => $buyer->id,
@@ -854,7 +944,7 @@ public function deliveryFile($id)
             'admin_commission' => $adminCommission,
             'seller_amount' => $sellerAmount,
             'requirements' => $request->requirements,
-            'status' => 'in_progress',
+            'status' => $isDigitalProduct ? 'delivered' : 'in_progress',
             'payment_status' => 'held',
             'delivery_deadline' => now()->addDays((int)$service->delivery_days),
             'created_at' => now(),
@@ -869,6 +959,20 @@ public function deliveryFile($id)
             'hold',
             'Order payment held in escrow.'
         );
+
+        // Digital products are already on the server, so delivery is instant:
+        // no manual seller step, the buyer just gets the download button now.
+        if ($isDigitalProduct) {
+            \Illuminate\Support\Facades\DB::table('wu_service_messages')->insert([
+                'order_id' => $orderId,
+                'sender_id' => $seller->id,
+                'receiver_id' => $buyer->id,
+                'message' => 'Your digital product is ready. Use the Download button on this order to get your file.',
+                'is_seen' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         \Illuminate\Support\Facades\DB::commit();
         app(\App\Http\Controllers\User\UserReferralController::class)->processMarketplaceBonus($buyer->id);
@@ -962,7 +1066,8 @@ public function deliveryFile($id)
             'wu_service_orders.*',
             'wu_services.title as service_title',
             'wu_services.image as service_image',
-            'wu_services.delivery_days as service_delivery_days'
+            'wu_services.delivery_days as service_delivery_days',
+            'wu_services.type as service_type'
         )
         ->first();
 

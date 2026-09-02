@@ -176,7 +176,11 @@
 
                         <div class="mp-service-grid-meta">
                             <div class="mp-grid-price">${{ number_format($service->price, 2) }}</div>
-                            <div class="mp-grid-delivery">Delivery: {{ $service->delivery_days }} day(s)</div>
+                            @if(($service->type ?? 'service') == 'digital_product')
+                                <div class="mp-grid-delivery">⚡ Instant Delivery</div>
+                            @else
+                                <div class="mp-grid-delivery">Delivery: {{ $service->delivery_days }} day(s)</div>
+                            @endif
                         </div>
 
                         <a href="{{ route('user.marketplace.service.show', $service->slug) }}" class="mp-grid-btn">View, Chat & Order</a>

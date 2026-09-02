@@ -201,8 +201,12 @@
 
                         <div class="wu-public-meta">
                             <span class="wu-public-pill">Category: {{ $service->category ?: 'General' }}</span>
-                            <span class="wu-public-pill">Delivery: {{ $service->delivery_days }} day(s)</span>
-                            <span class="wu-public-pill">Revisions: {{ $service->revision_limit }}</span>
+                            @if(($service->type ?? 'service') == 'digital_product')
+                                <span class="wu-public-pill">⚡ Instant Delivery</span>
+                            @else
+                                <span class="wu-public-pill">Delivery: {{ $service->delivery_days }} day(s)</span>
+                                <span class="wu-public-pill">Revisions: {{ $service->revision_limit }}</span>
+                            @endif
                         </div>
 
                         <div class="wu-public-desc-title">Service Description</div>
@@ -287,9 +291,13 @@
                     <div class="wu-short-desc">{{ $service->short_description }}</div>
 
                     <ul class="wu-side-list">
-                        <li><span>Service Price</span> <span>${{ number_format($service->price, 2) }}</span></li>
-                        <li><span>Delivery Time</span> <span>{{ $service->delivery_days }} day(s)</span></li>
-                        <li><span>Revisions</span> <span>{{ $service->revision_limit }}</span></li>
+                        <li><span>Price</span> <span>${{ number_format($service->price, 2) }}</span></li>
+                        @if(($service->type ?? 'service') == 'digital_product')
+                            <li><span>Delivery</span> <span>Instant download</span></li>
+                        @else
+                            <li><span>Delivery Time</span> <span>{{ $service->delivery_days }} day(s)</span></li>
+                            <li><span>Revisions</span> <span>{{ $service->revision_limit }}</span></li>
+                        @endif
                         <li><span>Category</span> <span>{{ $service->category ?: 'General' }}</span></li>
                     </ul>
                     <a href="{{ route('user.marketplace.service.show', $service->slug) }}" class="wu-public-btn">
