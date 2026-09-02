@@ -363,36 +363,6 @@
             border-top: 1px solid var(--feed-border-color);
             border-bottom: 1px solid var(--feed-border-color);
         }
-        .post-product-card {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 10px 20px 0;
-            padding: 12px;
-            border: 1px solid var(--feed-border-color);
-            border-radius: 12px;
-            background: var(--feed-brand-green-soft);
-            text-decoration: none;
-            color: inherit;
-        }
-        .post-product-card:hover { text-decoration: none; color: inherit; }
-        .post-product-card img {
-            width: 64px;
-            height: 64px;
-            object-fit: cover;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-        .post-product-card .post-product-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--feed-text-main);
-        }
-        .post-product-card .post-product-price {
-            color: var(--feed-brand-green);
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
         .mini-input:focus { background-color: #ffffff; border-color: var(--feed-brand-green); }
 
         .comment-send-btn {
@@ -491,16 +461,6 @@
                     @else
                     @endif
                 </div>
-
-                @if($post->product)
-                    <a href="{{ route('marketplace.service.show', $post->product->slug) }}" class="post-product-card">
-                        <img src="{{ wu_service_image($post->product->image) }}" alt="{{ $post->product->title }}">
-                        <div>
-                            <div class="post-product-title">{{ $post->product->title }}</div>
-                            <div class="post-product-price">${{ number_format($post->product->price, 2) }}</div>
-                        </div>
-                    </a>
-                @endif
 
                 <div class="post-stats">
                     <div class="stat-item fw-semibold">

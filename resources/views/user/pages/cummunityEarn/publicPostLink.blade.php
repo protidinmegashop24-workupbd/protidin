@@ -28,11 +28,6 @@
         .profile-icon { width:40px; height:40px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#ddd; font-weight:bold; color:#555; }
         .post-body img { max-width:100%; margin-top:10px; border-radius:8px; max-height: 500px}
         .post-body video { max-width:100%; width:100%; margin-top:10px; border-radius:8px; max-height: 500px; background:#000; }
-        .post-product-card { display:flex; align-items:center; gap:12px; margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:10px; background:#f0fdf4; text-decoration:none; color:inherit; }
-        .post-product-card:hover { text-decoration:none; color:inherit; }
-        .post-product-card img { width:64px; height:64px; object-fit:cover; border-radius:8px; margin:0; flex-shrink:0; }
-        .post-product-card .post-product-title { font-weight:700; font-size:0.95rem; color:#1a1d23; }
-        .post-product-card .post-product-price { color:#008000; font-weight:700; font-size:0.9rem; }
         .post-actions button { margin-right:10px; }
         .comment-section { margin-top:20px; }
         .comment-wrapper, .reply-wrapper { display:flex; align-items:flex-start; margin-bottom:10px; }
@@ -171,15 +166,6 @@
                 @else
                 @endif
             </div>
-            @if($post->product)
-                <a href="{{ route('marketplace.service.show', $post->product->slug) }}" class="post-product-card">
-                    <img src="{{ wu_service_image($post->product->image) }}" alt="{{ $post->product->title }}">
-                    <div>
-                        <div class="post-product-title">{{ $post->product->title }}</div>
-                        <div class="post-product-price">${{ number_format($post->product->price, 2) }}</div>
-                    </div>
-                </a>
-            @endif
         </div>
 
         <!-- Stats -->

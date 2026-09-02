@@ -198,13 +198,11 @@ class socialEarnController extends Controller
         //     }
         // ])->paginate(15);
         $posts = feedpost::where('status','approved')->latest()->paginate(15);
-        $this->attachProductData($posts);
 
         $website = Website::latest()->first();
         $inFeedAds = GoogleAd::where('position','In-Feed')->get();
-        $myServices = DB::table('wu_services')->where('user_id', Auth::id())->orderByDesc('id')->get();
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','myServices'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds'));
     }
     public function communityPostStore(Request $request) {
         $request->validate([
@@ -212,21 +210,8 @@ class socialEarnController extends Controller
             'post_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
             'post_video'   => 'nullable|mimes:mp4,mov,avi,webm,mkv|max:51200',
             'fatchUrl'     => 'nullable|url',
-            'product_id'   => 'nullable|integer',
         ]);
 
-        // A product can only be attached if it belongs to the posting user.
-        $productId = null;
-        if ($request->filled('product_id')) {
-            $ownsProduct = DB::table('wu_services')
-                ->where('id', $request->product_id)
-                ->where('user_id', Auth::id())
-                ->exists();
-            if ($ownsProduct) {
-                $productId = $request->product_id;
-            }
-        }
-    
         // Max Post Limit per Day Start 
         $findPostLimit = $this->findvalueOfKey('maxPostPerDay');
         if ($findPostLimit <= 0) {
@@ -301,7 +286,6 @@ class socialEarnController extends Controller
             'status'           => 'approved',
             'image'            => $imagePath,
             'video'            => $videoPath,
-            'productId'        => $productId,
             'totalUserEarn'    => 0,
             'totalOwnerEarn'   => 0,
             'likes'            => 0,
@@ -351,7 +335,6 @@ class socialEarnController extends Controller
         if(!$post){
             return redirect()->route('home')->with('error','Post Not Found');
         }
-        $this->attachProductData($post);
         $comments = feedPostComments::where('postId',$post->id)->get();
         // dd($post);
         return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments'));
@@ -536,7 +519,6 @@ class socialEarnController extends Controller
         }
         // dd($post);
         $post = feedpost::where('id',$id)->first();
-        $this->attachProductData($post);
         $comments = feedPostComments::with('user')->where('postId', $post->id)->orderBy('created_at', 'ASC')->get();
         return view('user.pages.cummunityEarn.publicPostLink',compact(['post','comments']));
     }
@@ -581,20 +563,6 @@ class socialEarnController extends Controller
         $historyAdd->price = $price;
         $historyAdd->save();
         return true;
-    }
-    // Attaches a ->product property (from wu_services) to one feedpost or a collection/paginator of them.
-    protected function attachProductData($posts){
-        $items = is_iterable($posts) ? $posts : [$posts];
-
-        $productIds = collect($items)->pluck('productId')->filter()->unique()->values();
-        if($productIds->isEmpty()){
-            return;
-        }
-
-        $products = DB::table('wu_services')->whereIn('id', $productIds)->get()->keyBy('id');
-        foreach($items as $post){
-            $post->product = $post->productId ? ($products[$post->productId] ?? null) : null;
-        }
     }
     protected function findvalueOfKey($key){ // if key is earnRef else find from community_rate Table's bonusKey
         if($key == 'earnRef'){

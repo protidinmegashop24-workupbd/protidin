@@ -178,89 +178,6 @@
             display: block;
         }
 
-        /* Product attach + product card */
-        #product-preview-card {
-            display: none;
-            align-items: center;
-            gap: 10px;
-            margin-top: 15px;
-            padding: 10px;
-            border: 1px solid var(--feed-border-color);
-            border-radius: 12px;
-            background: var(--feed-brand-green-soft);
-        }
-        #product-preview-card img {
-            width: 54px;
-            height: 54px;
-            object-fit: cover;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-        #product-preview-card .product-preview-info {
-            flex-grow: 1;
-            min-width: 0;
-        }
-        #product-preview-card .product-preview-title {
-            font-weight: 700;
-            font-size: 0.9rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        #product-preview-card .product-preview-price {
-            color: var(--feed-brand-green);
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-        .post-product-card {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 10px 20px 0;
-            padding: 12px;
-            border: 1px solid var(--feed-border-color);
-            border-radius: 12px;
-            background: var(--feed-brand-green-soft);
-            text-decoration: none;
-            color: inherit;
-        }
-        .post-product-card:hover { text-decoration: none; color: inherit; }
-        .post-product-card img {
-            width: 64px;
-            height: 64px;
-            object-fit: cover;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-        .post-product-card .post-product-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--feed-text-main);
-        }
-        .post-product-card .post-product-price {
-            color: var(--feed-brand-green);
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
-        .product-picker-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px;
-            border: 1px solid var(--feed-border-color);
-            border-radius: 10px;
-            cursor: pointer;
-            margin-bottom: 8px;
-        }
-        .product-picker-item:hover { background-color: #f8fafc; }
-        .product-picker-item img {
-            width: 48px;
-            height: 48px;
-            object-fit: cover;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-
         .remove-image-btn {
             position: absolute;
             top: 10px;
@@ -667,26 +584,11 @@
                             <i class="bi bi-camera-reels-fill text-success fs-5"></i>
                             <span>Add a Video</span>
                         </div>
-                        <div class="image-upload-trigger flex-grow-1" id="product-trigger" onclick="openProductPicker()">
-                            <i class="bi bi-bag-fill text-success fs-5"></i>
-                            <span>Add Product</span>
-                        </div>
                     </div>
 
                     <!-- Hidden Real Inputs -->
                     <input type="file" name="post_image" id="post_image" accept="image/*" style="display: none;" onchange="previewImage(this)">
                     <input type="file" name="post_video" id="post_video" accept="video/*" style="display: none;" onchange="previewVideo(this)">
-                    <input type="hidden" name="product_id" id="product_id" value="">
-
-                    <!-- Selected Product Preview -->
-                    <div id="product-preview-card">
-                        <button type="button" class="remove-image-btn" style="position:static;" onclick="removeSelectedProduct()"><i class="bi bi-x-lg"></i></button>
-                        <img id="product-preview-img" src="" alt="product">
-                        <div class="product-preview-info">
-                            <div class="product-preview-title" id="product-preview-title"></div>
-                            <div class="product-preview-price" id="product-preview-price"></div>
-                        </div>
-                    </div>
 
 
                     <div class="editor-footer">
@@ -700,33 +602,6 @@
                     </div>
                 </div>
             </form>
-        </div>
-
-        <!-- Product Picker Modal -->
-        <div class="modal fade" id="productPickerModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content" style="border-radius:16px;">
-                    <div class="modal-header">
-                        <h6 class="modal-title fw-bold">Select a product to attach</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body" style="max-height:400px; overflow-y:auto;">
-                        @forelse($myServices as $service)
-                            <div class="product-picker-item"
-                                 onclick="selectProduct({{ $service->id }}, '{{ addslashes($service->title) }}', '{{ number_format($service->price, 2) }}', '{{ wu_service_image($service->image) }}')">
-                                <img src="{{ wu_service_image($service->image) }}" alt="{{ $service->title }}">
-                                <div>
-                                    <div class="fw-bold" style="font-size:0.9rem;">{{ $service->title }}</div>
-                                    <div class="text-success fw-bold" style="font-size:0.85rem;">${{ number_format($service->price, 2) }}</div>
-                                </div>
-                            </div>
-                        @empty
-                            <p class="text-muted mb-2">You don't have any marketplace products yet.</p>
-                            <a href="{{ route('user.marketplace.create') }}" class="btn-brand d-inline-block" style="text-decoration:none;">Create a Product</a>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div id="postFeed">
@@ -776,16 +651,6 @@
                         @else
                         @endif
                     </div>
-
-                    @if($post->product)
-                        <a href="{{ route('marketplace.service.show', $post->product->slug) }}" class="post-product-card">
-                            <img src="{{ wu_service_image($post->product->image) }}" alt="{{ $post->product->title }}">
-                            <div>
-                                <div class="post-product-title">{{ $post->product->title }}</div>
-                                <div class="post-product-price">${{ number_format($post->product->price, 2) }}</div>
-                            </div>
-                        </a>
-                    @endif
 
                     <div class="post-stats">
                         <div class="stat-item fw-semibold">
@@ -1037,28 +902,6 @@
     }
 
     // --- Product Attach Logic ---
-    function openProductPicker() {
-        const modal = new bootstrap.Modal(document.getElementById('productPickerModal'));
-        modal.show();
-    }
-
-    function selectProduct(id, title, price, image) {
-        document.getElementById('product_id').value = id;
-        document.getElementById('product-preview-title').textContent = title;
-        document.getElementById('product-preview-price').textContent = '$' + price;
-        document.getElementById('product-preview-img').src = image;
-        document.getElementById('product-preview-card').style.display = 'flex';
-
-        const modalEl = document.getElementById('productPickerModal');
-        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-        modal.hide();
-    }
-
-    function removeSelectedProduct() {
-        document.getElementById('product_id').value = '';
-        document.getElementById('product-preview-card').style.display = 'none';
-    }
-
     // --- Other UI Logic ---
     function toggleEditor(show) {
         const initialState = document.getElementById('initial-state');
@@ -1076,7 +919,6 @@
             clearUrlPreview();
             removeSelectedImage();
             removeSelectedVideo();
-            removeSelectedProduct();
             handleInput(input);
         }
     }

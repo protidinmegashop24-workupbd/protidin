@@ -26,8 +26,7 @@ class feedpost extends Model
         'shares',
         'userId',
         'image',
-        'video',
-        'productId'
+        'video'
     ];
     protected $casts = [
         'aiRating'       => 'integer',
