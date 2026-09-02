@@ -468,8 +468,8 @@
                     </div>
                     <div class="stat-item fw-medium">
                         <span>{{$post->commnets}} Comments</span>
-                        {{-- <span class="mx-1">·</span> --}}
-                        {{-- <span>15 Shares</span> --}}
+                        <span class="mx-1">·</span>
+                        <span class="share-count" data-count="{{ $post->shares }}">{{$post->shares}} Shares</span>
                     </div>
                 </div>
 
@@ -658,6 +658,26 @@
         const alertBox = document.getElementById('copy-alert');
         alertBox.style.display = 'block';
         setTimeout(() => { alertBox.style.display = 'none'; }, 2000);
+
+        const postCard = document.getElementById('post-' + postId);
+        $.ajax({
+            url: "{{Route('user.newShare')}}",
+            type: "POST",
+            data: {
+                postId: postId,
+                _token: "{{ csrf_token() }}"
+            },
+            success: function (response) {
+                if (postCard) {
+                    const shareCountEl = postCard.querySelector('.share-count');
+                    if (shareCountEl) {
+                        const newCount = parseInt(shareCountEl.dataset.count || '0') + 1;
+                        shareCountEl.dataset.count = newCount;
+                        shareCountEl.textContent = newCount + ' Shares';
+                    }
+                }
+            }
+        });
     }
     
     $(document).on('click', '.like-btn', function () {

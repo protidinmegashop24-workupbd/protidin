@@ -624,6 +624,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('/view-community-post/{id?}', [socialEarnController::class, 'viewCommunityPP'])->name('viewCommunityPP');
     Route::post('/new-comment/{id}', [socialEarnController::class, 'newComment'])->name('newComment');
     Route::post('/new-like', [socialEarnController::class, 'newLike'])->name('newLike');
+    Route::post('/new-share', [socialEarnController::class, 'newShare'])->name('newShare');
     Route::get('/feed-post-dashboard', [socialEarnController::class, 'postFeedDashboard'])->name('postFeedDashboard');
     Route::get('/feed-post-list', [socialEarnController::class, 'myPostFeedList'])->name('myPostFeedList');
 

@@ -12,6 +12,7 @@ use App\Models\feedpost;
 use App\Models\feedUserEarnHistory;
 use App\Models\feedPostLikes;
 use App\Models\feedPostComments;
+use App\Models\feedPostShares;
 use App\Models\GoogleAd;
 use App\Models\Admin\UserMessage;
 use Illuminate\Support\Str;
@@ -35,9 +36,11 @@ class socialEarnController extends Controller
             'newPost'               => $req->newPost,
             'postViewerLink'        => $req->postViewerLink,
             'postViewerComment'     => $req->postViewerComment,
+            'postViewerShare'       => $req->postViewerShare,
             'maxPostPerDay'         => $req->maxPostPerDay,
             'maxUserLinksPerDay'    => $req->maxUserLinksPerDay,
             'maxUserCommentPerDay'  => $req->maxUserCommentPerDay,
+            'maxUserSharePerDay'    => $req->maxUserSharePerDay,
         ];
 
         foreach ($rates as $key => $rate) {
@@ -456,6 +459,53 @@ class socialEarnController extends Controller
             'message' => 'You Like The Post',
         ]);
     }
+    public function newShare(Request $request){
+        $findPost = feedpost::where('status','approved')->where('id',$request->postId)->first();
+        if(!$findPost){
+            return response()->json([
+                'status' => false,
+                'message' => 'Post Not Found',
+            ]);
+        }
+
+        // Share count always increments (so the post's share counter reflects real shares),
+        // earning is only granted once per user per post, same as like/comment.
+        $findPost->increment('shares');
+
+        if($findPost->userId == Auth::id()){
+            return response()->json([
+                'status' => true,
+                'message' => 'Post Shared',
+            ]);
+        }
+
+        $checkEarned = $this->checkIfEarned(Auth::id(),$findPost->id,'postViewerShare');
+        if($checkEarned){
+            return response()->json([
+                'status' => true,
+                'message' => 'Post Shared',
+            ]);
+        }
+        $todayLimit = $this->dailyMaxLimit('maxUserSharePerDay',Auth::id());
+        if(!$todayLimit){
+            return response()->json([
+                'status' => true,
+                'message' => 'Post Shared',
+            ]);
+        }
+        $addHistory = new feedPostShares();
+        $addHistory->postId = $findPost->id;
+        $addHistory->userId = Auth::id();
+        $addHistory->save();
+        $this->addEarnHistory(Auth::id(),$findPost->id,'postViewerShare',$this->findvalueOfKey('postViewerShare'));
+        Auth::user()->increment('earning_balance', $this->findvalueOfKey('postViewerShare'));
+        $this->addNotify(Auth::id(),'You Got the ' .$this->findvalueOfKey('postViewerShare') .'$ From The Post <br><a href="/public-shared/' . $findPost->id . '">View post</a>','Earn From Share');
+        $this->addReffEarn(Auth::id(),$findPost->id,$this->findvalueOfKey('postViewerShare'),$this->findvalueOfKey('earnRef'));
+        return response()->json([
+            'status' => true,
+            'message' => 'You Got the ' .$this->findvalueOfKey('postViewerShare') .'$ For Sharing',
+        ]);
+    }
     public function publicPostLink($id = null){
         if(!$id){
             return redirect()->route('home')->with('error','Post Not Found');
@@ -530,6 +580,10 @@ class socialEarnController extends Controller
         }elseif($key == 'maxUserCommentPerDay'){
             $maxLimit = (int) $this->findvalueOfKey('maxUserCommentPerDay');
             $foundTodayPost = feedUserEarnHistory::where('userId',$userId)->where('earnType','postViewerComment')->whereBetween('created_at', [$start,$end])->count();
+            return $foundTodayPost < $maxLimit;
+        }elseif($key == 'maxUserSharePerDay'){
+            $maxLimit = (int) $this->findvalueOfKey('maxUserSharePerDay');
+            $foundTodayPost = feedUserEarnHistory::where('userId',$userId)->where('earnType','postViewerShare')->whereBetween('created_at', [$start,$end])->count();
             return $foundTodayPost < $maxLimit;
         }else{
             return false;

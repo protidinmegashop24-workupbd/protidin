@@ -23,6 +23,7 @@ class feedpost extends Model
         'totalOwnerEarn',
         'likes',
         'commnets',
+        'shares',
         'userId',
         'image',
         'video'
@@ -33,6 +34,7 @@ class feedpost extends Model
         'totalOwnerEarn' => 'float',
         'likes'          => 'integer',
         'commnets'       => 'integer',
+        'shares'         => 'integer',
         'has_liked'      => 'boolean',
         'has_commented'  => 'boolean',
     ];

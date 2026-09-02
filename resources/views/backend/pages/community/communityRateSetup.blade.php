@@ -63,6 +63,16 @@ Social Earning Price setup
                         <label for="maxUserCommentPerDay">Max User Comment Per Day (Default 1)</label>
                         <input name="maxUserCommentPerDay" type="number" class="form-control" id="maxUserCommentPerDay" placeholder="Max Post Per Day"  value="{{ number_format($prices->where('bonusKey','maxUserCommentPerDay')->first()->bonusRate)}}" >
                     </div>
+
+                    <div class="form-group col-lg-4 col-md-4 col-12">
+                        <label for="postViewerShare">Post Viewer Per Share</label>
+                        <input name="postViewerShare" type="text" class="form-control" id="postViewerShare" placeholder="Post Viewer Per Share"  value="{{ $prices->where('bonusKey','postViewerShare')->first()->bonusRate ?? 0 }}" >
+                    </div>
+
+                    <div class="form-group col-lg-4 col-md-4 col-12">
+                        <label for="maxUserSharePerDay">Max User Share Per Day</label>
+                        <input name="maxUserSharePerDay" type="number" class="form-control" id="maxUserSharePerDay" placeholder="Max User Share Per Day"  value="{{ number_format($prices->where('bonusKey','maxUserSharePerDay')->first()->bonusRate ?? 0) }}" >
+                    </div>
                     <div class="form-group col-12 row">
                         <div class="col-sm-6">
                             <div class="ui buttons">
