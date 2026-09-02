@@ -352,6 +352,9 @@
                         <span class="mp-meta-pill">Category: {{ $service->category ?: 'General' }}</span>
                         <span class="mp-meta-pill">Delivery: {{ $service->delivery_days }} day(s)</span>
                         <span class="mp-meta-pill">Revisions: {{ $service->revision_limit }}</span>
+                        <button type="button" class="mp-meta-pill" style="cursor:pointer; border:none;" onclick="shareMarketplaceService()">
+                            Share
+                        </button>
                     </div>
 
                     <div class="mp-service-desc-title">Service Description</div>
@@ -505,4 +508,26 @@
 </div>
     </div>
 </div>
+@endsection
+
+@section('js')
+<script>
+    function shareMarketplaceService() {
+        const link = "{{ route('marketplace.service.show', $service->slug) }}";
+
+        if (navigator.share) {
+            navigator.share({
+                title: "{{ $service->title }}",
+                url: link
+            }).catch(() => {});
+            return;
+        }
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(link).then(() => {
+                toastr.success('Service link copied to clipboard!');
+            });
+        }
+    }
+</script>
 @endsection
