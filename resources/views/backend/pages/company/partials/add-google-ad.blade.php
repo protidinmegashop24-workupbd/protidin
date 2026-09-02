@@ -17,6 +17,7 @@
                         <option value="Head">Head</option>
                         <!--<option value="Body">Body</option>-->
                         <option value="Footer">Footer</option>
+                        <option value="In-Feed">In-Feed (Community Post Feed)</option>
                     </select>
                 </div>
 

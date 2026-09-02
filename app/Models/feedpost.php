@@ -24,7 +24,8 @@ class feedpost extends Model
         'likes',
         'commnets',
         'userId',
-        'image'
+        'image',
+        'video'
     ];
     protected $casts = [
         'aiRating'       => 'integer',

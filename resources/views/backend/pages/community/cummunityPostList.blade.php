@@ -137,7 +137,9 @@ Community Post Management
                                                     <td>{{ $post->user?->name ?? 'annonymous' }}</td>
                                                     <td>{{ $post->created_at->diffForHumans() }}</td>
                                                     <td>
-                                                        @if($post->image)
+                                                        @if($post->video)
+                                                            <video src="{{ asset($post->video) }}" style="max-height:50px" muted></video>
+                                                        @elseif($post->image)
                                                             <img src="{{ asset($post->image) }}" alt="post image" style="max-height:50px">
                                                         @else
                                                             No Image

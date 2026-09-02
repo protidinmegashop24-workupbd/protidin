@@ -43,6 +43,25 @@
             overflow: hidden;
         }
 
+        .in-feed-ad-card {
+            background: var(--feed-pure-white);
+            border: 1px solid var(--feed-border-color);
+            border-radius: 16px;
+            margin-bottom: 25px;
+            box-shadow: var(--feed-card-shadow);
+            overflow: hidden;
+            padding: 10px 15px;
+        }
+
+        .in-feed-ad-label {
+            font-size: 0.7rem;
+            color: var(--feed-text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
         .profile-icon {
             width: 44px;
             height: 44px;
@@ -132,6 +151,30 @@
             height: auto;
             max-height: 450px;
             object-fit: cover;
+            display: block;
+        }
+
+        #video-preview-container {
+            position: relative;
+            display: none;
+            margin-top: 15px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--feed-border-color);
+            background: #000;
+        }
+
+        #video-preview-container video {
+            width: 100%;
+            max-height: 450px;
+            display: block;
+        }
+
+        .post-video-full {
+            width: 100%;
+            max-height: 500px;
+            border-radius: 0;
+            background: #000;
             display: block;
         }
 
@@ -510,6 +553,12 @@
                         <button type="button" class="remove-image-btn" onclick="removeSelectedImage()"><i class="bi bi-x-lg"></i></button>
                         <img id="image-preview" src="" alt="preview">
                     </div>
+
+                    <!-- Video Preview Area -->
+                    <div id="video-preview-container">
+                        <button type="button" class="remove-image-btn" onclick="removeSelectedVideo()"><i class="bi bi-x-lg"></i></button>
+                        <video id="video-preview" src="" controls></video>
+                    </div>
                     <!--Fatch System-->
                     <input type="url" name="fatchUrl" id="post-url" class="post-url-input" placeholder="Paste a link (optional)" autocomplete="off">
                     <input type="hidden" name="fetchTitle" id="fetchTitle">
@@ -525,14 +574,21 @@
                         </div>
                     </div>
                     <!--Fatch System End Here -->
-                    <!-- Visual Image Selector Trigger -->
-                    <div class="image-upload-trigger" id="upload-trigger" onclick="document.getElementById('post_image').click()">
-                        <i class="bi bi-image-fill text-success fs-5"></i>
-                        <span>Add a Photo</span>
+                    <!-- Visual Image/Video Selector Triggers -->
+                    <div class="d-flex" style="gap:10px;">
+                        <div class="image-upload-trigger flex-grow-1" id="upload-trigger" onclick="document.getElementById('post_image').click()">
+                            <i class="bi bi-image-fill text-success fs-5"></i>
+                            <span>Add a Photo</span>
+                        </div>
+                        <div class="image-upload-trigger flex-grow-1" id="video-upload-trigger" onclick="document.getElementById('post_video').click()">
+                            <i class="bi bi-camera-reels-fill text-success fs-5"></i>
+                            <span>Add a Video</span>
+                        </div>
                     </div>
 
-                    <!-- Hidden Real Input -->
+                    <!-- Hidden Real Inputs -->
                     <input type="file" name="post_image" id="post_image" accept="image/*" style="display: none;" onchange="previewImage(this)">
+                    <input type="file" name="post_video" id="post_video" accept="video/*" style="display: none;" onchange="previewVideo(this)">
 
 
                     <div class="editor-footer">
@@ -577,7 +633,9 @@
                         @if($post->fetchUrl)
                             url : <a href="{{$post->fetchUrl}}" target="_blank">{{$post->fetchUrl}}</a>
                         @endif
-                        @if($post->image)
+                        @if($post->video)
+                            <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
+                        @elseif($post->image)
                             <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
                         @elseif($post->fetchUrl)
                         <div class="url-preview-viewpart">
@@ -619,6 +677,14 @@
                         <button class="action-btn" onclick="copyPostLink('{{$post->id}}')">Share</button>
                     </div>
                 </div>
+
+                @if($inFeedAds->count() && $loop->iteration % 4 == 0)
+                    @php $adToShow = $inFeedAds[($loop->iteration / 4 - 1) % $inFeedAds->count()]; @endphp
+                    <div class="in-feed-ad-card">
+                        <div class="in-feed-ad-label">Sponsored</div>
+                        {!! $adToShow->code !!}
+                    </div>
+                @endif
             @endforeach
 
         </div>
@@ -772,13 +838,14 @@
         const previewImg = document.getElementById('image-preview');
         const trigger = document.getElementById('upload-trigger');
         const urlPreviewDiv = document.getElementById('url-preview');
-    
+
         if (input.files && input.files[0]) {
+            removeSelectedVideo();
             const reader = new FileReader();
             reader.onload = function(e) {
                 previewImg.src = e.target.result;
                 previewContainer.style.display = 'block';
-                trigger.style.display = 'none'; 
+                trigger.style.display = 'none';
                 urlPreviewDiv.style.display = 'none';
             }
             reader.readAsDataURL(input.files[0]);
@@ -791,18 +858,47 @@
         const trigger = document.getElementById('upload-trigger');
         const urlPreviewDiv = document.getElementById('url-preview');
         const urlInput = document.getElementById('post-url');
-        
+
         input.value = "";
         previewContainer.style.display = 'none';
         trigger.style.display = 'flex';
-    
+
         const hasFetchedData = document.getElementById('fetchTitle').value.trim() !== '';
-        
+
         if (urlInput.value && hasFetchedData) {
             urlPreviewDiv.style.display = 'flex';
         } else if (urlInput.value) {
             urlInput.dispatchEvent(new Event('input'));
         }
+    }
+
+    // Live Video Preview Logic
+    function previewVideo(input) {
+        const previewContainer = document.getElementById('video-preview-container');
+        const previewVideoEl = document.getElementById('video-preview');
+        const trigger = document.getElementById('video-upload-trigger');
+        const urlPreviewDiv = document.getElementById('url-preview');
+
+        if (input.files && input.files[0]) {
+            removeSelectedImage();
+            const fileUrl = URL.createObjectURL(input.files[0]);
+            previewVideoEl.src = fileUrl;
+            previewContainer.style.display = 'block';
+            trigger.style.display = 'none';
+            urlPreviewDiv.style.display = 'none';
+        }
+    }
+
+    function removeSelectedVideo() {
+        const input = document.getElementById('post_video');
+        const previewContainer = document.getElementById('video-preview-container');
+        const previewVideoEl = document.getElementById('video-preview');
+        const trigger = document.getElementById('video-upload-trigger');
+
+        input.value = "";
+        previewVideoEl.src = "";
+        previewContainer.style.display = 'none';
+        trigger.style.display = 'flex';
     }
 
     // --- Other UI Logic ---
@@ -821,6 +917,7 @@
             document.getElementById('post-url').value = ''; // Clear URL too
             clearUrlPreview();
             removeSelectedImage();
+            removeSelectedVideo();
             handleInput(input);
         }
     }

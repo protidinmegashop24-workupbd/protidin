@@ -347,13 +347,21 @@
             display: block;
             font-family: 'Hind Siliguri', sans-serif;
         }
-        .post-image-full { 
+        .post-image-full {
             /* width: 100%;  */
             max-width: 100%;
-            display: block; 
-            border-top: 1px solid var(--feed-border-color); 
-            border-bottom: 1px solid var(--feed-border-color); 
+            display: block;
+            border-top: 1px solid var(--feed-border-color);
+            border-bottom: 1px solid var(--feed-border-color);
             max-height: 350px;
+        }
+        .post-video-full {
+            width: 100%;
+            max-height: 450px;
+            display: block;
+            background: #000;
+            border-top: 1px solid var(--feed-border-color);
+            border-bottom: 1px solid var(--feed-border-color);
         }
         .mini-input:focus { background-color: #ffffff; border-color: var(--feed-brand-green); }
 
@@ -435,7 +443,9 @@
                     @if($post->fetchUrl)
                         url : <a href="{{$post->fetchUrl}}" target="_blank">{{$post->fetchUrl}}</a>
                     @endif
-                    @if($post->image)
+                    @if($post->video)
+                        <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
+                    @elseif($post->image)
                         <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
                     @elseif($post->fetchUrl)
                     <div class="url-preview-viewpart">

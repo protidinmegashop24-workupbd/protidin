@@ -27,6 +27,7 @@
         .post-header { display:flex; align-items:center; margin-bottom:15px; }
         .profile-icon { width:40px; height:40px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#ddd; font-weight:bold; color:#555; }
         .post-body img { max-width:100%; margin-top:10px; border-radius:8px; max-height: 500px}
+        .post-body video { max-width:100%; width:100%; margin-top:10px; border-radius:8px; max-height: 500px; background:#000; }
         .post-actions button { margin-right:10px; }
         .comment-section { margin-top:20px; }
         .comment-wrapper, .reply-wrapper { display:flex; align-items:flex-start; margin-bottom:10px; }
@@ -132,7 +133,9 @@
                 url : <a href="{{$post->fetchUrl}}" target="_blank">{{$post->fetchUrl}}</a>
             @endif
             <div class="text-left">
-                @if($post->image)
+                @if($post->video)
+                    <video src="{{ asset($post->video) }}" controls preload="metadata"></video>
+                @elseif($post->image)
                     <img src="{{ asset($post->image) }}" alt="Post Image" loading="lazy">
                 @elseif($post->fetchUrl)
                     <div class="url-preview-card">

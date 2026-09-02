@@ -12,6 +12,7 @@ use App\Models\feedpost;
 use App\Models\feedUserEarnHistory;
 use App\Models\feedPostLikes;
 use App\Models\feedPostComments;
+use App\Models\GoogleAd;
 use App\Models\Admin\UserMessage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -196,13 +197,15 @@ class socialEarnController extends Controller
         $posts = feedpost::where('status','approved')->latest()->paginate(15);
 
         $website = Website::latest()->first();
+        $inFeedAds = GoogleAd::where('position','In-Feed')->get();
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds'));
     }
     public function communityPostStore(Request $request) {
         $request->validate([
             'post_content' => 'required|string',
             'post_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'post_video'   => 'nullable|mimes:mp4,mov,avi,webm,mkv|max:51200',
             'fatchUrl'     => 'nullable|url',
         ]);
     
@@ -250,7 +253,24 @@ class socialEarnController extends Controller
     
             $imagePath = "uploads/feedposts/{$dateFolder}/{$fileName}";
         }
-    
+
+        $videoPath = null;
+        if ($request->hasFile('post_video')) {
+            $video = $request->file('post_video');
+            $dateFolder = Carbon::now()->format('Y-m-d');
+            $uploadPath = "uploads/feedposts/{$dateFolder}";
+
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+
+            $extension = $video->getClientOriginalExtension();
+            $fileName = 'feedvideo_' . time() . '_' . Str::random(6) . '.' . $extension;
+            $video->move($uploadPath, $fileName);
+
+            $videoPath = "uploads/feedposts/{$dateFolder}/{$fileName}";
+        }
+
         // Post create with new Fetch fields
         $postAdded = feedpost::create([
             'postContent'      => $request->post_content,
@@ -262,6 +282,7 @@ class socialEarnController extends Controller
             'aiRating'         => 0,
             'status'           => 'approved',
             'image'            => $imagePath,
+            'video'            => $videoPath,
             'totalUserEarn'    => 0,
             'totalOwnerEarn'   => 0,
             'likes'            => 0,
