@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Job;
 use App\Models\JobWork;
+use App\Models\ptc_job;
+use App\Models\ptc_earn_history;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -28,10 +30,8 @@ class UserController extends Controller
         $roles = Role::all()->where('id', '!=', '3');
         $jobs = Job::all();
         $JobWork = JobWork::all();
-        // TODO: PTC job/earn-history models aren't available yet -- placeholder
-        // empty collections until the real PTC table/model names are known.
-        $ptc_job = collect();
-        $ptc_earn_history = collect();
+        $ptc_job = ptc_job::all();
+        $ptc_earn_history = ptc_earn_history::all();
 
         return view('backend.pages.usermanage.user', compact('users', 'roles', 'website', 'jobs', 'JobWork', 'ptc_job', 'ptc_earn_history'));
     }
@@ -58,10 +58,8 @@ class UserController extends Controller
         $roles = Role::all()->where('id', '!=', '3');
         $jobs = Job::all();
         $JobWork = JobWork::all();
-        // TODO: PTC job/earn-history models aren't available yet -- placeholder
-        // empty collections until the real PTC table/model names are known.
-        $ptc_job = collect();
-        $ptc_earn_history = collect();
+        $ptc_job = ptc_job::all();
+        $ptc_earn_history = ptc_earn_history::all();
 
         return view('backend.pages.usermanage.user', compact('users', 'roles', 'website', 'jobs', 'JobWork', 'ptc_job', 'ptc_earn_history'));
     }
@@ -239,6 +237,26 @@ class UserController extends Controller
         return redirect()->back()->with('message','User deleted Successfully!');
     }
     
+    public function user_full_job_view($id, $viewType)
+    {
+        $website = Website::latest()->first();
+        $pageType = $viewType;
+
+        if ($viewType === 'postedJob') {
+            $datas = Job::where('user_id', $id)->latest()->get();
+        } elseif ($viewType === 'appliedJob') {
+            $datas = JobWork::where('user_id', $id)->latest()->get();
+        } elseif ($viewType === 'ptcPostedJob') {
+            $datas = ptc_job::where('ptc_post_user_id', $id)->latest()->get();
+        } elseif ($viewType === 'ptcEarnedJob') {
+            $datas = ptc_earn_history::where('ptc_worker_id', $id)->latest()->get();
+        } else {
+            $datas = collect();
+        }
+
+        return view('backend.pages.usermanage.user-full-job-view', compact('datas', 'pageType', 'website'));
+    }
+
     public function reactive_user_account($id)
     {
         $user = User::find($id);
@@ -246,6 +264,19 @@ class UserController extends Controller
         $user->is_ban = 0;
         $user->save();
         return redirect()->back()->with('message','User Successfully Reactive!');
+    }
+
+    public function updateEmailStatus(Request $request, $id)
+    {
+        $request->validate([
+            'is_verified' => 'required|in:0,1',
+        ]);
+
+        $user = User::find($id);
+        $user->email_verified_at = $request->is_verified == 1 ? now() : null;
+        $user->save();
+
+        return redirect()->back()->with('message', 'Email verification status updated successfully!');
     }
 
     public function updateStatus(Request $request, $id)
