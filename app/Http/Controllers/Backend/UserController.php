@@ -260,21 +260,24 @@ class UserController extends Controller
     {
         $website = Website::latest()->first();
         $users = User::where('kyc_status', 'pending')->latest()->paginate(15);
-        return view('backend.pages.usermanage.kyc-requested', compact('users', 'website'));
+        $roles = Role::all()->where('id', '!=', '3');
+        return view('backend.pages.usermanage.kyc-requested', compact('users', 'website', 'roles'));
     }
 
     public function kyc_user_list()
     {
         $website = Website::latest()->first();
         $users = User::where('kyc_status', 'approve')->latest()->paginate(15);
-        return view('backend.pages.usermanage.kyc-user', compact('users', 'website'));
+        $roles = Role::all()->where('id', '!=', '3');
+        return view('backend.pages.usermanage.kyc-user', compact('users', 'website', 'roles'));
     }
 
     public function kyc_user_unapprove()
     {
         $website = Website::latest()->first();
         $users = User::where('kyc_status', 'unapprove')->latest()->paginate(15);
-        return view('backend.pages.usermanage.kyc-unapprove', compact('users', 'website'));
+        $roles = Role::all()->where('id', '!=', '3');
+        return view('backend.pages.usermanage.kyc-unapprove', compact('users', 'website', 'roles'));
     }
 
     public function kyc_verify_check_update(Request $request)
