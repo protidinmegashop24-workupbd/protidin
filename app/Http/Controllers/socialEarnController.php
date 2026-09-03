@@ -171,32 +171,38 @@ class socialEarnController extends Controller
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1); 
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/110.0.0.0 Safari/537.36');
-        
+
         $html = curl_exec($ch);
         $error = curl_error($ch);
+        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL) ?: $url;
         curl_close($ch);
-    
+
         if ($error) {
             return response()->json(['status' => false, 'error_debug' => 'Curl Error: ' . $error]);
         }
-    
+
         if (!$html) {
             return response()->json(['status' => false, 'error_debug' => 'Empty HTML returned']);
         }
-    
+
         $doc = new \DOMDocument();
         libxml_use_internal_errors(true);
         @$doc->loadHTML('<?xml encoding="UTF-8">' . $html);
         $xpath = new \DOMXPath($doc);
-    
+
         $title = $this->queryTag($xpath, '//meta[@property="og:title"]/@content') ?? $this->queryTag($xpath, '//title');
         $image = $this->queryTag($xpath, '//meta[@property="og:image"]/@content');
         $desc = $this->queryTag($xpath, '//meta[@property="og:description"]/@content') ?? $this->queryTag($xpath, '//meta[@name="description"]/@content');
-    
+
+        // og:image is often a path relative to the target site, not an
+        // absolute URL -- resolve it against that site so the preview image
+        // doesn't try to load from workupbd.com instead.
+        $image = $this->resolveAbsoluteUrl($image, $effectiveUrl);
+
         return response()->json([
             'status' => true,
             'data' => [
@@ -205,6 +211,39 @@ class socialEarnController extends Controller
                 'image' => $image,
             ]
         ]);
+    }
+    private function resolveAbsoluteUrl($maybeRelativeUrl, $baseUrl) {
+        if (!$maybeRelativeUrl) {
+            return $maybeRelativeUrl;
+        }
+
+        $maybeRelativeUrl = trim($maybeRelativeUrl);
+
+        if (preg_match('#^(https?:)?//#i', $maybeRelativeUrl)) {
+            // Already absolute, or protocol-relative ("//host/path.jpg").
+            return preg_match('#^//#', $maybeRelativeUrl)
+                ? 'https:' . $maybeRelativeUrl
+                : $maybeRelativeUrl;
+        }
+
+        $base = parse_url($baseUrl);
+        if (!$base || empty($base['host'])) {
+            return $maybeRelativeUrl;
+        }
+
+        $scheme = $base['scheme'] ?? 'https';
+        $host = $base['host'];
+        $port = isset($base['port']) ? ':' . $base['port'] : '';
+
+        if (strpos($maybeRelativeUrl, '/') === 0) {
+            // Root-relative path, e.g. "/images/og.png".
+            return "{$scheme}://{$host}{$port}{$maybeRelativeUrl}";
+        }
+
+        // Relative to the current directory of the fetched page.
+        $basePath = $base['path'] ?? '/';
+        $dir = rtrim(substr($basePath, 0, strrpos($basePath, '/') + 1), '/');
+        return "{$scheme}://{$host}{$port}{$dir}/{$maybeRelativeUrl}";
     }
     private function queryTag($xpath, $query) {
         $nodes = $xpath->query($query);
