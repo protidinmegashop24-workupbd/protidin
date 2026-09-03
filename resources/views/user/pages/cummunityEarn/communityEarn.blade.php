@@ -1054,7 +1054,11 @@
         })
         .catch(err => {
             console.error(err);
-            toastr.error(err.message || 'Something went wrong. Try again.');
+            if (err.name === 'TypeError' && /fetch/i.test(err.message)) {
+                toastr.error('ভিডিও/ছবির সাইজ সার্ভারের আপলোড সীমার চেয়ে বড় বলে কানেকশন কেটে গেছে। ছোট ফাইল দিয়ে আবার চেষ্টা করুন।');
+            } else {
+                toastr.error(err.message || 'Something went wrong. Try again.');
+            }
         });
     });
     $(document).on('click', '.like-btn', function () {

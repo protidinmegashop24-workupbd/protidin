@@ -183,6 +183,7 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('community-rate-setup', [socialEarnController::class, 'communityRateSetup'])->name('communityRateSetup');
     Route::get('community-post-list', [socialEarnController::class, 'cummunityPostList'])->name('cummunityPostList');
     Route::post('community-post-delete', [socialEarnController::class, 'deleteFeedPost'])->name('deleteFeedPost');
+    Route::post('community-post-approve', [socialEarnController::class, 'approveFeedPost'])->name('approveFeedPost');
     Route::post('community-rate-setup-store', [socialEarnController::class, 'communityRateSetupStore'])->name('communityRateSetupStore');
 
     Route::get('boost-charge', [BoostChargeController::class, 'index'])->name('boost-charge');

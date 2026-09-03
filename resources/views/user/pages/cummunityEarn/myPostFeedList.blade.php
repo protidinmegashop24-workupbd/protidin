@@ -10,7 +10,7 @@
         <div class="mb-4">
             <h4 class="fw-bold">My Posts (Last 6 Months)</h4>
             <p class="text-muted mb-0">
-                Only approved posts are shown here
+                Video posts show "Pending" until an admin approves them; they will appear in the public feed once approved.
             </p>
         </div>
     </div>
@@ -18,14 +18,20 @@
 <hr class="hr">
 <div class="row g-4">
     @forelse($posts as $post)
+        @php $isApproved = $post->status === 'approved'; @endphp
         <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-            <a href="{{ route('publicPostLink', $post->id) }}"
-               class="text-decoration-none text-dark">
+            <a href="{{ $isApproved ? route('publicPostLink', $post->id) : '#' }}"
+               class="text-decoration-none text-dark {{ $isApproved ? '' : 'pe-none' }}">
 
                 <div class="card h-100 shadow-sm border-0 post-card">
 
-                    {{-- Image (optional) --}}
-                    @if($post->image)
+                    {{-- Media (optional) --}}
+                    @if($post->video)
+                        <video src="{{ asset($post->video) }}"
+                               class="card-img-top"
+                               style="height:200px; object-fit:cover; background:#000;"
+                               muted preload="metadata"></video>
+                    @elseif($post->image)
                         <img src="{{ asset($post->image) }}"
                              class="card-img-top"
                              alt="Post image"
@@ -38,9 +44,11 @@
                             <small class="text-muted">
                                 {{ $post->created_at->diffForHumans() }}
                             </small>
-                            <span class="badge bg-success">
-                                Approved
-                            </span>
+                            @if($isApproved)
+                                <span class="badge bg-success">Approved</span>
+                            @else
+                                <span class="badge bg-warning text-dark">Pending Review</span>
+                            @endif
                         </div>
 
                         {{-- Content --}}
@@ -50,9 +58,15 @@
 
                         {{-- Footer --}}
                         <div class="mt-auto">
-                            <span class="text-primary fw-semibold">
-                                View Post →
-                            </span>
+                            @if($isApproved)
+                                <span class="text-primary fw-semibold">
+                                    View Post →
+                                </span>
+                            @else
+                                <span class="text-muted fw-semibold">
+                                    Waiting for admin approval
+                                </span>
+                            @endif
                         </div>
                     </div>
                 </div>

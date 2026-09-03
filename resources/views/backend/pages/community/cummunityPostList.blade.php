@@ -52,6 +52,13 @@ Community Post Management
 <section class="content">
     <div class="container-fluid">
         <div id="alertContainer"></div>
+        @if($pendingCount > 0)
+            <div class="alert alert-warning">
+                <i class="fa fa-clock"></i>
+                <strong>{{ $pendingCount }}</strong> video post(s) waiting for approval.
+                <a href="{{ route('admin.cummunityPostList', ['status' => 'pending']) }}">View pending only</a>
+            </div>
+        @endif
         <div class="card card-success">
             <div class="card-header">
                 <h3 class="card-title">Community Post Management</h3>
@@ -78,7 +85,7 @@ Community Post Management
                                 </form>
                                 <form class="row" action="{{route('admin.cummunityPostList')}}" method="GET">
                                     <!-- From Date -->
-                                    <div class="col-md-5">
+                                    <div class="col-md-4">
                                         <div class="form-group">
                                             <label for="fromDate">From Date</label>
                                             <input type="date" class="form-control" id="fromDate" name="fromDate" value="{{ request()->get('fromDate') }}">
@@ -86,10 +93,22 @@ Community Post Management
                                     </div>
 
                                     <!-- To Date -->
-                                    <div class="col-md-5">
+                                    <div class="col-md-4">
                                         <div class="form-group">
                                             <label for="toDate">To Date</label>
                                             <input type="date" class="form-control" id="toDate" name="toDate" value="{{ request()->get('toDate') }}">
+                                        </div>
+                                    </div>
+
+                                    <!-- Status Filter -->
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="status">Status</label>
+                                            <select class="form-control" id="status" name="status">
+                                                <option value="">All</option>
+                                                <option value="pending" {{ request()->get('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                                <option value="approved" {{ request()->get('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                                            </select>
                                         </div>
                                     </div>
 
@@ -118,6 +137,7 @@ Community Post Management
                                                 <th>Time</th>
                                                 <th>Image</th>
                                                 <th>text</th>
+                                                <th>Status</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -130,6 +150,7 @@ Community Post Management
                                                     data-date="{{ $post->created_at->format('Y-m-d H:i') }}"
                                                     data-content="{{ \Illuminate\Support\Str::words(strip_tags($post->postContent), 50, '...') }}"
                                                     data-image="{{ $post->image ? asset($post->image) : '' }}"
+                                    data-status="{{ $post->status }}"
                                                 >
                                                     <td>{{ $loop->iteration }}</td>
                                                     <td>{{ $post->userId ?? 'annonymous' }}</td>
@@ -147,12 +168,28 @@ Community Post Management
                                                     </td>
                                                     <td>{!! \Illuminate\Support\Str::words(strip_tags($post->postContent), 5, '...') !!}</td>
                                                     <td>
+                                                        @if($post->status === 'approved')
+                                                            <span class="badge badge-success">Approved</span>
+                                                        @else
+                                                            <span class="badge badge-warning">Pending</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
                                                         <button class="btn btn-primary btn-sm" onclick="copyToClipboard('{{route('publicPostLink',$post->id) }}')" target="_blank">
                                                             <i class="fa fa-copy"></i> Copy
                                                         </a>
                                                         <button class="btn btn-info btn-sm view-btn" data-toggle="modal" data-target="#detailsModal">
                                                             <i class="fa fa-eye"></i> View
                                                         </button>
+                                                        @if($post->status !== 'approved')
+                                                            <form action="{{ route('admin.approveFeedPost') }}" method="POST" style="display:inline-block;">
+                                                                @csrf
+                                                                <input type="hidden" name="id" value="{{ $post->id }}">
+                                                                <button type="submit" class="btn btn-success btn-sm">
+                                                                    <i class="fa fa-check"></i> Approve
+                                                                </button>
+                                                            </form>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -215,6 +252,9 @@ Community Post Management
                 <button type="button" class="btn btn-danger" onclick="showDeleteConfirm()">
                     <i class="fa fa-trash"></i> Delete
                 </button>
+                <button type="button" id="m_approve_btn" class="btn btn-success" onclick="submitApprove()" style="display:none;">
+                    <i class="fa fa-check"></i> Approve
+                </button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -244,7 +284,11 @@ Community Post Management
     </div>
 </div>
 
-
+<!-- Hidden Approve Form -->
+<form action="{{ route('admin.approveFeedPost') }}" method="POST" id="approveForm" style="display:none;">
+    @csrf
+    <input type="hidden" name="id" id="approvePostId" value="">
+</form>
 
 
 <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js"></script>
@@ -271,8 +315,19 @@ Community Post Management
 
         // Set ID for static delete form
         $('#deletePostId').val(tr.data('id'));
+        $('#approvePostId').val(tr.data('id'));
+
+        if (tr.data('status') !== 'approved') {
+            $('#m_approve_btn').show();
+        } else {
+            $('#m_approve_btn').hide();
+        }
     });
 });
+
+function submitApprove() {
+    document.getElementById('approveForm').submit();
+}
 
 // Show static delete modal
 function showDeleteConfirm() {
