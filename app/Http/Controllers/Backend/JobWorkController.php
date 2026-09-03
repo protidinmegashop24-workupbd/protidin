@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin\Role;
 use App\Models\Admin\Website;
 use App\Models\Job;
 use App\Models\JobWork;
 use App\Models\User;
+use App\Models\ptc_job;
 use Illuminate\Http\Request;
 
 class JobWorkController extends Controller
@@ -124,5 +126,79 @@ class JobWorkController extends Controller
         $job->delete();
 
         return redirect()->back()->with('message','Successfully deleted this job!');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PTC (Paid To Click) Job Moderation
+    |--------------------------------------------------------------------------
+    | All of these share the same backend.pages.ptc-job.running-job view,
+    | which switches its heading/columns via Route::is().
+    */
+
+    private function ptcAdminView($jobs)
+    {
+        $website = Website::latest()->first();
+        $roles = Role::all()->where('id', '!=', '3');
+
+        return view('backend.pages.ptc-job.running-job', compact('jobs', 'website', 'roles'));
+    }
+
+    public function ptcRunningAdmin()
+    {
+        $jobs = ptc_job::where('ptc_status', 'running')->latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcExpiredAdmin()
+    {
+        $jobs = ptc_job::where('ptc_expire_day', '<', now()->toDateString())->latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcAdminPending()
+    {
+        $jobs = ptc_job::where('ptc_status', 'adminPending')->latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcDeleteList()
+    {
+        $jobs = ptc_job::where('ptc_status', 'deleted')->latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcDeleteRequest()
+    {
+        $jobs = ptc_job::where('ptc_status', 'req_delete')->latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcRejectList()
+    {
+        $jobs = ptc_job::where('ptc_status', 'reject')->latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcJobHistoryAdmin()
+    {
+        $jobs = ptc_job::latest()->paginate(15);
+        return $this->ptcAdminView($jobs);
+    }
+
+    public function ptcRunningAdminStore(Request $request)
+    {
+        $request->validate([
+            'id'                => 'required|exists:ptc_job,id',
+            'ptc_status'        => 'required|in:running,pending,review,reject,adminPending,req_delete,deleted',
+            'ptc_reject_notice' => 'nullable|string',
+        ]);
+
+        $job = ptc_job::find($request->id);
+        $job->ptc_status = $request->ptc_status;
+        $job->ptc_reject_notice = $request->ptc_reject_notice;
+        $job->save();
+
+        return redirect()->back()->with('message', 'PTC job status updated successfully!');
     }
 }

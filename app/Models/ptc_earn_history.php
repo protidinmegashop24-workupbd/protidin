@@ -11,7 +11,12 @@ class ptc_earn_history extends Model
     public $table = 'ptc_earn_history';
     public $timestamps = true;
 
-    public function user(){        
+    protected $fillable = [
+        'ptc_worker_id',
+        'ptc_job_id',
+    ];
+
+    public function user(){
         return $this->belongsTo(User::class,'ptc_worker_id','id');
     }
     public function history(){        

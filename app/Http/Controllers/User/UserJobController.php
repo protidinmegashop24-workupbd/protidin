@@ -17,6 +17,8 @@ use App\Models\BoostJob;
 use App\Models\Job;
 use App\Models\JobCountry;
 use App\Models\User;
+use App\Models\ptc_job;
+use App\Models\ptc_earn_history;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -616,5 +618,197 @@ class UserJobController extends Controller
         $job->save();
 
         return redirect()->route('user.job')->with('message','Job delete request successfully submited.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PTC (Paid To Click) Jobs
+    |--------------------------------------------------------------------------
+    */
+
+    // Per-click price for each package_name option on the PTC job create form.
+    private function ptcPackagePrice($packageName)
+    {
+        $prices = [
+            '1' => 0.00020,
+            '2' => 0.00025,
+            '3' => 0.00035,
+            '4' => 0.0005,
+            '5' => 0.0007,
+            '6' => 0.00085,
+            '7' => 0.001,
+        ];
+
+        return $prices[$packageName] ?? null;
+    }
+
+    public function ptcAdd()
+    {
+        return view('user.pages.ptc-job-create');
+    }
+
+    public function ptcAddStore(Request $request)
+    {
+        $request->validate([
+            'ptc_title'         => 'required|string|max:255',
+            'ptc_jobLink'       => 'required|url',
+            'package_name'      => 'required|in:1,2,3,4,5,6,7',
+            'ptc_worker_needed' => 'required|integer|min:1',
+            'ptc_expire_day'    => 'required|date|after_or_equal:today',
+            'ptc_job_details'   => 'nullable|string',
+        ]);
+
+        $price = $this->ptcPackagePrice($request->package_name);
+        $totalCost = round($price * $request->ptc_worker_needed * 1.03, 5);
+
+        $user = User::find(Auth::id());
+        if ($user->deposit_balance < $totalCost) {
+            return redirect()->back()->with('error', 'You have no sufficient balance for this PTC job.');
+        }
+
+        $user->deposit_balance = $user->deposit_balance - $totalCost;
+        $user->save();
+
+        $main_wallet = MainWallet::latest()->first();
+        if ($main_wallet) {
+            $main_wallet->amount = $main_wallet->amount + $totalCost;
+            $main_wallet->save();
+        }
+
+        ptc_job::create([
+            'ptc_post_user_id'  => Auth::id(),
+            'ptc_title'         => $request->ptc_title,
+            'ptc_jobLink'       => $request->ptc_jobLink,
+            'ptc_each_earn'     => $price,
+            'ptc_worker_needed' => $request->ptc_worker_needed,
+            'ptc_clicked'       => 0,
+            'ptc_wait_time'     => 10,
+            'ptc_expire_day'    => $request->ptc_expire_day,
+            'ptc_job_details'   => $request->ptc_job_details,
+            'ptc_status'        => 'pending',
+        ]);
+
+        return redirect()->route('user.myPostedJobHistory')->with('message', 'PTC job submitted and is waiting for admin approval.');
+    }
+
+    public function ptcEdit($id)
+    {
+        $job = ptc_job::where('id', $id)->where('ptc_post_user_id', Auth::id())->first();
+        if (!$job) {
+            abort(404);
+        }
+
+        return view('user.pages.ptc-job-edit', compact('job'));
+    }
+
+    public function ptcEditStore(Request $request)
+    {
+        $request->validate([
+            'id'              => 'required|exists:ptc_job,id',
+            'ptc_title'       => 'required|string|max:255',
+            'ptc_jobLink'     => 'required|url',
+            'ptc_expire_day'  => 'required|date',
+            'ptc_job_details' => 'nullable|string',
+            'ptc_status'      => 'required|in:pending,review,running',
+        ]);
+
+        $job = ptc_job::where('id', $request->id)->where('ptc_post_user_id', Auth::id())->first();
+        if (!$job) {
+            abort(404);
+        }
+
+        $job->ptc_title = $request->ptc_title;
+        $job->ptc_jobLink = $request->ptc_jobLink;
+        $job->ptc_expire_day = $request->ptc_expire_day;
+        $job->ptc_job_details = $request->ptc_job_details;
+
+        // Only the expiredOnly renewal flow is allowed to put a job straight
+        // back to "running" without another admin review.
+        $job->ptc_status = ($request->ptc_status === 'running' && $request->expiredOnly === 'yes')
+            ? 'running'
+            : 'pending';
+
+        $job->save();
+
+        return redirect()->route('user.myPostedJobHistory')->with('message', 'PTC job updated successfully.');
+    }
+
+    public function ptcList()
+    {
+        $jobs = ptc_job::where('ptc_status', 'running')
+            ->where('ptc_post_user_id', '!=', Auth::id())
+            ->where('ptc_expire_day', '>=', now()->toDateString())
+            ->whereColumn('ptc_clicked', '<', 'ptc_worker_needed')
+            ->latest()
+            ->get();
+
+        return view('user.pages.ptc-job-list', compact('jobs'));
+    }
+
+    public function ptcEarned()
+    {
+        $historys = ptc_earn_history::where('ptc_worker_id', Auth::id())->latest()->get();
+
+        return view('user.pages.ptc-earn-history', compact('historys'));
+    }
+
+    public function myRunning()
+    {
+        $jobs = ptc_job::where('ptc_post_user_id', Auth::id())->where('ptc_status', 'running')->latest()->get();
+
+        return view('user.pages.ptc-my-running-job', compact('jobs'));
+    }
+
+    public function myPostedJobHistory()
+    {
+        $jobs = ptc_job::where('ptc_post_user_id', Auth::id())->latest()->get();
+
+        return view('user.pages.ptc-my-job-history', compact('jobs'));
+    }
+
+    public function jobSeeker(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:ptc_job,id',
+        ]);
+
+        $job = ptc_job::find($request->id);
+
+        if ($job->ptc_post_user_id == Auth::id()) {
+            return 'You cannot click your own job.';
+        }
+
+        if ($job->ptc_status !== 'running') {
+            return 'This job is no longer available.';
+        }
+
+        if ($job->ptc_clicked >= $job->ptc_worker_needed) {
+            return 'This job has already reached its click limit.';
+        }
+
+        $alreadyClaimed = ptc_earn_history::where('ptc_job_id', $job->id)
+            ->where('ptc_worker_id', Auth::id())
+            ->exists();
+
+        if ($alreadyClaimed) {
+            return 'You have already claimed this job.';
+        }
+
+        $job->increment('ptc_clicked');
+        if ($job->ptc_clicked >= $job->ptc_worker_needed) {
+            $job->ptc_status = 'done';
+            $job->save();
+        }
+
+        ptc_earn_history::create([
+            'ptc_worker_id' => Auth::id(),
+            'ptc_job_id'    => $job->id,
+        ]);
+
+        $user = User::find(Auth::id());
+        $user->earning_balance = $user->earning_balance + $job->ptc_each_earn;
+        $user->save();
+
+        return 'Yes, you got the balance: $' . number_format($job->ptc_each_earn, 5);
     }
 }

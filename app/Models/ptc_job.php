@@ -11,7 +11,21 @@ class ptc_job extends Model
     public $table = 'ptc_job';
     public $timestamps = true;
 
-    public function user(){        
+    protected $fillable = [
+        'ptc_post_user_id',
+        'ptc_title',
+        'ptc_jobLink',
+        'ptc_each_earn',
+        'ptc_worker_needed',
+        'ptc_clicked',
+        'ptc_wait_time',
+        'ptc_expire_day',
+        'ptc_job_details',
+        'ptc_status',
+        'ptc_reject_notice',
+    ];
+
+    public function user(){
         return $this->belongsTo(User::class,'ptc_post_user_id','id');
     }
 
