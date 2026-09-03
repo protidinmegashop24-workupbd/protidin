@@ -108,14 +108,36 @@ class UserDepositCOntroller extends Controller
         return redirect()->back()->with('message','Deposit successful');
     }
     
-    public function earning_to_deposit()
+    public function showEarningToDepositPage()
     {
+        return view('user.earning-to-deposit');
+    }
+
+    public function earningToDeposit(Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+        ]);
+
+        $amount = (float) $request->amount;
         $user = User::find(Auth::user()->id);
-        $user->earning_balance = $user->earning_balance - 1;
-        $user->deposit_balance = $user->deposit_balance + 1;
+
+        if ($user->earning_balance < $amount) {
+            return redirect()->back()->with('error', 'Insufficient earning balance.');
+        }
+
+        $user->earning_balance = $user->earning_balance - $amount;
+        $user->deposit_balance = $user->deposit_balance + $amount;
         $user->save();
 
-        return redirect()->back()->with('message','Deposit successful');
+        return redirect()->back()->with('success', 'Transfer successful.');
+    }
+
+    // Kept for backward compatibility with any other reference to the old
+    // fixed $1 transfer method.
+    public function earning_to_deposit()
+    {
+        return $this->earningToDeposit(request()->merge(['amount' => 1]));
     }
 
     /**
