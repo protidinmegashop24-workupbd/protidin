@@ -299,6 +299,96 @@ class UserDashboardController extends Controller
         return ['cost'=>$sub_cat->cost, 'notice'=>$sub_cat->notice];
     }
 
+    public function account_not_verified()
+    {
+        return view('user.pages.account-not-verified');
+    }
+
+    public function account_instant_verify()
+    {
+        return view('user.pages.instant-verify');
+    }
+
+    public function instant_verify_my_account(Request $request)
+    {
+        $request->validate([
+            'balance_type' => 'required|in:deposit_balance,earning_balance',
+        ]);
+
+        $user = User::find(Auth::id());
+
+        if ($user->is_verified) {
+            return redirect()->back()->with('error', 'Your account is already verified.');
+        }
+
+        $fee = (float) (optional(site_info())->instant_verify_fee ?? 0);
+        $column = $request->balance_type;
+
+        if ($fee > 0) {
+            if ((float) $user->{$column} < $fee) {
+                return redirect()->back()->with('error', 'Insufficient balance to verify your account.');
+            }
+            $user->{$column} = (float) $user->{$column} - $fee;
+        }
+
+        $user->is_verified = 1;
+        $user->save();
+
+        return redirect()->back()->with('success', 'Your account has been verified successfully!');
+    }
+
+    public function account_instant_verify_by_nid()
+    {
+        return view('user.pages.verify-by-nid');
+    }
+
+    public function account_instant_verify_by_nid_store(Request $request)
+    {
+        $user = User::find(Auth::id());
+
+        if (in_array($user->kyc_status, ['pending', 'approve'])) {
+            return redirect()->back()->with('error', 'Your KYC has already been submitted.');
+        }
+
+        $isResubmit = $user->kyc_status === 'unapprove';
+
+        $request->validate([
+            'kyc_name'       => 'required|string|max:255',
+            'kyc_nid_number' => 'required|string|max:50',
+            'kyc_address'    => 'required|string|max:500',
+            'kyc_birthday'   => 'required|date',
+            'kyc_card_type'  => 'required|in:nid,birth',
+            'kyc_userimg'    => ($isResubmit ? 'nullable' : 'required') . '|image|max:4096',
+            'kyc_frontpart'  => ($isResubmit ? 'nullable' : 'required') . '|image|max:4096',
+            'kyc_backpart'   => ($isResubmit ? 'nullable' : 'required') . '|image|max:4096',
+        ]);
+
+        $dir = 'uploads/kyc';
+        if (!file_exists(base_path($dir))) {
+            @mkdir(base_path($dir), 0755, true);
+        }
+
+        foreach (['kyc_userimg', 'kyc_frontpart', 'kyc_backpart'] as $field) {
+            if ($request->hasFile($field)) {
+                $file = $request->file($field);
+                $filename = 'kyc_' . $user->id . '_' . $field . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $file->move(base_path($dir), $filename);
+                $user->{$field} = $dir . '/' . $filename;
+            }
+        }
+
+        $user->kyc_name = $request->kyc_name;
+        $user->kyc_nid_number = $request->kyc_nid_number;
+        $user->kyc_address = $request->kyc_address;
+        $user->kyc_birthday = $request->kyc_birthday;
+        $user->kyc_card_type = $request->kyc_card_type;
+        $user->kyc_status = 'pending';
+        $user->kyc_notice = null;
+        $user->save();
+
+        return redirect()->back()->with('success', 'Your KYC information has been submitted and is pending review.');
+    }
+
     /**
      * Show the form for creating a new resource.
      *

@@ -233,4 +233,64 @@ class UserController extends Controller
         $user->save();
         return redirect()->back()->with('message','User Successfully Reactive!');
     }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'is_verified' => 'required|in:0,1',
+        ]);
+
+        $user = User::find($id);
+        $user->is_verified = $request->is_verified;
+        $user->save();
+
+        return redirect()->back()->with('message', 'Account status updated successfully!');
+    }
+
+    public function verify($id)
+    {
+        $user = User::find($id);
+        $user->is_verified = 1;
+        $user->save();
+
+        return redirect()->back()->with('message', 'User verified successfully!');
+    }
+
+    public function kyc_verify_check()
+    {
+        $website = Website::latest()->first();
+        $users = User::where('kyc_status', 'pending')->latest()->paginate(15);
+        return view('backend.pages.usermanage.kyc-requested', compact('users', 'website'));
+    }
+
+    public function kyc_user_list()
+    {
+        $website = Website::latest()->first();
+        $users = User::where('kyc_status', 'approve')->latest()->paginate(15);
+        return view('backend.pages.usermanage.kyc-user', compact('users', 'website'));
+    }
+
+    public function kyc_user_unapprove()
+    {
+        $website = Website::latest()->first();
+        $users = User::where('kyc_status', 'unapprove')->latest()->paginate(15);
+        return view('backend.pages.usermanage.kyc-unapprove', compact('users', 'website'));
+    }
+
+    public function kyc_verify_check_update(Request $request)
+    {
+        $request->validate([
+            'id'         => 'required|exists:users,id',
+            'kyc_status' => 'required|in:pending,approve,unapprove',
+            'kyc_notice' => 'nullable|string',
+        ]);
+
+        $user = User::find($request->id);
+        $user->kyc_status = $request->kyc_status;
+        $user->kyc_notice = $request->kyc_notice;
+        $user->is_verified = $request->kyc_status === 'approve' ? 1 : 0;
+        $user->save();
+
+        return redirect()->back()->with('success', 'KYC status updated successfully.');
+    }
 }

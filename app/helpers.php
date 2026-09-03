@@ -976,6 +976,30 @@ if (!function_exists('linkify')) {
     }
 }
 
+if (!function_exists('custom_path')) {
+    // Used by the KYC verification pages to resolve a stored document/photo
+    // path to a public URL, falling back to a placeholder image. Files are
+    // saved with base_path() (see WuServiceController/UserDashboardController),
+    // since this deployment's real webroot is the project root, not public/.
+    function custom_path($path){
+        if (!$path || trim($path) === '') {
+            return asset('frontend/assets/img/default-service.svg');
+        }
+
+        $path = ltrim($path, '/');
+
+        if (\Illuminate\Support\Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (file_exists(base_path($path))) {
+            return asset($path);
+        }
+
+        return asset('frontend/assets/img/default-service.svg');
+    }
+}
+
 if (!function_exists('wu_service_image')) {
     // Used throughout the marketplace (WuServiceController + views) to resolve a
     // service's stored image path to a public URL, falling back to a default image.
