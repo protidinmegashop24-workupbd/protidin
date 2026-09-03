@@ -439,26 +439,23 @@
                 </div>
                 
                 <div class="post-body">
-                    {!! $post->postContent !!}
-                    @if($post->fetchUrl)
-                        url : <a href="{{$post->fetchUrl}}" target="_blank">{{$post->fetchUrl}}</a>
-                    @endif
+                    {!! linkify($post->postContent) !!}
                     @if($post->video)
                         <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
                     @elseif($post->image)
                         <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
-                    @elseif($post->fetchUrl)
+                    @endif
+                    @if($post->fetchUrl)
                     <div class="url-preview-viewpart">
-                        <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank">
+                        <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener noreferrer">
                             @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
                             <div class="url-preview-content">
                                 @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
                                 @if($post->fetchDescription)<p style="margin:0;">{{$post->fetchDescription}}</p>@endif
-                                @if($post->fetchUrl)<small>{{$post->fetchUrl}}</small>@endif
+                                <small>{{$post->fetchUrl}}</small>
                             </div>
                         </a>
                     </div>
-                    @else
                     @endif
                 </div>
 

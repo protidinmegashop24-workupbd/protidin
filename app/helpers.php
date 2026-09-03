@@ -957,6 +957,25 @@ function admin_sub_module_permission($admin_type, $module_id, $sub_module_id){
     return AdminPermission::where('admin_type', $admin_type)->where('module_id', $module_id)->where('sub_module_id', $sub_module_id)->first();
 }
 
+if (!function_exists('linkify')) {
+    // Escapes plain text then turns bare http(s) URLs into clickable links
+    // that open in a new tab -- used to render community post content so a
+    // link typed inside the text works like Facebook.
+    function linkify($text){
+        if ($text === null || $text === '') {
+            return '';
+        }
+
+        $escaped = e($text);
+
+        return preg_replace_callback('/(https?:\/\/[^\s<]+)/i', function ($m) {
+            $url = rtrim($m[1], '.,!?)]');
+            $trailing = substr($m[1], strlen($url));
+            return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a>' . $trailing;
+        }, $escaped);
+    }
+}
+
 if (!function_exists('wu_service_image')) {
     // Used throughout the marketplace (WuServiceController + views) to resolve a
     // service's stored image path to a public URL, falling back to a default image.

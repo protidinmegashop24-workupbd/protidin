@@ -559,8 +559,8 @@
                         <button type="button" class="remove-image-btn" onclick="removeSelectedVideo()"><i class="bi bi-x-lg"></i></button>
                         <video id="video-preview" src="" controls></video>
                     </div>
-                    <!--Fatch System-->
-                    <input type="url" name="fatchUrl" id="post-url" class="post-url-input" placeholder="Paste a link (optional)" autocomplete="off">
+                    <!--Fatch System: link is auto-detected from the post text itself, Facebook-style -->
+                    <input type="hidden" name="fatchUrl" id="post-url">
                     <input type="hidden" name="fetchTitle" id="fetchTitle">
                     <input type="hidden" name="fetchDescription" id="fetchDescription">
                     <input type="hidden" name="fetchImg" id="fetchImg">
@@ -625,26 +625,23 @@
                     </div>
                     
                     <div class="post-body">
-                        {!! $post->postContent !!}
-                        @if($post->fetchUrl)
-                            url : <a href="{{$post->fetchUrl}}" target="_blank">{{$post->fetchUrl}}</a>
-                        @endif
+                        {!! linkify($post->postContent) !!}
                         @if($post->video)
                             <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
                         @elseif($post->image)
                             <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
-                        @elseif($post->fetchUrl)
+                        @endif
+                        @if($post->fetchUrl)
                         <div class="url-preview-viewpart">
-                            <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank">
+                            <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener noreferrer">
                                 @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
                                 <div class="url-preview-content">
                                     @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
                                     @if($post->fetchDescription)<p style="margin:0;">{{$post->fetchDescription}}</p>@endif
-                                    @if($post->fetchUrl)<small>{{$post->fetchUrl}}</small>@endif
+                                    <small>{{$post->fetchUrl}}</small>
                                 </div>
                             </a>
                         </div>
-                        @else
                         @endif
                     </div>
 
@@ -732,33 +729,46 @@
             return false;
         }
     }
-    document.getElementById('post-url').addEventListener('input', function () {
-        const url = this.value.trim();
+    function extractFirstUrl(text) {
+        const match = text.match(/https?:\/\/[^\s]+/i);
+        if (!match) return '';
+        // Trim common trailing punctuation that isn't really part of the link.
+        return match[0].replace(/[.,!?)\]]+$/, '');
+    }
+
+    document.getElementById('post-input').addEventListener('input', function () {
+        const url = extractFirstUrl(this.value);
+        const urlField = document.getElementById('post-url');
         const previewContainer = document.getElementById('url-preview');
         const previewTitle = document.getElementById('url-preview-title');
-    
+
         clearTimeout(debounceTimer);
-    
+
         if (!url) {
+            urlField.value = '';
             clearUrlPreview(false);
             return;
         }
-    
+
+        if (url === urlField.value) {
+            // Same link as already fetched -- nothing to do.
+            return;
+        }
+
         debounceTimer = setTimeout(() => {
-            
+
             if (!isValidURL(url)) {
-                return; 
+                return;
             }
+            urlField.value = url;
             if (controller) controller.abort();
             controller = new AbortController();
-            if (document.getElementById('post_image').files.length === 0) {
-                previewContainer.style.display = 'flex';
-                previewContainer.style.opacity = '0.5';
-                previewTitle.innerText = "Fetching preview...";
-                document.getElementById('url-preview-desc').innerText = '';
-                document.getElementById('url-preview-img').src = '';
-            }
-    
+            previewContainer.style.display = 'flex';
+            previewContainer.style.opacity = '0.5';
+            previewTitle.innerText = "Fetching preview...";
+            document.getElementById('url-preview-desc').innerText = '';
+            document.getElementById('url-preview-img').src = '';
+
             console.log("Fetching URL:", url);
     
             fetch("{{ route('user.commynityEarnFatch') }}", {
@@ -810,20 +820,18 @@
         document.getElementById('url-preview-title').innerText = data.title || 'No Title Available';
         document.getElementById('url-preview-desc').innerText = data.description || '';
         document.getElementById('url-preview-link').innerText = document.getElementById('post-url').value;
-    
-        const manualImage = document.getElementById('post_image').files.length > 0;
-        
-        if (manualImage) {
-            document.getElementById('url-preview').style.display = 'none';
-        } else {
-            document.getElementById('url-preview').style.display = 'flex';
-        }
+
+        // Shown alongside text/photo too, just like a Facebook link preview.
+        document.getElementById('url-preview').style.display = 'flex';
     }
     function clearUrlPreview(clearInput = true) {
         document.getElementById('fetchTitle').value = '';
         document.getElementById('fetchDescription').value = '';
         document.getElementById('fetchImg').value = '';
-    
+        if (clearInput) {
+            document.getElementById('post-url').value = '';
+        }
+
         document.getElementById('url-preview-img').src = '';
         document.getElementById('url-preview-title').innerText = '';
         document.getElementById('url-preview').style.display = 'none';
@@ -833,7 +841,6 @@
         const previewContainer = document.getElementById('image-preview-container');
         const previewImg = document.getElementById('image-preview');
         const trigger = document.getElementById('upload-trigger');
-        const urlPreviewDiv = document.getElementById('url-preview');
 
         if (input.files && input.files[0]) {
             removeSelectedVideo();
@@ -842,7 +849,8 @@
                 previewImg.src = e.target.result;
                 previewContainer.style.display = 'block';
                 trigger.style.display = 'none';
-                urlPreviewDiv.style.display = 'none';
+                // A link preview (if any) stays visible alongside the photo,
+                // like Facebook shows both an uploaded photo and a link card.
             }
             reader.readAsDataURL(input.files[0]);
         }
@@ -852,20 +860,10 @@
         const input = document.getElementById('post_image');
         const previewContainer = document.getElementById('image-preview-container');
         const trigger = document.getElementById('upload-trigger');
-        const urlPreviewDiv = document.getElementById('url-preview');
-        const urlInput = document.getElementById('post-url');
 
         input.value = "";
         previewContainer.style.display = 'none';
         trigger.style.display = 'flex';
-
-        const hasFetchedData = document.getElementById('fetchTitle').value.trim() !== '';
-
-        if (urlInput.value && hasFetchedData) {
-            urlPreviewDiv.style.display = 'flex';
-        } else if (urlInput.value) {
-            urlInput.dispatchEvent(new Event('input'));
-        }
     }
 
     // Live Video Preview Logic

@@ -128,42 +128,37 @@
 
         <!-- Post Body -->
         <div class="post-body mt-2">
-            {!! $post->postContent !!}
-            @if($post->fetchUrl)
-                url : <a href="{{$post->fetchUrl}}" target="_blank">{{$post->fetchUrl}}</a>
-            @endif
+            {!! linkify($post->postContent) !!}
             <div class="text-left">
                 @if($post->video)
                     <video src="{{ asset($post->video) }}" controls preload="metadata"></video>
                 @elseif($post->image)
                     <img src="{{ asset($post->image) }}" alt="Post Image" loading="lazy">
-                @elseif($post->fetchUrl)
+                @endif
+                @if($post->fetchUrl)
                     <div class="url-preview-card">
-                        <a href="{{ $post->fetchUrl }}" target="_blank" class="preview-link">
+                        <a href="{{ $post->fetchUrl }}" target="_blank" rel="noopener noreferrer" class="preview-link">
                             @if($post->fetchImg)
                                 <div class="preview-image-wrapper">
                                     <img src="{{ $post->fetchImg }}" alt="{{ $post->fetchTitle }}" class="preview-img">
                                 </div>
                             @endif
-                            
+
                             <div class="url-preview-content">
                                 @if($post->fetchTitle)
                                     <h5 class="preview-title text-truncate">{{ $post->fetchTitle }}</h5>
                                 @endif
-                                
+
                                 @if($post->fetchDescription)
                                     <p class="preview-desc text-muted">{{ Str::limit($post->fetchDescription, 120) }}</p>
                                 @endif
-                                
-                                @if($post->fetchUrl)
-                                    <span class="preview-url text-uppercase text-muted">
-                                        <i class="fas fa-link me-1"></i> {{ parse_url($post->fetchUrl, PHP_URL_HOST) }}
-                                    </span>
-                                @endif
+
+                                <span class="preview-url text-uppercase text-muted">
+                                    <i class="fas fa-link me-1"></i> {{ parse_url($post->fetchUrl, PHP_URL_HOST) }}
+                                </span>
                             </div>
                         </a>
                     </div>
-                @else
                 @endif
             </div>
         </div>

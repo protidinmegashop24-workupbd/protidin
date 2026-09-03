@@ -814,5 +814,48 @@ Route::get('/system-cache-clear/{token}', function ($token) {
     \Illuminate\Support\Facades\Artisan::call('config:clear');
     \Illuminate\Support\Facades\Artisan::call('route:clear');
 
-    return 'Cache cleared successfully at ' . now();
+    $opcacheCleared = false;
+    if (function_exists('opcache_reset')) {
+        $opcacheCleared = opcache_reset();
+    }
+
+    return 'Cache cleared successfully at ' . now() . '. OPcache reset: ' . ($opcacheCleared ? 'yes' : 'no/unavailable');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Diagnostic: shows exactly why a marketplace listing's image isn't
+| rendering (missing on disk vs. wrong stored path vs. permissions).
+| Same secret token as the cache-clear route above.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-debug-marketplace-images/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $dir = public_path('uploads/wu-services');
+
+    $filesOnDisk = file_exists($dir)
+        ? collect(scandir($dir))->reject(fn($f) => in_array($f, ['.', '..']))->values()
+        : 'DIRECTORY DOES NOT EXIST: ' . $dir;
+
+    $services = \Illuminate\Support\Facades\DB::table('wu_services')
+        ->orderByDesc('id')
+        ->limit(15)
+        ->get(['id', 'title', 'type', 'image', 'created_at'])
+        ->map(function ($s) {
+            $s->resolved_full_path = $s->image ? public_path(ltrim($s->image, '/')) : null;
+            $s->file_exists_check = $s->image ? file_exists(public_path(ltrim($s->image, '/'))) : null;
+            $s->asset_url = $s->image ? asset(ltrim($s->image, '/')) : null;
+            return $s;
+        });
+
+    return response()->json([
+        'public_path_base'   => public_path(),
+        'upload_dir'         => $dir,
+        'upload_dir_writable'=> is_writable(dirname($dir)),
+        'files_in_upload_dir'=> $filesOnDisk,
+        'recent_services'    => $services,
+    ], 200, [], JSON_PRETTY_PRINT);
 });
