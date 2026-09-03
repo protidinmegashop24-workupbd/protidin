@@ -794,8 +794,10 @@ Route::get('/marketplace', [WuServiceController::class, 'publicIndex'])->name('m
 Route::get('/marketplace/category/{slug}', [WuServiceController::class, 'publicCategory'])->name('marketplace.category');
 Route::get('/marketplace/service/{slug}', [WuServiceController::class, 'publicShow'])->name('marketplace.service.show');
 
-//servay page route
-Route::get('/surveys-home', [HomeController::class, 'surveysHome'])->name('surveys.home');
+//servay page route -- points to the real surveys list (auth-gated: guests land on login first)
+Route::get('/surveys-home', function () {
+    return redirect()->route('surveys.index');
+})->name('surveys.home');
 
 /*
 |--------------------------------------------------------------------------
