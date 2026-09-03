@@ -10,7 +10,7 @@
         <div class="mb-4">
             <h4 class="fw-bold">My Posts (Last 6 Months)</h4>
             <p class="text-muted mb-0">
-                Video posts show "Pending" until an admin approves them; they will appear in the public feed once approved.
+                Your posts from the last 6 months.
             </p>
         </div>
     </div>

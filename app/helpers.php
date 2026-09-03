@@ -962,7 +962,7 @@ if (!function_exists('wu_service_image')) {
     // service's stored image path to a public URL, falling back to a default image.
     function wu_service_image($path){
         if (!$path || trim($path) === '') {
-            return asset('frontend/assets/img/default-service.jpg');
+            return asset('frontend/assets/img/default-service.svg');
         }
 
         $path = ltrim($path, '/');
@@ -975,7 +975,7 @@ if (!function_exists('wu_service_image')) {
             return asset($path);
         }
 
-        return asset('frontend/assets/img/default-service.jpg');
+        return asset('frontend/assets/img/default-service.svg');
     }
 }
 

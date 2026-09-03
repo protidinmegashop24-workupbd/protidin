@@ -253,7 +253,6 @@ class socialEarnController extends Controller
         $request->validate([
             'post_content' => 'required|string',
             'post_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
-            'post_video'   => 'nullable|mimes:mp4,mov,avi,webm,mkv|max:51200',
             'fatchUrl'     => 'nullable|url',
         ]);
 
@@ -302,36 +301,6 @@ class socialEarnController extends Controller
             $imagePath = "uploads/feedposts/{$dateFolder}/{$fileName}";
         }
 
-        $videoPath = null;
-        if ($request->hasFile('post_video')) {
-            $video = $request->file('post_video');
-            $dateFolder = Carbon::now()->format('Y-m-d');
-            $uploadPath = "uploads/feedposts/{$dateFolder}";
-
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
-
-            $extension = $video->getClientOriginalExtension();
-            $fileName = 'feedvideo_' . time() . '_' . Str::random(6) . '.' . $extension;
-            $video->move($uploadPath, $fileName);
-
-            $videoPath = "uploads/feedposts/{$dateFolder}/{$fileName}";
-
-            // Best-effort: re-encode to a widely-compatible MP4 (H.264/AAC) so
-            // playback works regardless of the format the user uploaded (e.g. MKV,
-            // which many browsers can't play natively). Silently keeps the
-            // original file if ffmpeg isn't available on this server.
-            $normalized = $this->normalizeVideoToMp4($videoPath, $uploadPath);
-            if ($normalized) {
-                $videoPath = $normalized;
-            }
-        }
-
-        // Video posts wait for admin approval (content review) before going
-        // public; text/image posts publish immediately as before.
-        $postStatus = $videoPath ? 'pending' : 'approved';
-
         // Post create with new Fetch fields
         $postAdded = feedpost::create([
             'postContent'      => $request->post_content,
@@ -341,44 +310,32 @@ class socialEarnController extends Controller
             'fetchImg'         => $request->fetchImg,      // New
             'summary'          => null,
             'aiRating'         => 0,
-            'status'           => $postStatus,
+            'status'           => 'approved',
             'image'            => $imagePath,
-            'video'            => $videoPath,
             'totalUserEarn'    => 0,
             'totalOwnerEarn'   => 0,
             'likes'            => 0,
             'commnets'         => 0,
             'userId'           => Auth::id() ?? 1,
         ]);
-    
-        if ($postStatus === 'approved') {
-            // Earning & Referral Logic -- only for posts that go live immediately.
-            $findPrice = $this->findvalueOfKey('newPost');
-            $this->addEarnHistory(Auth::id(), $postAdded->id, 'newPost', $findPrice);
-            Auth::user()->increment('earning_balance', $findPrice);
 
-            $this->addNotify(
-                Auth::id(),
-                'New post approved. You earned $' . number_format($findPrice, 2) .
-                '<br><a href="' . route('publicPostLink', $postAdded->id) . '">View post</a>',
-                'Post Approved'
-            );
+        // Earning & Referral Logic
+        $findPrice = $this->findvalueOfKey('newPost');
+        $this->addEarnHistory(Auth::id(), $postAdded->id, 'newPost', $findPrice);
+        Auth::user()->increment('earning_balance', $findPrice);
 
-            $this->addReffEarn(Auth::id(), $postAdded->id, $findPrice, $this->findvalueOfKey('earnRef'));
-        } else {
-            // Video posts: earning is granted once an admin approves the post.
-            $this->addNotify(
-                Auth::id(),
-                'Your video post has been submitted and is waiting for admin approval. You will be notified and earn once it is approved.',
-                'Post Pending Review'
-            );
-        }
+        $this->addNotify(
+            Auth::id(),
+            'New post approved. You earned $' . number_format($findPrice, 2) .
+            '<br><a href="' . route('publicPostLink', $postAdded->id) . '">View post</a>',
+            'Post Approved'
+        );
+
+        $this->addReffEarn(Auth::id(), $postAdded->id, $findPrice, $this->findvalueOfKey('earnRef'));
 
         return response()->json([
             'status'  => true,
-            'message' => $postStatus === 'pending'
-                ? 'Post submitted! Your video is waiting for admin approval before it appears in the feed.'
-                : 'Post submitted successfully',
+            'message' => 'Post submitted successfully',
         ]);
     }
     public function communityEarnRate(){
@@ -635,61 +592,6 @@ class socialEarnController extends Controller
         $historyAdd->price = $price;
         $historyAdd->save();
         return true;
-    }
-    /**
-     * Best-effort: re-encode an uploaded video to a widely-compatible MP4
-     * (H.264/AAC) using ffmpeg, so playback works in any browser regardless
-     * of the format the user uploaded (e.g. MKV, which many browsers can't
-     * play natively). Returns the new relative video path on success, or
-     * null if ffmpeg isn't available / the conversion fails -- callers
-     * should keep using the original file in that case.
-     *
-     * Requires shell_exec() to be enabled and ffmpeg installed on the
-     * server. Many shared hosting plans disable shell_exec for security,
-     * in which case this silently does nothing.
-     */
-    protected function normalizeVideoToMp4($relativePath, $uploadDir){
-        if (!function_exists('shell_exec')) {
-            return null;
-        }
-
-        $ffmpegPath = trim((string) @shell_exec('command -v ffmpeg 2>/dev/null'));
-        if ($ffmpegPath === '') {
-            return null;
-        }
-
-        $inputFull = public_path($relativePath);
-        if (!file_exists($inputFull)) {
-            return null;
-        }
-
-        // Already an mp4 -- skip re-encoding to save server CPU/time.
-        if (strtolower(pathinfo($inputFull, PATHINFO_EXTENSION)) === 'mp4') {
-            return null;
-        }
-
-        $outputFileName = pathinfo($relativePath, PATHINFO_FILENAME) . '_converted.mp4';
-        $outputFull = public_path(rtrim($uploadDir, '/') . '/' . $outputFileName);
-
-        $cmd = escapeshellcmd($ffmpegPath)
-            . ' -y -i ' . escapeshellarg($inputFull)
-            . ' -c:v libx264 -preset veryfast -crf 26'
-            . ' -vf ' . escapeshellarg("scale='min(720,iw)':-2")
-            . ' -c:a aac -b:a 96k -movflags +faststart'
-            . ' -t 120' // cap at 2 minutes so this can't hang the request on a huge upload
-            . ' ' . escapeshellarg($outputFull)
-            . ' 2>&1';
-
-        @set_time_limit(90);
-        @shell_exec($cmd);
-
-        if (!file_exists($outputFull) || filesize($outputFull) <= 0) {
-            return null;
-        }
-
-        @unlink($inputFull);
-
-        return rtrim($uploadDir, '/') . '/' . $outputFileName;
     }
     protected function findvalueOfKey($key){ // if key is earnRef else find from community_rate Table's bonusKey
         if($key == 'earnRef'){

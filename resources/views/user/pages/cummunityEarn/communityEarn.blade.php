@@ -580,10 +580,6 @@
                             <i class="bi bi-image-fill text-success fs-5"></i>
                             <span>Add a Photo</span>
                         </div>
-                        <div class="image-upload-trigger flex-grow-1" id="video-upload-trigger" onclick="document.getElementById('post_video').click()">
-                            <i class="bi bi-camera-reels-fill text-success fs-5"></i>
-                            <span>Add a Video</span>
-                        </div>
                     </div>
 
                     <!-- Hidden Real Inputs -->
@@ -1055,7 +1051,7 @@
         .catch(err => {
             console.error(err);
             if (err.name === 'TypeError' && /fetch/i.test(err.message)) {
-                toastr.error('ভিডিও/ছবির সাইজ সার্ভারের আপলোড সীমার চেয়ে বড় বলে কানেকশন কেটে গেছে। ছোট ফাইল দিয়ে আবার চেষ্টা করুন।');
+                toastr.error('ছবির সাইজ সার্ভারের আপলোড সীমার চেয়ে বড় বলে কানেকশন কেটে গেছে। ছোট ফাইল দিয়ে আবার চেষ্টা করুন।');
             } else {
                 toastr.error(err.message || 'Something went wrong. Try again.');
             }

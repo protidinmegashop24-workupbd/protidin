@@ -25,7 +25,7 @@ class WuServiceController extends Controller
     private function normalizeImagePath($path)
     {
         if (!$path || trim($path) === '') {
-            return asset('frontend/assets/img/default-service.jpg');
+            return asset('frontend/assets/img/default-service.svg');
         }
 
         $path = ltrim($path, '/');
@@ -38,7 +38,7 @@ class WuServiceController extends Controller
             return asset($path);
         }
 
-        return asset('frontend/assets/img/default-service.jpg');
+        return asset('frontend/assets/img/default-service.svg');
     }
 
     private function containsBlockedContact($text)
