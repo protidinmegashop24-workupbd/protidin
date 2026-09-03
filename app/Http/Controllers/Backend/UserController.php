@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use App\Models\Admin\Website;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\Job;
+use App\Models\JobWork;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -24,8 +26,14 @@ class UserController extends Controller
         $website = Website::latest()->first();
         $users = User::where('role_id', 3)->latest()->paginate(15);
         $roles = Role::all()->where('id', '!=', '3');
+        $jobs = Job::all();
+        $JobWork = JobWork::all();
+        // TODO: PTC job/earn-history models aren't available yet -- placeholder
+        // empty collections until the real PTC table/model names are known.
+        $ptc_job = collect();
+        $ptc_earn_history = collect();
 
-        return view('backend.pages.usermanage.user', compact('users', 'roles', 'website'));
+        return view('backend.pages.usermanage.user', compact('users', 'roles', 'website', 'jobs', 'JobWork', 'ptc_job', 'ptc_earn_history'));
     }
     
     public function duplicate_users()
@@ -48,8 +56,14 @@ class UserController extends Controller
         }
         $users = $query->where('role_id', 3)->latest()->paginate(15);
         $roles = Role::all()->where('id', '!=', '3');
+        $jobs = Job::all();
+        $JobWork = JobWork::all();
+        // TODO: PTC job/earn-history models aren't available yet -- placeholder
+        // empty collections until the real PTC table/model names are known.
+        $ptc_job = collect();
+        $ptc_earn_history = collect();
 
-        return view('backend.pages.usermanage.user', compact('users', 'roles', 'website'));
+        return view('backend.pages.usermanage.user', compact('users', 'roles', 'website', 'jobs', 'JobWork', 'ptc_job', 'ptc_earn_history'));
     }
 
     /**
