@@ -6,9 +6,9 @@
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="{{ route('home') }}" target="_blank" class="brand-link">
-      <img src="{{ URL::to($website->favicon ?? 'missing') }}" alt="{{ $website->title ?? 'missing' }}" class="brand-image img-circle elevation-3"
+      <img src="{{ !empty($website->favicon) ? URL::to($website->favicon) : asset('frontend/assets/img/logo.png') }}" alt="{{ $website->title ?? 'Admin' }}" class="brand-image img-circle elevation-3"
            style="opacity: .8">
-      <span class="brand-text font-weight-light">{{ $website->title ?? 'missing' }}</span>
+      <span class="brand-text font-weight-light">{{ $website->title ?? 'Admin' }}</span>
       
     </a>
 
