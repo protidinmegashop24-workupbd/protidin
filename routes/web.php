@@ -834,7 +834,7 @@ Route::get('/system-debug-marketplace-images/{token}', function ($token) {
         abort(403);
     }
 
-    $dir = public_path('uploads/wu-services');
+    $dir = base_path('uploads/wu-services');
 
     $filesOnDisk = file_exists($dir)
         ? collect(scandir($dir))->reject(fn($f) => in_array($f, ['.', '..']))->values()
@@ -845,13 +845,14 @@ Route::get('/system-debug-marketplace-images/{token}', function ($token) {
         ->limit(15)
         ->get(['id', 'title', 'type', 'image', 'created_at'])
         ->map(function ($s) {
-            $s->resolved_full_path = $s->image ? public_path(ltrim($s->image, '/')) : null;
-            $s->file_exists_check = $s->image ? file_exists(public_path(ltrim($s->image, '/'))) : null;
+            $s->resolved_full_path = $s->image ? base_path(ltrim($s->image, '/')) : null;
+            $s->file_exists_check = $s->image ? file_exists(base_path(ltrim($s->image, '/'))) : null;
             $s->asset_url = $s->image ? asset(ltrim($s->image, '/')) : null;
             return $s;
         });
 
     return response()->json([
+        'base_path'           => base_path(),
         'public_path_base'   => public_path(),
         'upload_dir'         => $dir,
         'upload_dir_writable'=> is_writable(dirname($dir)),

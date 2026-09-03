@@ -154,8 +154,8 @@ class socialEarnController extends Controller
         }
         feedPostLikes::where('postId',$id)->delete();
         feedPostComments::where('postId',$id)->delete();        
-        if($post->image && file_exists(public_path($post->image))){
-            @unlink(public_path($post->image));
+        if($post->image && file_exists(base_path($post->image))){
+            @unlink(base_path($post->image));
         }
         $post->delete();
         return redirect()->route('admin.cummunityPostList')->with('success','Post Deleted Successfully');

@@ -990,7 +990,7 @@ if (!function_exists('wu_service_image')) {
             return $path;
         }
 
-        if (file_exists(public_path($path))) {
+        if (file_exists(base_path($path))) {
             return asset($path);
         }
 

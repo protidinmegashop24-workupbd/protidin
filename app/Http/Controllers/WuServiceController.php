@@ -34,7 +34,7 @@ class WuServiceController extends Controller
             return $path;
         }
 
-        if (file_exists(public_path($path))) {
+        if (file_exists(base_path($path))) {
             return asset($path);
         }
 
@@ -349,13 +349,13 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     $imagePath = null;
 
     if ($request->hasFile('image')) {
-        if (!file_exists(public_path('uploads/wu-services'))) {
-            @mkdir(public_path('uploads/wu-services'), 0777, true);
+        if (!file_exists(base_path('uploads/wu-services'))) {
+            @mkdir(base_path('uploads/wu-services'), 0777, true);
         }
 
         $file = $request->file('image');
         $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-        $file->move(public_path('uploads/wu-services'), $filename);
+        $file->move(base_path('uploads/wu-services'), $filename);
         $imagePath = 'uploads/wu-services/' . $filename;
     }
 
@@ -483,13 +483,13 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     $imagePath = $service->image;
 
     if ($request->hasFile('image')) {
-        if (!file_exists(public_path('uploads/wu-services'))) {
-            @mkdir(public_path('uploads/wu-services'), 0777, true);
+        if (!file_exists(base_path('uploads/wu-services'))) {
+            @mkdir(base_path('uploads/wu-services'), 0777, true);
         }
 
         $file = $request->file('image');
         $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-        $file->move(public_path('uploads/wu-services'), $filename);
+        $file->move(base_path('uploads/wu-services'), $filename);
         $imagePath = 'uploads/wu-services/' . $filename;
     }
 
@@ -784,7 +784,7 @@ public function messageFile($id)
         abort(404);
     }
 
-    $path = public_path($message->file);
+    $path = base_path($message->file);
 
     if (!file_exists($path)) {
         abort(404);
@@ -819,7 +819,7 @@ public function deliveryFile($id)
         abort(404);
     }
 
-    $path = public_path($delivery->file);
+    $path = base_path($delivery->file);
 
     if (!file_exists($path)) {
         abort(404);
@@ -1139,13 +1139,13 @@ public function downloadProduct($orderId)
 
     $filePath = null;
     if ($request->hasFile('file')) {
-        if (!file_exists(public_path('uploads/wu-service-messages'))) {
-            @mkdir(public_path('uploads/wu-service-messages'), 0777, true);
+        if (!file_exists(base_path('uploads/wu-service-messages'))) {
+            @mkdir(base_path('uploads/wu-service-messages'), 0777, true);
         }
 
         $file = $request->file('file');
         $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-        $file->move(public_path('uploads/wu-service-messages'), $filename);
+        $file->move(base_path('uploads/wu-service-messages'), $filename);
         $filePath = 'uploads/wu-service-messages/' . $filename;
     }
 
@@ -1181,13 +1181,13 @@ public function downloadProduct($orderId)
 
         $filePath = null;
         if ($request->hasFile('file')) {
-            if (!file_exists(public_path('uploads/wu-service-deliveries'))) {
-                @mkdir(public_path('uploads/wu-service-deliveries'), 0777, true);
+            if (!file_exists(base_path('uploads/wu-service-deliveries'))) {
+                @mkdir(base_path('uploads/wu-service-deliveries'), 0777, true);
             }
 
             $file = $request->file('file');
             $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-            $file->move(public_path('uploads/wu-service-deliveries'), $filename);
+            $file->move(base_path('uploads/wu-service-deliveries'), $filename);
             $filePath = 'uploads/wu-service-deliveries/' . $filename;
         }
 
@@ -1242,13 +1242,13 @@ public function downloadProduct($orderId)
 
     $filePath = null;
     if ($request->hasFile('file')) {
-        if (!file_exists(public_path('uploads/wu-service-deliveries'))) {
-            @mkdir(public_path('uploads/wu-service-deliveries'), 0777, true);
+        if (!file_exists(base_path('uploads/wu-service-deliveries'))) {
+            @mkdir(base_path('uploads/wu-service-deliveries'), 0777, true);
         }
 
         $file = $request->file('file');
         $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-        $file->move(public_path('uploads/wu-service-deliveries'), $filename);
+        $file->move(base_path('uploads/wu-service-deliveries'), $filename);
         $filePath = 'uploads/wu-service-deliveries/' . $filename;
     }
 
