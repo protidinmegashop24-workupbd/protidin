@@ -975,7 +975,17 @@ public function downloadProduct($orderId)
         }
 
         \Illuminate\Support\Facades\DB::commit();
-        app(\App\Http\Controllers\User\UserReferralController::class)->processMarketplaceBonus($buyer->id);
+
+        // Best-effort referral bonus hook -- must never turn a successful,
+        // already-committed order into a false "Order failed" message.
+        if (method_exists(\App\Http\Controllers\User\UserReferralController::class, 'processMarketplaceBonus')) {
+            try {
+                app(\App\Http\Controllers\User\UserReferralController::class)->processMarketplaceBonus($buyer->id);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('processMarketplaceBonus failed: ' . $e->getMessage());
+            }
+        }
+
         return redirect()->route('user.marketplace.orders')->with('success', 'Order placed successfully. Payment is now held in escrow.');
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\DB::rollBack();
