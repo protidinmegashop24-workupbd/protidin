@@ -612,6 +612,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('ptc-job-edit/{id}', [UserJobController::class, 'ptcEdit'])->name('ptcEdit');
     Route::post('ptc-job-edit', [UserJobController::class, 'ptcEditStore'])->name('ptcEditStore');
     Route::get('ptc-job-list', [UserJobController::class, 'ptcList'])->name('ptcList');
+    Route::get('ptc-view/{id}', [UserJobController::class, 'ptcView'])->name('ptcView');
     Route::get('ptc-earn-history', [UserJobController::class, 'ptcEarned'])->name('ptcEarned');
     Route::post('ptc-job-seeker', [UserJobController::class, 'jobSeeker'])->name('jobSeeker');
     Route::get('ptc-my-running-job', [UserJobController::class, 'myRunning'])->name('myRunning');

@@ -685,10 +685,12 @@ class UserJobController extends Controller
             'ptc_wait_time'     => 10,
             'ptc_expire_day'    => $request->ptc_expire_day,
             'ptc_job_details'   => $request->ptc_job_details,
-            'ptc_status'        => 'pending',
+            // Goes live immediately -- no admin approval needed. Admin can
+            // still pause/reject it afterward from the PTC moderation pages.
+            'ptc_status'        => 'running',
         ]);
 
-        return redirect()->route('user.myPostedJobHistory')->with('message', 'PTC job submitted and is waiting for admin approval.');
+        return redirect()->route('user.myPostedJobHistory')->with('message', 'PTC job posted and is now running.');
     }
 
     public function ptcEdit($id)
@@ -722,11 +724,10 @@ class UserJobController extends Controller
         $job->ptc_expire_day = $request->ptc_expire_day;
         $job->ptc_job_details = $request->ptc_job_details;
 
-        // Only the expiredOnly renewal flow is allowed to put a job straight
-        // back to "running" without another admin review.
-        $job->ptc_status = ($request->ptc_status === 'running' && $request->expiredOnly === 'yes')
-            ? 'running'
-            : 'pending';
+        // No admin approval gate -- an edited job just goes straight back
+        // to running (whether it was being renewed after expiry or fixed
+        // up after an admin rejection).
+        $job->ptc_status = 'running';
 
         $job->save();
 
@@ -743,6 +744,36 @@ class UserJobController extends Controller
             ->get();
 
         return view('user.pages.ptc-job-list', compact('jobs'));
+    }
+
+    // The ad-viewing tab: shows the job's target link + a countdown the
+    // worker must wait out (with a leave-confirmation nudge) before the
+    // Claim button unlocks and posts to jobSeeker().
+    public function ptcView($id)
+    {
+        $job = ptc_job::find($id);
+
+        if (!$job || $job->ptc_status !== 'running') {
+            return redirect()->route('user.ptcList')->with('error', 'This job is no longer available.');
+        }
+
+        if ($job->ptc_post_user_id == Auth::id()) {
+            return redirect()->route('user.ptcList')->with('error', 'You cannot click your own job.');
+        }
+
+        if ($job->ptc_clicked >= $job->ptc_worker_needed) {
+            return redirect()->route('user.ptcList')->with('error', 'This job has already reached its click limit.');
+        }
+
+        $alreadyClaimed = ptc_earn_history::where('ptc_job_id', $job->id)
+            ->where('ptc_worker_id', Auth::id())
+            ->exists();
+
+        if ($alreadyClaimed) {
+            return redirect()->route('user.ptcList')->with('error', 'You have already claimed this job.');
+        }
+
+        return view('user.pages.ptc-view', compact('job'));
     }
 
     public function ptcEarned()

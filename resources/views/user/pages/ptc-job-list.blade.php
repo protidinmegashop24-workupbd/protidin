@@ -96,7 +96,7 @@ body {
                         @if($job->ptc_clicked >= $job->ptc_worker_needed)
                             @continue
                         @endif
-                        <a href="{{$job->ptc_jobLink}}" target="_blank" data-id="{{$job->id}}" data-time="{{($job->ptc_wait_time)}}" class="track-click">
+                        <a href="{{ route('user.ptcView', $job->id) }}" target="_blank" data-id="{{$job->id}}" data-time="{{($job->ptc_wait_time)}}" class="track-click">
                             <div class="border p-1 mb-2 row job-area">
                                 <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">{{$job->ptc_title}}</div>
                                 <div class="col-lg-6 col-md-5 col-8">
@@ -129,125 +129,7 @@ body {
 
 @endsection
 @section('js')
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const links = document.querySelectorAll('.track-click'); 
-        let countdownTimer;
-
-        links.forEach(link => {
-            link.addEventListener('click', function (event) {
-                event.preventDefault(); // Prevent the default link behavior
-                const url = link.href; // Ensure the anchor `href` is correctly accessed
-                const jobId = link.getAttribute('data-id');
-                const ptc_time = parseInt(link.getAttribute('data-time'));
-
-                // Open the URL in a new tab
-                window.open(url, '_blank');
-
-                window.addEventListener('focus', function onReturn() {
-                    // Full-window countdown overlay
-                    const countdownOverlay = document.createElement('div');
-                    countdownOverlay.style.position = 'fixed';
-                    countdownOverlay.style.top = '0';
-                    countdownOverlay.style.left = '0';
-                    countdownOverlay.style.width = '100vw';
-                    countdownOverlay.style.height = '100vh';
-                    countdownOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-                    countdownOverlay.style.display = 'flex';
-                    countdownOverlay.style.justifyContent = 'center';
-                    countdownOverlay.style.alignItems = 'center';
-                    countdownOverlay.style.zIndex = '9999';
-                    document.body.appendChild(countdownOverlay);
-
-                    const countdownCircle = document.createElement('div');
-                    countdownCircle.style.width = '150px';
-                    countdownCircle.style.height = '150px';
-                    countdownCircle.style.borderRadius = '50%';
-                    countdownCircle.style.border = '10px solid #3498db';
-                    countdownCircle.style.display = 'flex';
-                    countdownCircle.style.justifyContent = 'center';
-                    countdownCircle.style.alignItems = 'center';
-                    countdownCircle.style.fontSize = '24px';
-                    countdownCircle.style.color = '#fff';
-                    countdownOverlay.appendChild(countdownCircle);
-
-                    let countdown = ptc_time; // 5-second countdown
-                    countdownCircle.textContent = countdown;
-
-                    countdownTimer = setInterval(() => {
-                        countdown--;
-                        if (countdown <= 0) {
-                            clearInterval(countdownTimer);
-                            countdownCircle.remove();
-                            countdownOverlay.remove();
-                            showClaimButton(jobId);
-                        } else {
-                            countdownCircle.textContent = countdown;
-                        }
-                    }, 1000);
-
-                    window.removeEventListener('focus', onReturn);
-                });
-            });
-        });
-
-        function showClaimButton(jobId) {
-                // Full-window countdown overlay
-            const countdownOverlay = document.createElement('div');
-            countdownOverlay.style.position = 'fixed';
-            countdownOverlay.style.top = '0';
-            countdownOverlay.style.left = '0';
-            countdownOverlay.style.width = '100vw';
-            countdownOverlay.style.height = '100vh';
-            countdownOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-            countdownOverlay.style.display = 'flex';
-            countdownOverlay.style.justifyContent = 'center';
-            countdownOverlay.style.alignItems = 'center';
-            countdownOverlay.style.zIndex = '9999';
-            document.body.appendChild(countdownOverlay);
-            const claimButton = document.createElement('button');
-            claimButton.textContent = 'Claim USD';
-            claimButton.className = 'btn btn-success';
-            claimButton.style.position = 'fixed';
-            claimButton.style.zIndex = '9999';
-            countdownOverlay.appendChild(claimButton);
-
-            // Random position using vh and vw
-            const randomTop = Math.random() * 80 + 'vh';
-            const randomLeft = Math.random() * 80 + 'vw';
-            claimButton.style.top = randomTop;
-            claimButton.style.left = randomLeft;
-
-            document.body.appendChild(claimButton);
-
-            claimButton.addEventListener('click', function () {
-                document.body.removeChild(claimButton);
-                document.body.removeChild(countdownOverlay);
-                console.log(jobId);
-                const csrfToken = document.getElementById('csrfToken').value;
-                // Make POST request to server with jobId
-                fetch("{{route('user.jobSeeker')}}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    body: JSON.stringify({ id: jobId })
-                })
-                
-                .then(response => response.text()) // Read the plain text response
-                .then(data => {
-                    alert(data);
-                    console.log(data); // Should display "Yes, you got the balance"
-                    location.reload();
-                }).catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            });
-        }
-    });    
-</script>
-
+{{-- The wait-timer + claim flow now lives on the /ptc-view/{id} page that
+     opens in a new tab when a job is clicked, so this page no longer needs
+     to run its own countdown/claim logic. --}}
 @endsection
