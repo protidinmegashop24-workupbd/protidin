@@ -826,19 +826,40 @@ Route::get('/system-cache-clear/{token}', function ($token) {
 
 /*
 |--------------------------------------------------------------------------
-| Run pending database migrations (no SSH/artisan access on this server).
-| Same secret token as the cache-clear route above.
+| NOTE: a generic /system-migrate route was tried here and removed -- this
+| live database predates this repo's migration files (its `migrations`
+| table doesn't know most of them were already applied as raw SQL/an
+| installer), so `artisan migrate` tries to run every old migration from
+| scratch and dies on the first "create table" whose table already
+| exists. Do NOT re-add a generic migrate route; any future schema change
+| needs its own one-off, guarded (Schema::hasTable/hasColumn) route like
+| the one below, applied directly with no dependency on migration history.
 |--------------------------------------------------------------------------
 */
-Route::get('/system-migrate/{token}', function ($token) {
+
+/*
+|--------------------------------------------------------------------------
+| One-off fix: recompute jobs.worker_confirmed from the real number of
+| approved (status = 1) job_works rows, for jobs whose auto-approve path
+| used to skip incrementing it (see UserDashboardController::index()).
+| Same secret token as the cache-clear route above. Safe to run more than
+| once -- it only recalculates, it doesn't add or remove records.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-fix-worker-confirmed/{token}', function ($token) {
     if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
         abort(403);
     }
 
-    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-    $output = \Illuminate\Support\Facades\Artisan::output();
+    $updated = \Illuminate\Support\Facades\DB::statement('
+        UPDATE jobs
+        SET worker_confirmed = (
+            SELECT COUNT(*) FROM job_works
+            WHERE job_works.job_id = jobs.id AND job_works.status = 1
+        )
+    ');
 
-    return response('<pre>' . e($output) . '</pre>');
+    return 'worker_confirmed recalculated for all jobs at ' . now() . '. Success: ' . ($updated ? 'yes' : 'no');
 });
 
 /*
