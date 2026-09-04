@@ -862,3 +862,90 @@ Route::get('/system-debug-marketplace-images/{token}', function ($token) {
         'recent_services'    => $services,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Diagnostic: reproduces the exact og:image/og:title/og:description
+| extraction used by the community link-preview feature (commynityEarnFatch)
+| against a given ?url=, once with the same UA that feature uses and once
+| with Facebook's crawler UA -- so we can see if a site is cloaking
+| (showing real meta tags only to known crawler UAs). Same secret token.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-debug-link-preview/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $url = request('url');
+    if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
+        return response()->json(['status' => false, 'error' => 'Pass a valid ?url= query parameter.'], 400);
+    }
+
+    $extract = function ($url, $userAgent) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
+
+        $html = curl_exec($ch);
+        $error = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL) ?: $url;
+        curl_close($ch);
+
+        if ($error) {
+            return ['status' => false, 'error' => 'Curl Error: ' . $error, 'http_code' => $httpCode];
+        }
+        if (!$html) {
+            return ['status' => false, 'error' => 'Empty HTML returned', 'http_code' => $httpCode];
+        }
+
+        $doc = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        @$doc->loadHTML('<?xml encoding="UTF-8">' . $html);
+        $xpath = new \DOMXPath($doc);
+
+        $queryTag = function ($xpath, $query) {
+            $nodes = $xpath->query($query);
+            return ($nodes && $nodes->length > 0) ? $nodes->item(0)->nodeValue : null;
+        };
+
+        $rawTitle = $queryTag($xpath, '//meta[@property="og:title"]/@content') ?? $queryTag($xpath, '//title');
+        $rawImage = $queryTag($xpath, '//meta[@property="og:image"]/@content');
+        $rawDesc = $queryTag($xpath, '//meta[@property="og:description"]/@content') ?? $queryTag($xpath, '//meta[@name="description"]/@content');
+
+        return [
+            'status' => true,
+            'http_code' => $httpCode,
+            'effective_url' => $effectiveUrl,
+            'html_length' => strlen($html),
+            'html_snippet' => substr($html, 0, 500),
+            'raw_og_title' => $rawTitle,
+            'raw_og_image' => $rawImage,
+            'raw_og_description' => $rawDesc,
+            'all_meta_tags' => (function () use ($xpath) {
+                $out = [];
+                foreach ($xpath->query('//meta') as $meta) {
+                    $prop = $meta->getAttribute('property') ?: $meta->getAttribute('name');
+                    if ($prop) {
+                        $out[$prop] = $meta->getAttribute('content');
+                    }
+                }
+                return $out;
+            })(),
+        ];
+    };
+
+    $siteUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/110.0.0.0 Safari/537.36';
+    $facebookUserAgent = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+
+    return response()->json([
+        'url' => $url,
+        'as_our_scraper' => $extract($url, $siteUserAgent),
+        'as_facebook_crawler' => $extract($url, $facebookUserAgent),
+    ], 200, [], JSON_PRETTY_PRINT);
+});
