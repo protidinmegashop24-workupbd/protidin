@@ -65,6 +65,7 @@ class UserDashboardController extends Controller
                 if($job){
                     $user = User::find($job_work->user_id);
                     $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
+                    $user->referral_activated = 1;
 
                     if($website && $website->referral_earning_commission > 0){
                         $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;

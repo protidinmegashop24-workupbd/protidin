@@ -73,7 +73,8 @@ class UserJobWorkController extends Controller
                 if($job){
                     $user = User::find($job_work->user_id);
                     $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
-            
+                    $user->referral_activated = 1;
+
                     $website = Website::latest()->first();
                     if($website->referral_earning_commission > 0){
                         $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
@@ -122,9 +123,10 @@ class UserJobWorkController extends Controller
                 if ($job) {
                     $user = User::find($job_work->user_id);
                     $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
-    
+                    $user->referral_activated = 1;
+
                     $website = Website::latest()->first();
-    
+
                     if ($website->referral_earning_commission > 0) {
                         $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
     
@@ -178,6 +180,7 @@ class UserJobWorkController extends Controller
 
         $user = User::find($job_work->user_id);
         $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
+        $user->referral_activated = 1;
 
         $website = Website::latest()->first();
         if($website->referral_earning_commission > 0){
@@ -187,7 +190,7 @@ class UserJobWorkController extends Controller
             if($refered_by){
                 $refered_by->earning_balance = $refered_by->earning_balance + $earning_commission;
                 $refered_by->save();
-    
+
                 $user->earning_commision_from_refer = $user->earning_commision_from_refer + $earning_commission;
             }
         }
@@ -200,7 +203,7 @@ class UserJobWorkController extends Controller
         $job_work->save();
 
         $job->save();
-        
+
         // $data = new UserMessage();
         // $data->user_id = $msg_user_id;
         // $data->message_title = 'Work Approval';

@@ -35,6 +35,7 @@ class JobWorkController extends Controller
 
         $user = User::find($job_work->user_id);
         $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
+        $user->referral_activated = 1;
 
         $website = Website::latest()->first();
         if($website->referral_earning_commission > 0){

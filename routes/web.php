@@ -864,6 +864,30 @@ Route::get('/system-fix-worker-confirmed/{token}', function ($token) {
 
 /*
 |--------------------------------------------------------------------------
+| One-off backfill: mark users referral_activated = 1 if they already
+| have at least one approved (status = 1) job_works row, so referred
+| users who were active before referral_activated existed show correctly
+| on /user/referral-user right away instead of only on their next job
+| approval. Same secret token as the cache-clear route above. Safe to
+| run more than once.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-fix-referral-activated/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $updated = \Illuminate\Support\Facades\DB::statement('
+        UPDATE users
+        SET referral_activated = 1
+        WHERE id IN (SELECT DISTINCT user_id FROM job_works WHERE status = 1)
+    ');
+
+    return 'referral_activated backfilled at ' . now() . '. Success: ' . ($updated ? 'yes' : 'no');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Diagnostic: shows exactly why a marketplace listing's image isn't
 | rendering (missing on disk vs. wrong stored path vs. permissions).
 | Same secret token as the cache-clear route above.
