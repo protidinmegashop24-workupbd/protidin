@@ -195,12 +195,23 @@ class socialEarnController extends Controller
         $xpath = new \DOMXPath($doc);
 
         $title = $this->queryTag($xpath, '//meta[@property="og:title"]/@content') ?? $this->queryTag($xpath, '//title');
-        $image = $this->queryTag($xpath, '//meta[@property="og:image"]/@content');
+        $image = $this->queryTag($xpath, '//meta[@property="og:image"]/@content')
+            ?? $this->queryTag($xpath, '//meta[@property="og:image:secure_url"]/@content')
+            ?? $this->queryTag($xpath, '//meta[@name="twitter:image"]/@content')
+            ?? $this->queryTag($xpath, '//meta[@name="twitter:image:src"]/@content');
         $desc = $this->queryTag($xpath, '//meta[@property="og:description"]/@content') ?? $this->queryTag($xpath, '//meta[@name="description"]/@content');
 
-        // og:image is often a path relative to the target site, not an
-        // absolute URL -- resolve it against that site so the preview image
-        // doesn't try to load from workupbd.com instead.
+        // Many sites (this one included) don't set any og:image/twitter:image
+        // meta tag at all. Facebook's own crawler falls back to scanning the
+        // page's <img> tags and picking a suitable one when no meta tag is
+        // present -- do the same so link posts still get a preview image.
+        if (!$image) {
+            $image = $this->findFallbackImage($xpath);
+        }
+
+        // og:image (or the fallback <img> src) is often a path relative to
+        // the target site, not an absolute URL -- resolve it against that
+        // site so the preview image doesn't try to load from workupbd.com.
         $image = $this->resolveAbsoluteUrl($image, $effectiveUrl);
 
         return response()->json([
@@ -248,6 +259,42 @@ class socialEarnController extends Controller
     private function queryTag($xpath, $query) {
         $nodes = $xpath->query($query);
         return ($nodes && $nodes->length > 0) ? $nodes->item(0)->nodeValue : null;
+    }
+    private function findFallbackImage($xpath) {
+        $skipPattern = '/(logo|icon|sprite|pixel|blank|placeholder|avatar|spinner|loading|favicon)/i';
+
+        foreach ($xpath->query('//img') as $img) {
+            // Lazy-loaded images (Elementor and most WP page builders) keep
+            // the real URL in a data-* attribute and a placeholder in src.
+            $candidate = $img->getAttribute('data-lazy-src')
+                ?: $img->getAttribute('data-src')
+                ?: $img->getAttribute('src');
+
+            if (!$candidate) {
+                $srcset = $img->getAttribute('data-srcset') ?: $img->getAttribute('srcset');
+                if ($srcset) {
+                    $candidate = trim(explode(' ', trim(explode(',', $srcset)[0]))[0]);
+                }
+            }
+
+            if (!$candidate || strpos($candidate, 'data:') === 0) {
+                continue;
+            }
+
+            if (preg_match($skipPattern, $candidate)) {
+                continue;
+            }
+
+            $width = (int) $img->getAttribute('width');
+            $height = (int) $img->getAttribute('height');
+            if (($width && $width < 150) || ($height && $height < 150)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return null;
     }
     // Fatch End 
     public function communityEarn(){
