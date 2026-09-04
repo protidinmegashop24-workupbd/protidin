@@ -566,7 +566,7 @@
                     <input type="hidden" name="fetchImg" id="fetchImg">
                     
                     <div id="url-preview" class="url-preview" style="display:none">
-                        <img id="url-preview-img" src="" alt="">
+                        <img id="url-preview-img" src="" alt="" onerror="this.style.display='none';">
                         <div class="url-preview-content">
                             <strong id="url-preview-title"></strong>
                             <p id="url-preview-desc"></p>
@@ -816,7 +816,16 @@
         document.getElementById('fetchDescription').value = data.description || '';
         document.getElementById('fetchImg').value = data.image || '';
     
-        document.getElementById('url-preview-img').src = data.image || '';
+        const previewImgEl = document.getElementById('url-preview-img');
+        if (data.image) {
+            previewImgEl.src = data.image;
+            previewImgEl.style.display = '';
+        } else {
+            // No og:image on this page -- hide the <img> instead of leaving
+            // an empty src, which shows a broken-image icon in most browsers.
+            previewImgEl.removeAttribute('src');
+            previewImgEl.style.display = 'none';
+        }
         document.getElementById('url-preview-title').innerText = data.title || 'No Title Available';
         document.getElementById('url-preview-desc').innerText = data.description || '';
         document.getElementById('url-preview-link').innerText = document.getElementById('post-url').value;
