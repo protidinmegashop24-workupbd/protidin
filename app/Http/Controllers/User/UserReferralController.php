@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\JobWork;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,8 +18,36 @@ class UserReferralController extends Controller
     public function index()
     {
         $title = "Referral Link";
-        $referralLink = route('register.with.code', Auth::user()->code);
-        return view('user.pages.referral', compact('title', 'referralLink'));
+        $user = Auth::user();
+        $referralLink = route('register.with.code', $user->code);
+
+        $totalReferrals = User::where('rfered_by', $user->id)->count();
+        $activeReferrals = User::where('rfered_by', $user->id)
+            ->whereIn('id', JobWork::where('status', 1)->pluck('user_id')->unique())
+            ->count();
+
+        $depositCommission = (float) $user->deposit_commision_from_refer;
+        $earningCommission = (float) $user->earning_commision_from_refer;
+
+        // Activation bonus, marketplace bonus, and milestone rewards aren't
+        // built yet -- show honest zeros/empty state instead of crashing or
+        // making up numbers.
+        $activationBonus = 0;
+        $milestoneBonus = 0;
+        $totalReferralIncome = $depositCommission + $earningCommission + $activationBonus + $milestoneBonus;
+
+        $nextMilestoneTarget = null;
+        $nextMilestoneReward = 0;
+        $progressPercent = 0;
+
+        $recentRewards = collect();
+
+        return view('user.pages.referral', compact(
+            'title', 'referralLink', 'totalReferrals', 'activeReferrals',
+            'depositCommission', 'earningCommission', 'activationBonus', 'milestoneBonus',
+            'totalReferralIncome', 'nextMilestoneTarget', 'nextMilestoneReward', 'progressPercent',
+            'recentRewards'
+        ));
     }
 
     /**
