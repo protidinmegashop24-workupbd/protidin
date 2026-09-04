@@ -736,10 +736,13 @@ class UserJobController extends Controller
 
     public function ptcList()
     {
+        $claimedJobIds = ptc_earn_history::where('ptc_worker_id', Auth::id())->pluck('ptc_job_id');
+
         $jobs = ptc_job::where('ptc_status', 'running')
             ->where('ptc_post_user_id', '!=', Auth::id())
             ->where('ptc_expire_day', '>=', now()->toDateString())
             ->whereColumn('ptc_clicked', '<', 'ptc_worker_needed')
+            ->whereNotIn('id', $claimedJobIds)
             ->latest()
             ->get();
 
