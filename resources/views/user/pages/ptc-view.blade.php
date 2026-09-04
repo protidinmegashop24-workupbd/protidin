@@ -30,24 +30,9 @@
     .ptc-timer-number.done{
         color: #15ba5a;
     }
-    .ptc-frame-wrap{
-        position: relative;
-        border: 1px solid #d6ebf1;
-        border-radius: 8px;
-        overflow: hidden;
-        background: #fff;
-    }
-    .ptc-frame-wrap iframe{
-        width: 100%;
-        height: 65vh;
-        min-height: 420px;
-        border: 0;
-        display: block;
-    }
-    .ptc-frame-fallback{
-        text-align: center;
-        padding: 40px 15px;
-        color: #6c757d;
+    #ptc-visit-btn.visited{
+        background-color: #6c757d;
+        border-color: #6c757d;
     }
     #ptc-claim-btn{
         display: none;
@@ -77,16 +62,10 @@
         <strong>এই ট্যাব বন্ধ করবেন না বা অন্য পেজে যাবেন না</strong> — টাইমার শেষ হওয়ার আগে ট্যাব ছাড়লে/বন্ধ করলে এই জব ভিউ হিসেবে গণনা হবে না এবং আয় পাবেন না।
     </div>
 
-    <div class="ptc-frame-wrap">
-        <iframe src="{{ $job->ptc_jobLink }}" id="ptc-frame" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
-    </div>
-    <p class="text-center text-muted mt-2" style="font-size:13px;">
-        সাইটটি উপরে না দেখা গেলে
-        <a href="{{ $job->ptc_jobLink }}" target="_blank" rel="noopener noreferrer">এখানে ক্লিক করে নতুন ট্যাবে দেখুন</a>
-        (তবুও টাইমার এই ট্যাবেই চলবে, এই ট্যাব বন্ধ করবেন না)।
-    </p>
-
     <div class="ptc-actions">
+        <p>নিচের বাটনে ক্লিক করে সাইটটি (নতুন ট্যাবে) ভিজিট করুন। সাইটে ঠিকমতো ভিজিট রেজিস্টার হওয়ার জন্য এটা নতুন ট্যাবেই খুলবে (এখানকার ভিতরে ছোট বক্সে দেখালে সাইটের কাউন্টে সেটা গণনা নাও হতে পারে)।</p>
+        <button type="button" id="ptc-visit-btn" class="btn btn-primary btn-lg mb-3">সাইট ভিজিট করুন</button>
+        <br>
         <button type="button" id="ptc-claim-btn" class="btn btn-success btn-lg">
             Claim ${{ number_format($job->ptc_each_earn, 5) }}
         </button>
@@ -98,6 +77,7 @@
 @section('js')
 <script>
     const jobId = {{ (int) $job->id }};
+    const jobLink = @json($job->ptc_jobLink);
     const csrfToken = @json(csrf_token());
 
     let remaining = {{ (int) $job->ptc_wait_time }};
@@ -113,6 +93,14 @@
     // (browsers show their own "leave site?" prompt; nothing can force a
     // tab to stay open).
     window.addEventListener('beforeunload', beforeUnloadHandler);
+
+    document.getElementById('ptc-visit-btn').addEventListener('click', function () {
+        // A real top-level tab, not an iframe -- so the advertiser's site
+        // actually registers this as a genuine visit/click.
+        window.open(jobLink, '_blank', 'noopener,noreferrer');
+        this.textContent = 'সাইট ভিজিট করা হয়েছে ✓';
+        this.classList.add('visited');
+    });
 
     const timerInterval = setInterval(function () {
         remaining--;
