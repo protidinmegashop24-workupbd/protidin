@@ -642,6 +642,24 @@ class UserJobController extends Controller
         return $prices[$packageName] ?? null;
     }
 
+    // Required view/wait time (seconds) for each package -- higher-paying
+    // packages require a longer view. To change these numbers later, just
+    // edit this array (and the matching option labels in ptc-job-create.blade.php).
+    private function ptcPackageWaitTime($packageName)
+    {
+        $waitTimes = [
+            '1' => 1,
+            '2' => 2,
+            '3' => 3,
+            '4' => 4,
+            '5' => 5,
+            '6' => 6,
+            '7' => 10,
+        ];
+
+        return $waitTimes[$packageName] ?? 10;
+    }
+
     public function ptcAdd()
     {
         return view('user.pages.ptc-job-create');
@@ -659,6 +677,7 @@ class UserJobController extends Controller
         ]);
 
         $price = $this->ptcPackagePrice($request->package_name);
+        $waitTime = $this->ptcPackageWaitTime($request->package_name);
         $totalCost = round($price * $request->ptc_worker_needed * 1.03, 5);
 
         $user = User::find(Auth::id());
@@ -682,7 +701,7 @@ class UserJobController extends Controller
             'ptc_each_earn'     => $price,
             'ptc_worker_needed' => $request->ptc_worker_needed,
             'ptc_clicked'       => 0,
-            'ptc_wait_time'     => 10,
+            'ptc_wait_time'     => $waitTime,
             'ptc_expire_day'    => $request->ptc_expire_day,
             'ptc_job_details'   => $request->ptc_job_details,
             // Goes live immediately -- no admin approval needed. Admin can

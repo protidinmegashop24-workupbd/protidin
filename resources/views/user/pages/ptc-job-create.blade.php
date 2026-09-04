@@ -48,13 +48,13 @@
                             <label for="package_name" class="form-label">প্রতিটা ক্লিক এর প্রদত্ত মূল্য <span class="text-red">*</span></label>
 
                             <select name="package_name" id="package_name" class="form-control" required>
-                                <option data-price="0.00020" value="1">0.0s Per View 0.00020</option>
-                                <option data-price="0.00025" value="2">0.3s Per View 0.00025</option>
-                                <option data-price="0.00035" value="3">0.05s Per View 0.00035</option>
-                                <option data-price="0.0005" value="4">0.10s Per View 0.0005</option>
-                                <option data-price="0.0007" value="5">0.15s Per View 0.0007</option>
-                                <option data-price="0.00085" value="6">0.20s Per View 0.00085</option>
-                                <option data-price="0.001" value="7">0.30s Per View 0.001</option>
+                                <option data-price="0.00020" value="1">1s Per View - $0.00020</option>
+                                <option data-price="0.00025" value="2">2s Per View - $0.00025</option>
+                                <option data-price="0.00035" value="3">3s Per View - $0.00035</option>
+                                <option data-price="0.0005" value="4">4s Per View - $0.0005</option>
+                                <option data-price="0.0007" value="5">5s Per View - $0.0007</option>
+                                <option data-price="0.00085" value="6">6s Per View - $0.00085</option>
+                                <option data-price="0.001" value="7">10s Per View - $0.001</option>
                             </select>
                                 @if ($errors->has('package_name'))
                                 <div class="alert alert-danger">
