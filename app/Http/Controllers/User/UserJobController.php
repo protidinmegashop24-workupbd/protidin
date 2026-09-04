@@ -736,47 +736,21 @@ class UserJobController extends Controller
 
     public function ptcList()
     {
-        $claimedJobIds = ptc_earn_history::where('ptc_worker_id', Auth::id())->pluck('ptc_job_id');
+        // Jobs are click-once-per-day per worker (not once ever) -- so only
+        // today's claims exclude a job from the list; it reappears tomorrow.
+        $claimedTodayJobIds = ptc_earn_history::where('ptc_worker_id', Auth::id())
+            ->whereDate('created_at', now()->toDateString())
+            ->pluck('ptc_job_id');
 
         $jobs = ptc_job::where('ptc_status', 'running')
             ->where('ptc_post_user_id', '!=', Auth::id())
             ->where('ptc_expire_day', '>=', now()->toDateString())
             ->whereColumn('ptc_clicked', '<', 'ptc_worker_needed')
-            ->whereNotIn('id', $claimedJobIds)
+            ->whereNotIn('id', $claimedTodayJobIds)
             ->latest()
             ->get();
 
         return view('user.pages.ptc-job-list', compact('jobs'));
-    }
-
-    // The ad-viewing tab: shows the job's target link + a countdown the
-    // worker must wait out (with a leave-confirmation nudge) before the
-    // Claim button unlocks and posts to jobSeeker().
-    public function ptcView($id)
-    {
-        $job = ptc_job::find($id);
-
-        if (!$job || $job->ptc_status !== 'running') {
-            return redirect()->route('user.ptcList')->with('error', 'This job is no longer available.');
-        }
-
-        if ($job->ptc_post_user_id == Auth::id()) {
-            return redirect()->route('user.ptcList')->with('error', 'You cannot click your own job.');
-        }
-
-        if ($job->ptc_clicked >= $job->ptc_worker_needed) {
-            return redirect()->route('user.ptcList')->with('error', 'This job has already reached its click limit.');
-        }
-
-        $alreadyClaimed = ptc_earn_history::where('ptc_job_id', $job->id)
-            ->where('ptc_worker_id', Auth::id())
-            ->exists();
-
-        if ($alreadyClaimed) {
-            return redirect()->route('user.ptcList')->with('error', 'You have already claimed this job.');
-        }
-
-        return view('user.pages.ptc-view', compact('job'));
     }
 
     public function ptcEarned()
@@ -820,12 +794,13 @@ class UserJobController extends Controller
             return 'This job has already reached its click limit.';
         }
 
-        $alreadyClaimed = ptc_earn_history::where('ptc_job_id', $job->id)
+        $claimedToday = ptc_earn_history::where('ptc_job_id', $job->id)
             ->where('ptc_worker_id', Auth::id())
+            ->whereDate('created_at', now()->toDateString())
             ->exists();
 
-        if ($alreadyClaimed) {
-            return 'You have already claimed this job.';
+        if ($claimedToday) {
+            return 'You have already claimed this job today. Come back tomorrow.';
         }
 
         $job->increment('ptc_clicked');

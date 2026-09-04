@@ -96,7 +96,7 @@ body {
                         @if($job->ptc_clicked >= $job->ptc_worker_needed)
                             @continue
                         @endif
-                        <a href="{{ route('user.ptcView', $job->id) }}" target="_blank" data-id="{{$job->id}}" data-time="{{($job->ptc_wait_time)}}" class="track-click">
+                        <a href="{{ $job->ptc_jobLink }}" data-id="{{$job->id}}" data-time="{{($job->ptc_wait_time)}}" data-earn="{{ $job->ptc_each_earn }}" class="track-click">
                             <div class="border p-1 mb-2 row job-area">
                                 <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">{{$job->ptc_title}}</div>
                                 <div class="col-lg-6 col-md-5 col-8">
@@ -129,7 +129,115 @@ body {
 
 @endsection
 @section('js')
-{{-- The wait-timer + claim flow now lives on the /ptc-view/{id} page that
-     opens in a new tab when a job is clicked, so this page no longer needs
-     to run its own countdown/claim logic. --}}
+<style>
+    .ptc-overlay{
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0,0,0,.75);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: #fff;
+        text-align: center;
+        padding: 20px;
+    }
+    .ptc-overlay-circle{
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        border: 8px solid #3498db;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+    .ptc-overlay-circle.done{
+        border-color: #15ba5a;
+    }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const csrfToken = document.getElementById('csrfToken').value;
+        let activeTimer = null;
+
+        document.querySelectorAll('.track-click').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                const jobId = link.getAttribute('data-id');
+                const waitTime = parseInt(link.getAttribute('data-time'), 10) || 10;
+                const earn = link.getAttribute('data-earn');
+
+                // Open the advertiser's link in a real new tab -- this is
+                // the only "view" that actually counts for the advertiser.
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+
+                showOverlay(jobId, waitTime, earn);
+            });
+        });
+
+        function showOverlay(jobId, waitTime, earn) {
+            const overlay = document.createElement('div');
+            overlay.className = 'ptc-overlay';
+            overlay.innerHTML = `
+                <div class="ptc-overlay-circle" id="ptc-overlay-circle">${waitTime}</div>
+                <p>অপেক্ষা করুন... এই পেজ থেকে সরে যাবেন না।</p>
+                <button type="button" id="ptc-overlay-claim" class="btn btn-success btn-lg" style="display:none;">Claim $${earn}</button>
+            `;
+            document.body.appendChild(overlay);
+
+            const circle = overlay.querySelector('#ptc-overlay-circle');
+            let remaining = waitTime;
+
+            function beforeUnloadHandler(e) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+            window.addEventListener('beforeunload', beforeUnloadHandler);
+
+            activeTimer = setInterval(function () {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(activeTimer);
+                    window.removeEventListener('beforeunload', beforeUnloadHandler);
+                    circle.textContent = '✓';
+                    circle.classList.add('done');
+                    overlay.querySelector('#ptc-overlay-claim').style.display = 'inline-block';
+                } else {
+                    circle.textContent = remaining;
+                }
+            }, 1000);
+
+            overlay.querySelector('#ptc-overlay-claim').addEventListener('click', function () {
+                const btn = this;
+                btn.disabled = true;
+                btn.textContent = 'Claiming...';
+
+                fetch("{{ route('user.jobSeeker') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({ id: jobId })
+                })
+                .then(res => res.text())
+                .then(data => {
+                    alert(data);
+                    location.reload();
+                })
+                .catch(() => {
+                    alert('কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন।');
+                    overlay.remove();
+                });
+            });
+        }
+    });
+</script>
 @endsection
