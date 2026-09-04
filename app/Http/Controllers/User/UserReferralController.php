@@ -17,7 +17,8 @@ class UserReferralController extends Controller
     public function index()
     {
         $title = "Referral Link";
-        return view('user.pages.referral', compact('title'));
+        $referralLink = route('register.with.code', Auth::user()->code);
+        return view('user.pages.referral', compact('title', 'referralLink'));
     }
 
     /**

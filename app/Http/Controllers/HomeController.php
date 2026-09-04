@@ -225,77 +225,7 @@ class HomeController extends Controller
             $code = sprintf('%04d', 1);
         }
 
-        $user = new User();
-        $user->role_id = 3;
-        $user->code = $code;
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->country = $request->country;
-        $user->password = Hash::make($request->password);
-        $user->ip_address = $ip_address;
-        $user->device_name = $device;
-        $user->device_brand = $brand;
-        $user->device_model = $model;
-        if($parent_user != NULL){
-            $user->is_new_device = 0;
-        }
-        $user->parent_user_duplicate_device = $parent_user;
-        $user->save();
-
-        $check_user = User::where('code', $code)->where('email', $request->email)->first();
-        if($check_user){
-            $s_user = User::find($check_user->id);
-            $s_user->earning_balance = $s_user->earning_balance + $welcome_bonus->amount;
-            $s_user->save();
-        }
-
-        return redirect()->route('login');
-    }
-
-    public function refer_user_register(Request $request)
-    {
-
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|unique:users',
-            'password' => 'required',
-            'country' => 'required',
-        ]);
-
-        // For Device detect-----------
-        $userAgent = $_SERVER['HTTP_USER_AGENT'];
-        $clientHints = ClientHints::factory($_SERVER);
-        $dd = new DeviceDetector($userAgent, $clientHints);
-        $dd->parse();
-        if ($dd->isBot()) {
-            $botInfo = $dd->getBot();
-        } else {
-            $clientInfo = $dd->getClient();
-            $osInfo = $dd->getOs();
-            $device = $dd->getDeviceName();
-            $brand = $dd->getBrandName();
-            $model = $dd->getModel();
-        }
-        // For Device detect end-----------
-
-        $ip_address = $request->ip();
-        $check_unique_device = User::where('ip_address', $ip_address)->where('device_name', $device)->where('device_brand', $brand)->where('device_model', $model)->first();
-        if($check_unique_device){
-            $parent_user = $check_unique_device->id;
-        }else{
-            $parent_user = NULL;
-        }
-
-        $welcome_bonus = WelcomeBonus::latest()->first();
-
-        $last_ac = User::select('id')->latest()->first();
-        if (isset($last_ac)) {
-            $code = sprintf('%04d', $last_ac->id + 1);
-        } else {
-            $code = sprintf('%04d', 1);
-        }
-
-        $ck_refered_user = User::where('code', $request->user_code)->first();
+        $ck_refered_user = User::where('code', $request->referral)->first();
 
         $user = new User();
         $user->role_id = 3;
@@ -315,12 +245,12 @@ class HomeController extends Controller
         if($ck_refered_user){
             $user->rfered_by = $ck_refered_user->id;
         }
-        // return $user;
         $user->save();
 
-        $refered_user = User::find($ck_refered_user->id);
-        $refered_user->total_refer = $refered_user->total_refer + 1;
-        $refered_user->save();
+        if($ck_refered_user){
+            $ck_refered_user->total_refer = $ck_refered_user->total_refer + 1;
+            $ck_refered_user->save();
+        }
 
         $check_user = User::where('code', $code)->where('email', $request->email)->first();
         if($check_user){
@@ -329,7 +259,7 @@ class HomeController extends Controller
             $s_user->save();
         }
 
-        return redirect()->route('otp.verify', ['email' => $user->email]);
+        return redirect()->route('login');
     }
 
     public function device_validation_error()
