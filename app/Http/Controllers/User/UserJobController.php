@@ -45,6 +45,48 @@ class UserJobController extends Controller
         return view('user.pages.job-list', compact('title', 'datas'));
     }
 
+    /**
+     * Same markup as the job-item-card block in user.pages.home so that
+     * AJAX-loaded jobs (load more, sort, filter) look identical to the
+     * jobs rendered on first page load instead of falling back to the
+     * old job-area card style.
+     */
+    private function renderJobCardHtml($job)
+    {
+        $blocked = Auth::user()->status == 0;
+        $href = $blocked ? 'javascript:;' : route('job-details', $job->code);
+        $onclick = $blocked ? " onclick=\"return alert('Your Account is blocked! Please Contact with authority!')\"" : '';
+
+        return '
+                <a href="'.$href.'"'.$onclick.' class="job-item-link">
+                    <div class="job-item-card">
+                        <div class="job-item-inner">
+                            <div class="job-title-wrap">
+                                <div class="job-title">'.e($job->title).'</div>
+                                <div class="job-subtext">
+                                    <i class="fa fa-briefcase"></i>
+                                    Available Work
+                                </div>
+                            </div>
+                            <div class="job-progress-block">
+                                <div class="job-progress-top">
+                                    <span>'.complete_work_this_job($job->id).' OF '.$job->worker_need.'</span>
+                                    <span class="small-label">Progress</span>
+                                </div>
+                                <div class="job-progress-bar-wrap">
+                                    <div class="job-progress-bar-fill" style="width: '.this_job_complet_rate($job->id).'%"></div>
+                                </div>
+                            </div>
+                            <div class="job-price-box">
+                                <div class="job-price">'.number_format((float)$job->each_worker_earn, 4, '.', '').' <small>$</small></div>
+                                <div class="job-price-note">Per task reward</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+        ';
+    }
+
     public function get_recent_job(Request $request)
     {
         $html = '';
@@ -64,24 +106,7 @@ class UserJobController extends Controller
             foreach ($jobs as $key=>$job){
                 if ($job->worker_need > $job->worker_confirmed && $job->worker_need > complete_work_this_job($job->id) && work_by_me($job->id) == 0 && this_job_for_me($job->id) == 1){
                     $last_id = $job->id;
-                    $html .= '
-                            <a href="'.route('job-details', $job->code).'">
-                                <div class="border p-1 mb-2 row job-area">
-                                    <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">'. $job->title .'</div>
-                                    <div class="col-lg-6 col-md-5 col-9">
-                                        <div class="row pt-1 m-0 justify-content-end">
-                                            <div class="col-lg-6 col-md-5 col-6">
-                                                <div class="progress progress-md p-0">
-                                                    <div class="progress-bar progress-bar-animated'; if(this_job_complet_rate($job->id) >= 60){ $html .= 'bg-success'; }elseif(this_job_pending_ratio($job->id) >= 20){ $html .= 'bg-primary'; }else{ $html .= 'text-dark'; } $html .= '" style="width: '. this_job_complet_rate($job->id) .'%">'. this_job_complet_rate($job->id) .'%</div>
-                                                </div>
-                                                <h6 class="text-center" style="margin:5px 0px 0px 0px;">'. complete_work_this_job($job->id) .' of '. $job->worker_need .'</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-2 col-md-2 col-3 text-center text-success"><h5>$'.number_format((float)$job->each_worker_earn, 4, '.', '').'</h5></div>
-                                </div>
-                            </a>
-                    ';
+                    $html .= $this->renderJobCardHtml($job);
                 }
             }
         }
@@ -108,24 +133,7 @@ class UserJobController extends Controller
             foreach ($jobs as $key=>$job){
                 if ($job->worker_need > $job->worker_confirmed && $job->worker_need > complete_work_this_job($job->id) && work_by_me($job->id) == 0 && this_job_for_me($job->id) == 1){
                     $last_id = $job->id;
-                    $html .= '
-                            <a href="'.route('job-details', $job->code).'">
-                                <div class="border p-1 mb-2 row job-area">
-                                    <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">'. $job->title .'</div>
-                                    <div class="col-lg-6 col-md-5 col-9">
-                                        <div class="row pt-1 m-0 justify-content-end">
-                                            <div class="col-lg-6 col-md-5 col-6">
-                                                <div class="progress progress-md p-0">
-                                                    <div class="progress-bar progress-bar-animated'; if(this_job_approve_ratio($job->id) >= 60){ $html .= 'bg-success'; }elseif(this_job_pending_ratio($job->id) >= 20){ $html .= 'bg-primary'; }else{ $html .= 'text-dark'; } $html .= '" style="width: '. this_job_complet_rate($job->id) .'%">'. this_job_complet_rate($job->id) .'%</div>
-                                                </div>
-                                                <h6 class="text-center" style="margin:5px 0px 0px 0px;">'. complete_work_this_job($job->id) .' of '. $job->worker_need .'</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-2 col-md-2 col-3 text-center text-success"><h5>$'.number_format((float)$job->each_worker_earn, 4, '.', '').'</h5></div>
-                                </div>
-                            </a>
-                    ';
+                    $html .= $this->renderJobCardHtml($job);
                 }
             }
         }
@@ -153,24 +161,7 @@ class UserJobController extends Controller
             foreach ($jobs as $key=>$job){
                 if ($job->worker_need > $job->worker_confirmed && $job->worker_need > complete_work_this_job($job->id) && work_by_me($job->id) == 0 && this_job_for_me($job->id) == 1){
                     $last_id = $job->id;
-                    $html .= '
-                            <a href="'.route('job-details', $job->code).'">
-                                <div class="border p-1 mb-2 row job-area">
-                                    <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">'. $job->title .'</div>
-                                    <div class="col-lg-6 col-md-5 col-9">
-                                        <div class="row pt-1 m-0 justify-content-end">
-                                            <div class="col-lg-6 col-md-5 col-6">
-                                                <div class="progress progress-md p-0">
-                                                    <div class="progress-bar progress-bar-animated'; if(this_job_approve_ratio($job->id) >= 60){ $html .= 'bg-success'; }elseif(this_job_pending_ratio($job->id) >= 20){ $html .= 'bg-primary'; }else{ $html .= 'text-dark'; } $html .= '" style="width: '. this_job_complet_rate($job->id) .'%">'. this_job_complet_rate($job->id) .'%</div>
-                                                </div>
-                                                <h6 class="text-center" style="margin:5px 0px 0px 0px;">'. complete_work_this_job($job->id) .' of '. $job->worker_need .'</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-2 col-md-2 col-3 text-center text-success"><h5>$'.number_format((float)$job->each_worker_earn, 4, '.', '').'</h5></div>
-                                </div>
-                            </a>
-                    ';
+                    $html .= $this->renderJobCardHtml($job);
                 }
             }
         }
@@ -199,24 +190,7 @@ class UserJobController extends Controller
             foreach ($jobs as $key=>$job){
                 if ($job->worker_need > $job->worker_confirmed && $job->worker_need > complete_work_this_job($job->id) && work_by_me($job->id) == 0 && this_job_for_me($job->id) == 1){
                     $last_id = $job->id;
-                    $html .= '
-                            <a href="'.route('job-details', $job->code).'">
-                                <div class="border p-1 mb-2 row job-area">
-                                    <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">'. $job->title .'</div>
-                                    <div class="col-lg-6 col-md-5 col-9">
-                                        <div class="row pt-1 m-0 justify-content-end">
-                                            <div class="col-lg-6 col-md-5 col-6">
-                                                <div class="progress progress-md p-0">
-                                                    <div class="progress-bar progress-bar-animated'; if(this_job_approve_ratio($job->id) >= 60){ $html .= 'bg-success'; }elseif(this_job_pending_ratio($job->id) >= 20){ $html .= 'bg-primary'; }else{ $html .= 'text-dark'; } $html .= '" style="width: '. this_job_complet_rate($job->id) .'%">'. this_job_complet_rate($job->id) .'%</div>
-                                                </div>
-                                                <h6 class="text-center" style="margin:5px 0px 0px 0px;">'. complete_work_this_job($job->id) .' of '. $job->worker_need .'</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-2 col-md-2 col-3 text-center text-success"><h5>$'.number_format((float)$job->each_worker_earn, 4, '.', '').'</h5></div>
-                                </div>
-                            </a>
-                    ';
+                    $html .= $this->renderJobCardHtml($job);
                 }
             }
         }
@@ -236,24 +210,7 @@ class UserJobController extends Controller
         if($jobs->count() > 0){
             foreach ($jobs as $key=>$job){
                 if ($job->worker_need > $job->worker_confirmed && $job->worker_need > complete_work_this_job($job->id) && work_by_me($job->id) == 0 && this_job_for_me($job->id) == 1){
-                    $html .= '
-                            <a href="'.route('job-details', $job->code).'">
-                                <div class="border p-1 mb-2 row job-area">
-                                    <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">'. $job->title .'</div>
-                                    <div class="col-lg-6 col-md-5 col-9">
-                                        <div class="row pt-1 m-0 justify-content-end">
-                                            <div class="col-lg-6 col-md-5 col-6">
-                                                <div class="progress progress-md p-0">
-                                                    <div class="progress-bar progress-bar-animated'; if(this_job_approve_ratio($job->id) >= 60){ $html .= 'bg-success'; }elseif(this_job_pending_ratio($job->id) >= 20){ $html .= 'bg-primary'; }else{ $html .= 'text-dark'; } $html .= '" style="width: '. this_job_complet_rate($job->id) .'%">'. this_job_complet_rate($job->id) .'%</div>
-                                                </div>
-                                                <h6 class="text-center" style="margin:5px 0px 0px 0px;">'. complete_work_this_job($job->id) .' of '. $job->worker_need .'</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-2 col-md-2 col-3 text-center text-success"><h5>$'.number_format((float)$job->each_worker_earn, 4, '.', '').'</h5></div>
-                                </div>
-                            </a>
-                    ';
+                    $html .= $this->renderJobCardHtml($job);
                 }
             }
         }
@@ -283,24 +240,7 @@ class UserJobController extends Controller
             foreach ($jobs as $key=>$job){
                 if ($job->worker_need > $job->worker_confirmed && $job->worker_need > complete_work_this_job($job->id) && work_by_me($job->id) == 0 && this_job_for_me($job->id) == 1){
                     $new_last_id = $job->id;
-                    $html .= '
-                            <a href="'.route('job-details', $job->code).'">
-                                <div class="border p-1 mb-2 row job-area">
-                                    <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">'. $job->title .'</div>
-                                    <div class="col-lg-6 col-md-5 col-9">
-                                        <div class="row pt-1 m-0 justify-content-end">
-                                            <div class="col-lg-6 col-md-5 col-6">
-                                                <div class="progress progress-md p-0">
-                                                    <div class="progress-bar progress-bar-animated'; if(this_job_approve_ratio($job->id) >= 60){ $html .= 'bg-success'; }elseif(this_job_pending_ratio($job->id) >= 20){ $html .= 'bg-primary'; }else{ $html .= 'text-dark'; } $html .= '" style="width: '. this_job_complet_rate($job->id) .'%">'. this_job_complet_rate($job->id) .'%</div>
-                                                </div>
-                                                <h6 class="text-center" style="margin:5px 0px 0px 0px;">'. complete_work_this_job($job->id) .' of '. $job->worker_need .'</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-2 col-md-2 col-3 text-center text-success"><h5>$'.number_format((float)$job->each_worker_earn, 4, '.', '').'</h5></div>
-                                </div>
-                            </a>
-                    ';
+                    $html .= $this->renderJobCardHtml($job);
                 }
             }
         }
