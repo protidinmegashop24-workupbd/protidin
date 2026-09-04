@@ -826,6 +826,23 @@ Route::get('/system-cache-clear/{token}', function ($token) {
 
 /*
 |--------------------------------------------------------------------------
+| Run pending database migrations (no SSH/artisan access on this server).
+| Same secret token as the cache-clear route above.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-migrate/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    $output = \Illuminate\Support\Facades\Artisan::output();
+
+    return response('<pre>' . e($output) . '</pre>');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Diagnostic: shows exactly why a marketplace listing's image isn't
 | rendering (missing on disk vs. wrong stored path vs. permissions).
 | Same secret token as the cache-clear route above.
