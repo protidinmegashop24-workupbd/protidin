@@ -59,12 +59,11 @@
     </div>
 
     <div class="alert alert-warning" id="ptc-warning-box">
-        <strong>এই ট্যাব বন্ধ করবেন না বা অন্য পেজে যাবেন না</strong> — টাইমার শেষ হওয়ার আগে ট্যাব ছাড়লে/বন্ধ করলে এই জব ভিউ হিসেবে গণনা হবে না এবং আয় পাবেন না।
+        নিচের বাটনে ক্লিক করলে সাইটটি নতুন ট্যাবে খুলবে এবং তখন থেকেই টাইমার গণনা শুরু হবে। <strong>টাইমার শেষ না হওয়া পর্যন্ত এই ট্যাব বন্ধ করবেন না বা অন্য পেজে যাবেন না</strong> — তাহলে এই জব ভিউ হিসেবে গণনা হবে না এবং আয় পাবেন না। ভিজিট না করলে আয়ও হবে না।
     </div>
 
     <div class="ptc-actions">
-        <p>নিচের বাটনে ক্লিক করে সাইটটি (নতুন ট্যাবে) ভিজিট করুন। সাইটে ঠিকমতো ভিজিট রেজিস্টার হওয়ার জন্য এটা নতুন ট্যাবেই খুলবে (এখানকার ভিতরে ছোট বক্সে দেখালে সাইটের কাউন্টে সেটা গণনা নাও হতে পারে)।</p>
-        <button type="button" id="ptc-visit-btn" class="btn btn-primary btn-lg mb-3">সাইট ভিজিট করুন</button>
+        <button type="button" id="ptc-visit-btn" class="btn btn-primary btn-lg mb-3">সাইট ভিজিট করুন ও টাইমার শুরু করুন</button>
         <br>
         <button type="button" id="ptc-claim-btn" class="btn btn-success btn-lg">
             Claim ${{ number_format($job->ptc_each_earn, 5) }}
@@ -88,34 +87,36 @@
         e.returnValue = '';
         return '';
     }
-    // Close-protection is active from the moment this tab opens until the
-    // timer finishes -- this is the strongest guard a web page can use
-    // (browsers show their own "leave site?" prompt; nothing can force a
-    // tab to stay open).
-    window.addEventListener('beforeunload', beforeUnloadHandler);
 
+    // Nothing starts until the worker actually opens the ad link -- no
+    // visit, no timer, no way to claim. This is the strongest guard a web
+    // page can use (browsers show their own "leave site?" prompt; nothing
+    // can force another tab to stay open), but at least closes the loophole
+    // of claiming without ever having clicked through.
     document.getElementById('ptc-visit-btn').addEventListener('click', function () {
         // A real top-level tab, not an iframe -- so the advertiser's site
         // actually registers this as a genuine visit/click.
         window.open(jobLink, '_blank', 'noopener,noreferrer');
-        this.textContent = 'সাইট ভিজিট করা হয়েছে ✓';
-        this.classList.add('visited');
+        this.disabled = true;
+        this.textContent = 'সাইট ভিজিট করা হয়েছে ✓ টাইমার চলছে...';
+
+        window.addEventListener('beforeunload', beforeUnloadHandler);
+
+        const timerInterval = setInterval(function () {
+            remaining--;
+            if (remaining <= 0) {
+                clearInterval(timerInterval);
+                window.removeEventListener('beforeunload', beforeUnloadHandler);
+
+                numberEl.textContent = '✓';
+                numberEl.classList.add('done');
+                document.getElementById('ptc-warning-box').style.display = 'none';
+                document.getElementById('ptc-claim-btn').style.display = 'inline-block';
+            } else {
+                numberEl.textContent = remaining;
+            }
+        }, 1000);
     });
-
-    const timerInterval = setInterval(function () {
-        remaining--;
-        if (remaining <= 0) {
-            clearInterval(timerInterval);
-            window.removeEventListener('beforeunload', beforeUnloadHandler);
-
-            numberEl.textContent = '✓';
-            numberEl.classList.add('done');
-            document.getElementById('ptc-warning-box').style.display = 'none';
-            document.getElementById('ptc-claim-btn').style.display = 'inline-block';
-        } else {
-            numberEl.textContent = remaining;
-        }
-    }, 1000);
 
     document.getElementById('ptc-claim-btn').addEventListener('click', function () {
         const btn = this;
