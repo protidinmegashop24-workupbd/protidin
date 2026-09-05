@@ -99,6 +99,64 @@ class WuServiceController extends Controller
     return 20;
 }
 
+private function marketplaceReferralBonusPercent()
+{
+    if (function_exists('website_info') && website_info() && isset(website_info()->marketplace_referral_bonus_percent)) {
+        return (float) website_info()->marketplace_referral_bonus_percent;
+    }
+
+    // Off by default -- admin must opt in from Website Settings.
+    return 0;
+}
+
+/**
+ * Any listing page visited with ?ref=CODE remembers who shared it, so a
+ * purchase made later in the same session (any listing, not just the one
+ * that was shared) can credit that person a referral bonus. Self-shares
+ * and unknown codes are ignored.
+ */
+private function captureMarketplaceReferral(\Illuminate\Http\Request $request)
+{
+    $code = $request->query('ref');
+
+    if (!$code) {
+        return;
+    }
+
+    $referrer = \App\Models\User::where('code', $code)->first();
+
+    if (!$referrer || (auth()->check() && (int) $referrer->id === (int) auth()->id())) {
+        return;
+    }
+
+    session([
+        'marketplace_ref_code' => $code,
+        'marketplace_ref_at' => now()->toDateTimeString(),
+    ]);
+}
+
+/**
+ * Resolves the pending marketplace referral captured above into a user id,
+ * if one is present, still fresh (7 days), valid, and not the buyer's own.
+ */
+private function resolveMarketplaceReferrer($buyerId)
+{
+    $code = session('marketplace_ref_code');
+    $at = session('marketplace_ref_at');
+
+    if (!$code || !$at || now()->diffInDays(\Carbon\Carbon::parse($at)) > 7) {
+        return null;
+    }
+
+    $referrer = \App\Models\User::where('code', $code)->first();
+
+    if (!$referrer || (int) $referrer->id === (int) $buyerId) {
+        return null;
+    }
+
+    return $referrer->id;
+}
+
 private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, $note = null)
 {
     \Illuminate\Support\Facades\DB::table('wu_escrow_logs')->insert([
@@ -157,8 +215,10 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     return view('frontend.wu_services.public-index', compact('services', 'categories', 'category'));
 }
 
-    public function serviceShow($slug)
+    public function serviceShow(\Illuminate\Http\Request $request, $slug)
 {
+    $this->captureMarketplaceReferral($request);
+
     $service = DB::table('wu_services')
         ->leftJoin('users', 'wu_services.user_id', '=', 'users.id')
         ->where('wu_services.slug', $slug)
@@ -227,8 +287,10 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     ));
 }
 
-    public function publicShow($slug)
+    public function publicShow(\Illuminate\Http\Request $request, $slug)
 {
+    $this->captureMarketplaceReferral($request);
+
     $service = DB::table('wu_services')
         ->leftJoin('users', 'wu_services.user_id', '=', 'users.id')
         ->where('wu_services.slug', $slug)
@@ -948,6 +1010,7 @@ public function downloadProduct($orderId)
             'status' => $isDigitalProduct ? 'delivered' : 'in_progress',
             'payment_status' => 'held',
             'delivery_deadline' => now()->addDays((int)$service->delivery_days),
+            'referred_by_user_id' => $this->resolveMarketplaceReferrer($buyer->id),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -1431,14 +1494,46 @@ public function downloadProduct($orderId)
         $seller->earning_balance = (float)$seller->earning_balance + (float)$order->seller_amount;
         $seller->save();
 
+        // If this order was attributed to someone's marketplace referral
+        // link, carve their bonus out of the platform's own commission --
+        // it never touches the seller's or buyer's amounts.
+        $adminCommission = (float) $order->admin_commission;
+        $referralBonus = 0;
+        $referrer = null;
+
+        if (!empty($order->referred_by_user_id)) {
+            $bonusPercent = $this->marketplaceReferralBonusPercent();
+            if ($bonusPercent > 0) {
+                $referrer = \App\Models\User::find($order->referred_by_user_id);
+                if ($referrer) {
+                    $referralBonus = round(($adminCommission * $bonusPercent) / 100, 2);
+                }
+            }
+        }
+
+        if ($referrer && $referralBonus > 0) {
+            $referrer->earning_balance = (float) $referrer->earning_balance + $referralBonus;
+            $referrer->save();
+
+            $this->createEscrowLog(
+                $order->id,
+                $order->buyer_id,
+                $order->seller_id,
+                $referralBonus,
+                'referral_bonus',
+                'Marketplace referral bonus paid to user #' . $referrer->id
+            );
+        }
+
         // Admin commission was only ever logged in wu_escrow_logs, never
         // actually credited anywhere -- route it into the site's main
         // wallet (same pattern used for PTC job revenue) so it's real,
         // visible platform income instead of a number that only exists
-        // in an audit log.
+        // in an audit log. The referral bonus (if any) came out of this,
+        // so only the remainder goes to the site.
         $main_wallet = MainWallet::latest()->first();
         if ($main_wallet) {
-            $main_wallet->amount = (float) $main_wallet->amount + (float) $order->admin_commission;
+            $main_wallet->amount = (float) $main_wallet->amount + ($adminCommission - $referralBonus);
             $main_wallet->save();
         }
 
@@ -1464,7 +1559,7 @@ public function downloadProduct($orderId)
             $order->id,
             $order->buyer_id,
             $order->seller_id,
-            $order->admin_commission,
+            $adminCommission,
             'commission',
             'Admin commission recorded.'
         );

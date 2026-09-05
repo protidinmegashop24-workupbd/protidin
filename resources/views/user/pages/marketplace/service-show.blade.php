@@ -523,7 +523,7 @@
 @section('js')
 <script>
     function shareMarketplaceService() {
-        const link = "{{ route('marketplace.service.show', $service->slug) }}";
+        const link = "{{ route('marketplace.service.show', $service->slug) }}@if(Auth::check())?ref={{ Auth::user()->code }}@endif";
 
         if (navigator.share) {
             navigator.share({

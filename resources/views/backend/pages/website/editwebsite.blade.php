@@ -103,7 +103,14 @@
            class="form-control"
            value="{{ $website->marketplace_commission_percent ?? 20 }}">
 </div>
-                    
+                    <div class="form-group mb-3">
+    <label>Marketplace Referral Bonus (%)</label>
+    <small class="form-text text-muted">Share of the marketplace commission paid to whoever's link brought in the buyer. 0 = feature off.</small>
+    <input type="number" step="0.01" min="0" max="100" name="marketplace_referral_bonus_percent"
+           class="form-control"
+           value="{{ $website->marketplace_referral_bonus_percent ?? 0 }}">
+</div>
+
                     
                     <div class="form-group col-lg-3 col-md-3 col-12 d-none">
                         <label for="email_verification_active">Email Verification System</label>

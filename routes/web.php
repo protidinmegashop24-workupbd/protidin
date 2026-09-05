@@ -916,6 +916,51 @@ Route::get('/system-add-marketplace-commission-column/{token}', function ($token
 
 /*
 |--------------------------------------------------------------------------
+| One-off: add the columns needed for the marketplace seller-referral-link
+| feature -- websites.marketplace_referral_bonus_percent (admin-set %,
+| defaults to 0/off) and wu_service_orders.referred_by_user_id (who shared
+| the link that led to this order, if any). Same secret token as the
+| cache-clear route above. Safe to run more than once.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-add-marketplace-referral-columns/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $messages = [];
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('websites')) {
+        if (\Illuminate\Support\Facades\Schema::hasColumn('websites', 'marketplace_referral_bonus_percent')) {
+            $messages[] = 'websites.marketplace_referral_bonus_percent already exists.';
+        } else {
+            \Illuminate\Support\Facades\Schema::table('websites', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->decimal('marketplace_referral_bonus_percent', 5, 2)->default(0)->nullable();
+            });
+            $messages[] = 'websites.marketplace_referral_bonus_percent added.';
+        }
+    } else {
+        $messages[] = 'No websites table found.';
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('wu_service_orders')) {
+        if (\Illuminate\Support\Facades\Schema::hasColumn('wu_service_orders', 'referred_by_user_id')) {
+            $messages[] = 'wu_service_orders.referred_by_user_id already exists.';
+        } else {
+            \Illuminate\Support\Facades\Schema::table('wu_service_orders', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->unsignedBigInteger('referred_by_user_id')->nullable();
+            });
+            $messages[] = 'wu_service_orders.referred_by_user_id added.';
+        }
+    } else {
+        $messages[] = 'No wu_service_orders table found.';
+    }
+
+    return implode(' ', $messages) . ' (' . now() . ')';
+});
+
+/*
+|--------------------------------------------------------------------------
 | Diagnostic: shows exactly why a marketplace listing's image isn't
 | rendering (missing on disk vs. wrong stored path vs. permissions).
 | Same secret token as the cache-clear route above.
