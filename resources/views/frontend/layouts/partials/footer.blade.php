@@ -96,7 +96,7 @@
 
                     <li><a href="{{ url('/contact') }}"><i class="fa fa-angle-right"></i> Contact</a></li>
 
-                    <li><a href="https://workupbd.com/policy-details/faq"><i class="fa fa-angle-right"></i> FAQ</a></li>
+                    <li><a href="{{ route('policy-details', 'faq') }}"><i class="fa fa-angle-right"></i> FAQ</a></li>
 
                 </ul>
             </div>
@@ -107,37 +107,37 @@
                 <ul class="wu-footer-links">
 
                     <li>
-                        <a href="https://workupbd.com/policy-details/privacy-policy">
+                        <a href="{{ route('policy-details', 'privacy-policy') }}">
                             <i class="fa fa-angle-right"></i> Privacy Policy
                         </a>
                     </li>
 
                     <li>
-                        <a href="https://workupbd.com/policy-details/terms-condition">
+                        <a href="{{ route('policy-details', 'terms-condition') }}">
                             <i class="fa fa-angle-right"></i> Terms & Conditions
                         </a>
                     </li>
 
                     <li>
-                        <a href="https://workupbd.com/policy-details/refund-policy">
+                        <a href="{{ route('policy-details', 'refund-policy') }}">
                             <i class="fa fa-angle-right"></i> Refund Policy
                         </a>
                     </li>
 
                     <li>
-                        <a href="https://workupbd.com/policy-details/marketplace-policy">
+                        <a href="{{ route('policy-details', 'marketplace-policy') }}">
                             <i class="fa fa-angle-right"></i> Marketplace Policy
                         </a>
                     </li>
-                    
+
                     <li>
-                        <a href="https://workupbd.com/policy-details/buyer-protection">
+                        <a href="{{ route('policy-details', 'buyer-protection') }}">
                             <i class="fa fa-angle-right"></i> Buyer Protection
                         </a>
                     </li>
-                    
+
                     <li>
-                        <a href="https://workupbd.com/policy-details/seller-policy">
+                        <a href="{{ route('policy-details', 'seller-policy') }}">
                             <i class="fa fa-angle-right"></i> Seller Policy
                         </a>
                     </li>
