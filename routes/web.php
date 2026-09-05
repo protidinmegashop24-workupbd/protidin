@@ -1135,3 +1135,58 @@ Route::get('/system-debug-login/{token}', function ($token) {
 
     return response()->json($result, 200, [], JSON_PRETTY_PRINT);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Diagnostic: the previous check showed a specific account's data is
+| completely healthy (not banned, valid bcrypt hash, verified email),
+| yet the correct password still doesn't log in through the real login
+| form. This isolates WHERE the failure actually is: does the password
+| genuinely match the stored hash (bypassing the form/session entirely),
+| and are the session/cookie settings that a domain move commonly breaks
+| (SESSION_DOMAIN, APP_URL, SESSION_DRIVER) set correctly for this
+| domain. Pass ?email=&password= to test one account directly.
+| Same secret token as the cache-clear route above.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-debug-login-deep/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $result = [
+        'app_url' => config('app.url'),
+        'app_env' => config('app.env'),
+        'app_debug' => config('app.debug'),
+        'session_driver' => config('session.driver'),
+        'session_domain' => config('session.domain'),
+        'session_secure_cookie' => config('session.secure'),
+        'session_same_site' => config('session.same_site'),
+        'current_request_host' => request()->getHost(),
+    ];
+
+    $email = request('email');
+    $password = request('password');
+
+    if ($email && $password) {
+        $user = \Illuminate\Support\Facades\DB::table('users')->where('email', $email)->first();
+
+        if (!$user) {
+            $result['password_check'] = "No user found with email: {$email}";
+        } else {
+            $result['password_check'] = [
+                'hash_check_result' => \Illuminate\Support\Facades\Hash::check($password, $user->password)
+                    ? 'MATCH -- this password is correct for the stored hash'
+                    : 'NO MATCH -- this password does NOT match the stored hash',
+                'auth_attempt_result' => auth()->attempt(['email' => $email, 'password' => $password])
+                    ? 'SUCCESS -- Auth::attempt logged this in just now'
+                    : 'FAILED -- Auth::attempt rejected these credentials',
+            ];
+            auth()->logout();
+        }
+    } elseif ($email || $password) {
+        $result['password_check'] = 'Pass both ?email= and ?password= to test.';
+    }
+
+    return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
