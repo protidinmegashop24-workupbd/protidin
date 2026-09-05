@@ -192,5 +192,6 @@
         //     });
         // });
     </script>
+    @include('partials.site-moved-notice')
 </body>
 </html>

@@ -49,5 +49,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
         @include('frontend.layouts.partials.scripts')
         @yield('js')
+        @include('partials.site-moved-notice')
     </body>
 </html>
