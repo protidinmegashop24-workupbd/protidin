@@ -74,7 +74,7 @@
                                 </form>
                             @endif
 
-                            @if(in_array($order->status, ['in_progress', 'revision_requested']) && ($order->payment_status ?? 'held') == 'held')
+                            @if(in_array($order->status, ['in_progress', 'revision_requested', 'delivered']) && ($order->payment_status ?? 'held') == 'held')
                                 <form action="{{ route('user.marketplace.cancel', $order->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button type="submit" class="btn btn-danger mp-btn" onclick="return confirm('Cancel this order and refund?')">Cancel</button>

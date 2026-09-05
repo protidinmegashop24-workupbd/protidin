@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Models\Admin\MainWallet;
 
 class WuServiceController extends Controller
 {
@@ -1347,7 +1348,12 @@ public function downloadProduct($orderId)
         abort(404);
     }
 
-    if (!in_array($order->status, ['in_progress', 'revision_requested'])) {
+    // 'delivered' must stay cancellable too: digital products go straight to
+    // 'delivered' on purchase (no 'in_progress' step) and a delivered service
+    // order also sits in 'delivered' until the buyer clicks Complete -- in
+    // both cases payment_status is still 'held', so a refund should still be
+    // possible right up until the buyer actually releases the escrow.
+    if (!in_array($order->status, ['in_progress', 'revision_requested', 'delivered'])) {
         return back()->with('error', 'This order cannot be cancelled now.');
     }
 
@@ -1424,6 +1430,17 @@ public function downloadProduct($orderId)
         // seller gets money in earning_balance, NOT deposit_balance
         $seller->earning_balance = (float)$seller->earning_balance + (float)$order->seller_amount;
         $seller->save();
+
+        // Admin commission was only ever logged in wu_escrow_logs, never
+        // actually credited anywhere -- route it into the site's main
+        // wallet (same pattern used for PTC job revenue) so it's real,
+        // visible platform income instead of a number that only exists
+        // in an audit log.
+        $main_wallet = MainWallet::latest()->first();
+        if ($main_wallet) {
+            $main_wallet->amount = (float) $main_wallet->amount + (float) $order->admin_commission;
+            $main_wallet->save();
+        }
 
         \Illuminate\Support\Facades\DB::table('wu_service_orders')
             ->where('id', $id)

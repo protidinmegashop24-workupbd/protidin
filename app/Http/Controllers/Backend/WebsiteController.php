@@ -184,6 +184,7 @@ class WebsiteController extends Controller
         $data['referral_deposit_commission'] = $request->referral_deposit_commission;
         $data['referral_earning_commission'] = $request->referral_earning_commission;
         $data['referral_notice'] = $request->referral_notice;
+        $data['marketplace_commission_percent'] = $request->marketplace_commission_percent;
         $data['meta_keyword'] = $request->meta_keyword;
         $data['meta_tag'] = $request->meta_tag;
         $data['email'] = $request->email;

@@ -888,6 +888,34 @@ Route::get('/system-fix-referral-activated/{token}', function ($token) {
 
 /*
 |--------------------------------------------------------------------------
+| One-off: add the marketplace_commission_percent column to websites,
+| defaulting to 20 (the hardcoded fallback the app used before this was
+| wired up). Same secret token as the cache-clear route above. Safe to
+| run more than once -- no-ops if the column already exists.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-add-marketplace-commission-column/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('websites')) {
+        return 'No websites table found.';
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasColumn('websites', 'marketplace_commission_percent')) {
+        return 'marketplace_commission_percent column already exists -- nothing to do.';
+    }
+
+    \Illuminate\Support\Facades\Schema::table('websites', function (\Illuminate\Database\Schema\Blueprint $table) {
+        $table->decimal('marketplace_commission_percent', 5, 2)->default(20)->nullable();
+    });
+
+    return 'marketplace_commission_percent column added at ' . now() . '.';
+});
+
+/*
+|--------------------------------------------------------------------------
 | Diagnostic: shows exactly why a marketplace listing's image isn't
 | rendering (missing on disk vs. wrong stored path vs. permissions).
 | Same secret token as the cache-clear route above.
