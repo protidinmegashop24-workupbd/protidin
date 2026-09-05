@@ -1084,3 +1084,54 @@ Route::get('/system-debug-link-preview/{token}', function ($token) {
         'as_facebook_crawler' => $extract($url, $facebookUserAgent),
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Diagnostic: after migrating to a new domain/database, regular user
+| logins were failing while admin worked. This checks exactly what
+| LoginController::login() checks (is_ban, is_suspended, role_id) plus
+| whether the password hash looks intact, and the total user count (to
+| catch a database import that got cut off partway). Pass ?email= to
+| check one specific account. Same secret token as the cache-clear route.
+|--------------------------------------------------------------------------
+*/
+Route::get('/system-debug-login/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $totalUsers = \Illuminate\Support\Facades\DB::table('users')->count();
+    $byRole = \Illuminate\Support\Facades\DB::table('users')
+        ->select('role_id', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+        ->groupBy('role_id')
+        ->get();
+
+    $result = [
+        'total_users' => $totalUsers,
+        'users_by_role_id' => $byRole,
+    ];
+
+    $email = request('email');
+    if ($email) {
+        $user = \Illuminate\Support\Facades\DB::table('users')->where('email', $email)->first();
+
+        if (!$user) {
+            $result['account_check'] = "No user found with email: {$email}";
+        } else {
+            $passwordHash = $user->password ?? '';
+            $result['account_check'] = [
+                'id' => $user->id,
+                'email' => $user->email,
+                'role_id' => $user->role_id,
+                'is_ban' => $user->is_ban ?? null,
+                'is_suspended' => $user->is_suspended ?? null,
+                'password_hash_length' => strlen($passwordHash),
+                'password_hash_prefix' => substr($passwordHash, 0, 7),
+                'password_looks_like_valid_bcrypt' => (bool) preg_match('/^\$2[axy]\$/', $passwordHash),
+                'email_verified_at' => $user->email_verified_at ?? null,
+            ];
+        }
+    }
+
+    return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
