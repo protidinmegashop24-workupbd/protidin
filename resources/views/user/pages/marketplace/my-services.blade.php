@@ -164,11 +164,11 @@
 
                         <a href="{{ route('user.marketplace.edit', $service->id) }}" class="btn btn-primary mp-btn">Edit</a>
 
-                        <a href="{{ route('user.marketplace.delete', $service->id) }}"
-                           class="btn btn-danger mp-btn"
-                           onclick="return confirm('Are you sure you want to delete this service?')">
-                            Delete
-                        </a>
+                        <form action="{{ route('user.marketplace.delete', $service->id) }}" method="POST" class="d-inline"
+                              onsubmit="return confirm('Are you sure you want to delete this service?')">
+                            @csrf
+                            <button type="submit" class="btn btn-danger mp-btn">Delete</button>
+                        </form>
                     </div>
                 </div>
             </div>

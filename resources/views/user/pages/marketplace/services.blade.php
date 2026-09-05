@@ -139,6 +139,19 @@
     color:#fff;
     border-color:#22ab59;
 }
+.wu-search-bar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:18px;
+}
+.wu-search-bar input, .wu-search-bar select{
+    border:1px solid #dce7f2;
+    border-radius:10px;
+    padding:10px 14px;
+}
+.wu-search-bar input[type="text"]{ flex:1 1 220px; }
+.wu-search-bar input[type="number"]{ width:120px; }
 </style>
 @endsection
 
@@ -150,6 +163,17 @@
             Discover active service listings, compare pricing and delivery terms, chat with sellers before ordering, and choose a service that matches your work needs more clearly.
         </p>
     </div>
+    <form method="GET" action="{{ url()->current() }}" class="wu-search-bar">
+        <input type="text" name="q" placeholder="Search services..." value="{{ request('q') }}">
+        <input type="number" name="min_price" placeholder="Min $" step="0.01" min="0" value="{{ request('min_price') }}">
+        <input type="number" name="max_price" placeholder="Max $" step="0.01" min="0" value="{{ request('max_price') }}">
+        <select name="sort">
+            <option value="">Newest</option>
+            <option value="price_asc" @if(request('sort') == 'price_asc') selected @endif>Price: Low to High</option>
+            <option value="price_desc" @if(request('sort') == 'price_desc') selected @endif>Price: High to Low</option>
+        </select>
+        <button type="submit" class="mp-grid-btn">Search</button>
+    </form>
     <div class="mb-4">
     <a href="{{ route('user.marketplace.services') }}" class="wu-category-pill {{ !isset($category) ? 'active' : '' }}">All</a>
 

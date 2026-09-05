@@ -4,25 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Models\Admin\MainWallet;
+use App\Models\Admin\UserMessage;
 
 class WuServiceController extends Controller
 {
-    private function walletColumn()
-    {
-        $possible = ['main_balance', 'balance', 'deposit_balance', 'amount'];
-
-        foreach ($possible as $column) {
-            if (Schema::hasColumn('users', $column)) {
-                return $column;
-            }
-        }
-
-        abort(500, 'No balance column found in users table.');
-    }
-
     private function normalizeImagePath($path)
     {
         if (!$path || trim($path) === '') {
@@ -157,6 +144,52 @@ private function resolveMarketplaceReferrer($buyerId)
     return $referrer->id;
 }
 
+/**
+ * Shared search/price-range/sort for every marketplace browse listing
+ * (public and authed, all-categories and single-category).
+ */
+private function applyServiceSearchAndSort($query, \Illuminate\Http\Request $request)
+{
+    if ($request->filled('q')) {
+        $search = $request->query('q');
+        $query->where(function ($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+              ->orWhere('short_description', 'like', "%{$search}%");
+        });
+    }
+
+    if ($request->filled('min_price')) {
+        $query->where('price', '>=', (float) $request->query('min_price'));
+    }
+
+    if ($request->filled('max_price')) {
+        $query->where('price', '<=', (float) $request->query('max_price'));
+    }
+
+    switch ($request->query('sort')) {
+        case 'price_asc':
+            $query->orderBy('price', 'asc');
+            break;
+        case 'price_desc':
+            $query->orderBy('price', 'desc');
+            break;
+        default:
+            $query->latest();
+            break;
+    }
+
+    return $query;
+}
+
+private function notifyUser($userId, $title, $message)
+{
+    $notice = new UserMessage();
+    $notice->user_id = $userId;
+    $notice->message_title = $title;
+    $notice->message = $message;
+    $notice->save();
+}
+
 private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, $note = null)
 {
     \Illuminate\Support\Facades\DB::table('wu_escrow_logs')->insert([
@@ -175,12 +208,11 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     | Public Marketplace
     |--------------------------------------------------------------------------
     */
-    public function publicIndex()
+    public function publicIndex(\Illuminate\Http\Request $request)
 {
-    $services = DB::table('wu_services')
-        ->where('status', 'active')
-        ->latest()
-        ->paginate(12);
+    $query = DB::table('wu_services')->where('status', 'active');
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
@@ -190,7 +222,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     return view('frontend.wu_services.public-index', compact('services', 'categories'));
 }
 
-    public function publicCategory($slug)
+    public function publicCategory(\Illuminate\Http\Request $request, $slug)
 {
     $category = DB::table('wu_service_categories')
         ->where('slug', $slug)
@@ -201,11 +233,11 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
         abort(404);
     }
 
-    $services = DB::table('wu_services')
+    $query = DB::table('wu_services')
         ->where('status', 'active')
-        ->where('category', $category->name)
-        ->latest()
-        ->paginate(12);
+        ->where('category', $category->name);
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
@@ -392,7 +424,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $rules = [
         'title' => 'required|max:255',
-        'category' => 'required|max:100',
+        'category' => 'required|max:100|exists:wu_service_categories,name',
         'price' => 'required|numeric|min:1',
         'short_description' => 'nullable|max:500',
         'description' => 'required',
@@ -400,7 +432,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     ];
 
     if ($type === 'digital_product') {
-        $rules['product_file'] = 'required|file|max:51200';
+        $rules['product_file'] = 'required|file|max:51200|mimes:pdf,zip,rar,doc,docx,xls,xlsx,ppt,pptx,psd,ai,mp3,mp4,jpg,jpeg,png,txt';
     } else {
         $rules['delivery_days'] = 'required|integer|min:1';
         $rules['revision_limit'] = 'nullable|integer|min:0';
@@ -527,7 +559,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $rules = [
         'title' => 'required|max:255',
-        'category' => 'required|max:100',
+        'category' => 'required|max:100|exists:wu_service_categories,name',
         'price' => 'required|numeric|min:1',
         'short_description' => 'nullable|max:500',
         'description' => 'required',
@@ -535,7 +567,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     ];
 
     if ($type === 'digital_product') {
-        $rules['product_file'] = 'nullable|file|max:51200';
+        $rules['product_file'] = 'nullable|file|max:51200|mimes:pdf,zip,rar,doc,docx,xls,xlsx,ppt,pptx,psd,ai,mp3,mp4,jpg,jpeg,png,txt';
     } else {
         $rules['delivery_days'] = 'required|integer|min:1';
         $rules['revision_limit'] = 'nullable|integer|min:0';
@@ -601,13 +633,13 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     | Buyer browse
     |--------------------------------------------------------------------------
     */
-    public function browseServices()
+    public function browseServices(\Illuminate\Http\Request $request)
 {
-    $services = DB::table('wu_services')
+    $query = DB::table('wu_services')
         ->where('status', 'active')
-        ->where('user_id', '!=', auth()->id())
-        ->latest()
-        ->paginate(12);
+        ->where('user_id', '!=', auth()->id());
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
@@ -617,7 +649,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     return view('user.pages.marketplace.services', compact('services', 'categories'));
 }
 
-    public function browseServicesByCategory($slug)
+    public function browseServicesByCategory(\Illuminate\Http\Request $request, $slug)
 {
     $category = DB::table('wu_service_categories')
         ->where('slug', $slug)
@@ -628,12 +660,12 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
         abort(404);
     }
 
-    $services = DB::table('wu_services')
+    $query = DB::table('wu_services')
         ->where('status', 'active')
         ->where('user_id', '!=', auth()->id())
-        ->where('category', $category->name)
-        ->latest()
-        ->paginate(12);
+        ->where('category', $category->name);
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
@@ -1040,6 +1072,12 @@ public function downloadProduct($orderId)
 
         \Illuminate\Support\Facades\DB::commit();
 
+        $this->notifyUser(
+            $seller->id,
+            'NEW_ORDER',
+            'You received a new order for "' . $service->title . '" ($' . number_format($price, 2) . ').'
+        );
+
         // Best-effort referral bonus hook -- must never turn a successful,
         // already-committed order into a false "Order failed" message.
         if (method_exists(\App\Http\Controllers\User\UserReferralController::class, 'processMarketplaceBonus')) {
@@ -1056,27 +1094,6 @@ public function downloadProduct($orderId)
         return back()->with('error', 'Order failed: ' . $e->getMessage());
     }
 }
-
-    public function myOrders()
-    {
-        $orders = DB::table('wu_service_orders')
-            ->join('wu_services', 'wu_service_orders.service_id', '=', 'wu_services.id')
-            ->where('wu_service_orders.buyer_id', auth()->id())
-            ->select(
-                'wu_service_orders.*',
-                'wu_services.title as service_title',
-                'wu_services.slug as service_slug',
-                'wu_services.image as service_image'
-            )
-            ->latest('wu_service_orders.id')
-            ->paginate(10);
-
-        foreach ($orders as $order) {
-            $order->image_url = $this->normalizeImagePath($order->service_image);
-        }
-
-        return view('user.pages.marketplace.orders', compact('orders'));
-    }
 
     public function sales()
 {
@@ -1099,28 +1116,6 @@ public function downloadProduct($orderId)
 
     return view('user.pages.marketplace.sales', compact('orders'));
 }
-
-    public function mySales()
-    {
-        $orders = DB::table('wu_service_orders')
-            ->join('wu_services', 'wu_service_orders.service_id', '=', 'wu_services.id')
-            ->join('users', 'wu_service_orders.buyer_id', '=', 'users.id')
-            ->where('wu_service_orders.seller_id', auth()->id())
-            ->select(
-                'wu_service_orders.*',
-                'wu_services.title as service_title',
-                'wu_services.image as service_image',
-                'users.name as buyer_name'
-            )
-            ->latest('wu_service_orders.id')
-            ->paginate(10);
-
-        foreach ($orders as $order) {
-            $order->image_url = $this->normalizeImagePath($order->service_image);
-        }
-
-        return view('user.pages.marketplace.sales', compact('orders'));
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -1227,63 +1222,6 @@ public function downloadProduct($orderId)
     return back()->with('success', 'Message sent successfully.');
 }
 
-    public function deliverOrder(Request $request, $id)
-    {
-        $request->validate([
-            'message' => 'required|max:5000',
-            'file' => 'nullable|file|max:4096',
-        ]);
-
-        $order = DB::table('wu_service_orders')
-            ->where('id', $id)
-            ->where('seller_id', auth()->id())
-            ->first();
-
-        if (!$order) {
-            abort(404);
-        }
-
-        $filePath = null;
-        if ($request->hasFile('file')) {
-            if (!file_exists(base_path('uploads/wu-service-deliveries'))) {
-                @mkdir(base_path('uploads/wu-service-deliveries'), 0777, true);
-            }
-
-            $file = $request->file('file');
-            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-            $file->move(base_path('uploads/wu-service-deliveries'), $filename);
-            $filePath = 'uploads/wu-service-deliveries/' . $filename;
-        }
-
-        DB::table('wu_service_deliveries')->insert([
-            'service_order_id' => $id,
-            'seller_id' => auth()->id(),
-            'message' => strip_tags($request->message),
-            'file' => $filePath,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('wu_service_orders')
-            ->where('id', $id)
-            ->update([
-                'status' => 'delivered',
-                'updated_at' => now(),
-            ]);
-
-        DB::table('wu_service_messages')->insert([
-            'order_id' => $id,
-            'sender_id' => auth()->id(),
-            'receiver_id' => $order->buyer_id,
-            'message' => 'Order delivered. Please review the delivery.',
-            'is_seen' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('success', 'Order delivered successfully.');
-    }
-    
     public function deliver(\Illuminate\Http\Request $request, $id)
 {
     $request->validate([
@@ -1343,60 +1281,16 @@ public function downloadProduct($orderId)
         'updated_at' => now(),
     ]);
 
+    $serviceTitle = DB::table('wu_services')->where('id', $order->service_id)->value('title');
+    $this->notifyUser(
+        $order->buyer_id,
+        'ORDER_DELIVERED',
+        'Your order for "' . $serviceTitle . '" has been delivered. Please review and complete it.'
+    );
+
     return back()->with('success', 'Order delivered successfully.');
 }
 
-    public function completeOrder($id)
-    {
-        $order = DB::table('wu_service_orders')
-            ->where('id', $id)
-            ->where('buyer_id', auth()->id())
-            ->first();
-
-        if (!$order) {
-            abort(404);
-        }
-
-        if ($order->status !== 'delivered') {
-            return back()->with('error', 'This order is not ready to complete.');
-        }
-
-        $walletColumn = $this->walletColumn();
-
-        DB::beginTransaction();
-
-        try {
-            DB::table('users')
-                ->where('id', $order->seller_id)
-                ->increment($walletColumn, $order->price);
-
-            DB::table('wu_service_orders')
-                ->where('id', $id)
-                ->update([
-                    'status' => 'completed',
-                    'completed_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-            DB::table('wu_service_messages')->insert([
-                'order_id' => $id,
-                'sender_id' => auth()->id(),
-                'receiver_id' => $order->seller_id,
-                'message' => 'Buyer marked this order as completed.',
-                'is_seen' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            DB::commit();
-
-            return back()->with('success', 'Order completed and seller has been paid.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Completion failed.');
-        }
-    }
-    
     public function cancelOrder($id)
 {
     $order = \Illuminate\Support\Facades\DB::table('wu_service_orders')
@@ -1565,6 +1459,22 @@ public function downloadProduct($orderId)
         );
 
         \Illuminate\Support\Facades\DB::commit();
+
+        $serviceTitle = DB::table('wu_services')->where('id', $order->service_id)->value('title');
+
+        $this->notifyUser(
+            $seller->id,
+            'ORDER_COMPLETED',
+            'Order for "' . $serviceTitle . '" is completed. $' . number_format((float) $order->seller_amount, 2) . ' has been added to your earning balance.'
+        );
+
+        if ($referrer && $referralBonus > 0) {
+            $this->notifyUser(
+                $referrer->id,
+                'MARKETPLACE_REFERRAL_BONUS',
+                'Congrats! You got $' . number_format($referralBonus, 2) . ' marketplace referral bonus.'
+            );
+        }
 
         return back()->with('success', 'Order completed and seller payment released to earning balance.');
     } catch (\Exception $e) {

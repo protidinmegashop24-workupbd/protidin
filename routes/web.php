@@ -715,7 +715,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('/marketplace/my-services', [WuServiceController::class, 'myServices'])->name('marketplace.my_services');
     Route::get('/marketplace/edit/{id}', [WuServiceController::class, 'edit'])->name('marketplace.edit');
     Route::post('/marketplace/update/{id}', [WuServiceController::class, 'update'])->name('marketplace.update');
-    Route::get('/marketplace/delete/{id}', [WuServiceController::class, 'delete'])->name('marketplace.delete');
+    Route::post('/marketplace/delete/{id}', [WuServiceController::class, 'delete'])->name('marketplace.delete');
 
     Route::get('/marketplace/services', [WuServiceController::class, 'browseServices'])->name('marketplace.services');
     Route::get('/marketplace/services/category/{slug}', [WuServiceController::class, 'browseServicesByCategory'])->name('marketplace.services.category');
