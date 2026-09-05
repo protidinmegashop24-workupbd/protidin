@@ -56,7 +56,7 @@
                 <h4>{{ website_title() }}</h4>
 
                 <p>
-                    Workup BD is a modern micro job and freelance services platform where users can explore digital tasks, surveys, services, and referral-based opportunities.
+                    Protidin Mega Earn is a modern micro job and freelance services platform where users can explore digital tasks, surveys, services, and referral-based opportunities.
                 </p>
             </div>
 

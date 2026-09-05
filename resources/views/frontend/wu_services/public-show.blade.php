@@ -309,7 +309,7 @@
     <div class="card-body p-4">
         <h4 style="font-weight:800;">Start Your Service Order</h4>
         <p style="color:#64748b;">
-            Contact the seller before placing an order or continue with a secure order process through Workup BD Marketplace.
+            Contact the seller before placing an order or continue with a secure order process through Protidin Mega Earn Marketplace.
         </p>
 
         <ul style="list-style:none; padding-left:0; line-height:2;">
@@ -342,7 +342,7 @@
         </div>
 
         <small class="d-block mt-3" style="color:#64748b;">
-            All marketplace communication and transactions should remain inside Workup BD for safety.
+            All marketplace communication and transactions should remain inside Protidin Mega Earn for safety.
         </small>
     </div>
 </div>

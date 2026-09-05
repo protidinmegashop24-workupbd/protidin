@@ -133,7 +133,7 @@
                     <button type="submit" class="wu-btn">Send OTP Code</button>
 
                     <div class="wu-auth-note">
-                        Use the email address connected to your Workup BD account. If the account exists, an OTP code will be emailed to you.
+                        Use the email address connected to your Protidin Mega Earn account. If the account exists, an OTP code will be emailed to you.
                     </div>
                 </form>
             </div>

@@ -354,14 +354,14 @@
                     </h1>
 
                     <p class="wu-login-text">
-                        Sign in to access your account, explore available tasks, manage your activity, and continue using the features of the Workup BD platform in a simple and organized way.
+                        Sign in to access your account, explore available tasks, manage your activity, and continue using the features of the Protidin Mega Earn platform in a simple and organized way.
                     </p>
 
                     <ul class="wu-login-points">
                         <li><i class="fas fa-check-circle"></i>Access your account dashboard</li>
                         <li><i class="fas fa-check-circle"></i>Continue tasks and platform activities</li>
                         <li><i class="fas fa-check-circle"></i>Manage your account securely</li>
-                        <li><i class="fas fa-check-circle"></i>Stay connected with Workup BD features</li>
+                        <li><i class="fas fa-check-circle"></i>Stay connected with Protidin Mega Earn features</li>
                     </ul>
 
                     <div class="wu-login-info">
@@ -377,13 +377,13 @@
                 <div class="wu-login-card">
                     <div class="wu-login-logo">
                         <a href="{{ url('/') }}">
-                            <img src="{{ URL::to(website_logo()) }}" alt="Workup BD Logo">
+                            <img src="{{ URL::to(website_logo()) }}" alt="Protidin Mega Earn Logo">
                         </a>
                     </div>
 
                     <h2 class="wu-form-title">{{ about_us()->login_form_title }}</h2>
                     <p class="wu-form-subtitle">
-                        Enter your login details below to access your Workup BD account.
+                        Enter your login details below to access your Protidin Mega Earn account.
                     </p>
 
                     <form action="{{ route('login') }}" id="contact-form" method="post">

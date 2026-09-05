@@ -7,11 +7,11 @@
     <meta name='admaven-placement' content=BqHkGrdsG>
     <meta name="google-adsense-account" content="ca-pub-6314276342535503">
     <meta name="subject" content="Modern micro job and freelance services marketplace">
-    <meta name="title" content="Home - {{ $website->title ?? 'WorkUp BD' }}">
-    <meta name="description" content="{{ $website->meta_tag ?? 'WorkUp BD is a modern micro job and freelance services marketplace where users can explore online tasks, service-based opportunities, survey activities, and referral rewards in one organized platform. Businesses can also connect with active individuals for small projects and digital support.' }}">
-    <meta name="keywords" content="{{ $website->meta_keyword ?? 'micro jobs, freelance services, workup bd, online tasks, referral rewards, survey tasks,learning online earning' }}">
-    <meta name="author" content="WorkUp BD">
-    <meta name="copyright" content="WorkUp BD">
+    <meta name="title" content="Home - {{ $website->title ?? 'Protidin Mega Earn' }}">
+    <meta name="description" content="{{ $website->meta_tag ?? 'Protidin Mega Earn is a modern micro job and freelance services marketplace where users can explore online tasks, service-based opportunities, survey activities, and referral rewards in one organized platform. Businesses can also connect with active individuals for small projects and digital support.' }}">
+    <meta name="keywords" content="{{ $website->meta_keyword ?? 'micro jobs, freelance services, protidin mega earn, online tasks, referral rewards, survey tasks,learning online earning' }}">
+    <meta name="author" content="Protidin Mega Earn">
+    <meta name="copyright" content="Protidin Mega Earn">
     <script>(function(s){s.dataset.zone='11563878',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
     <link rel="canonical" href="{{ url('/') }}" />
 <!-- Google Tag Manager -->
@@ -540,7 +540,7 @@ l.parentNode.insertBefore(s, l);
 </script>
 
                 <p class="wu-subtitle">
-                    WorkUp BD is a modern micro job and freelance services marketplace where users can explore online tasks, service-based opportunities, survey activities, and referral rewards in one organized platform. Businesses can also connect with active individuals for small projects and digital support.
+                    Protidin Mega Earn is a modern micro job and freelance services marketplace where users can explore online tasks, service-based opportunities, survey activities, and referral rewards in one organized platform. Businesses can also connect with active individuals for small projects and digital support.
                 </p>
 
                 <ul class="wu-hero-list">
@@ -565,7 +565,7 @@ l.parentNode.insertBefore(s, l);
             <div class="col-lg-6">
                 <div class="wu-hero-image-wrap">
                     <div class="wu-hero-card">
-                        <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/workupbd-main-home.png" alt="Workup BD Marketplace" loading="lazy">
+                        <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/workupbd-main-home.png" alt="Protidin Mega Earn Marketplace" loading="lazy">
                     </div>
                     <div class="wu-mini-box top">Task-Based Digital Platform</div>
                     <div class="wu-mini-box bottom">Structured Work • Active Community</div>
@@ -648,9 +648,9 @@ l.parentNode.insertBefore(s, l);
 <section class="wu-section wu-alt-section">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="wu-section-title">Why People Choose Workup BD</h2>
+            <h2 class="wu-section-title">Why People Choose Protidin Mega Earn</h2>
             <p class="wu-section-text">
-                Workup BD is designed for users who want a clean and practical way to participate in digital tasks, discover service opportunities, and stay active in a structured online work environment.
+                Protidin Mega Earn is designed for users who want a clean and practical way to participate in digital tasks, discover service opportunities, and stay active in a structured online work environment.
             </p>
 
         </div>
@@ -692,7 +692,7 @@ l.parentNode.insertBefore(s, l);
                 <div class="wu-feature-card">
                     <div class="wu-feature-icon"><i class="fas fa-user-friends"></i></div>
                     <h4>Referral Rewards</h4>
-                    <p>Invite others to join Workup BD and expand your activity through a straightforward referral-based reward system.</p>
+                    <p>Invite others to join Protidin Mega Earn and expand your activity through a straightforward referral-based reward system.</p>
                 </div>
             </div>
 
@@ -713,10 +713,10 @@ l.parentNode.insertBefore(s, l);
 
             <div class="col-lg-6 mb-4 mb-lg-0">
                 <div class="hmp-content">
-                    <span class="hmp-badge">Workup BD Marketplace</span>
+                    <span class="hmp-badge">Protidin Mega Earn Marketplace</span>
                     <h2 class="hmp-title">Buy and Sell Digital Services With Confidence</h2>
                     <p class="hmp-text">
-                        Explore Workup BD Marketplace to discover digital services, connect with active sellers,
+                        Explore Protidin Mega Earn Marketplace to discover digital services, connect with active sellers,
                         chat before ordering, and manage service-based work through a structured platform experience.
                     </p>
 
@@ -737,7 +737,7 @@ l.parentNode.insertBefore(s, l);
 
             <div class="col-lg-6 text-center">
                 <div class="hmp-image-wrap">
-                    <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/Marketplace-homepage-imege.png" alt="Workup BD Marketplace" class="hmp-image">
+                    <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/Marketplace-homepage-imege.png" alt="Protidin Mega Earn Marketplace" class="hmp-image">
                 </div>
             </div>
 
@@ -802,7 +802,7 @@ l.parentNode.insertBefore(s, l);
                     Participate in Survey and Quiz Activities
                 </h2>
                 <p class="wu-section-text" style="text-align:left; margin:0 0 18px 0;">
-                    Workup BD includes survey and quiz-based task sections to give users more ways to stay engaged on the platform. These activities are structured, simple to access, and designed to make participation more interactive.
+                    Protidin Mega Earn includes survey and quiz-based task sections to give users more ways to stay engaged on the platform. These activities are structured, simple to access, and designed to make participation more interactive.
                 </p>
                 <p class="wu-section-text" style="text-align:left; margin:0 0 24px 0;">
                     Users can explore available survey activities, answer questions, and take part in knowledge-based tasks as part of their broader platform experience.
@@ -847,7 +847,7 @@ l.parentNode.insertBefore(s, l);
                     Grow the Community Through Referrals
                 </h2>
                 <p class="wu-section-text" style="text-align:left; margin:0 0 18px 0;">
-                    Workup BD also includes a referral system that allows users to invite others and grow the platform community in a natural and rewarding way.
+                    Protidin Mega Earn also includes a referral system that allows users to invite others and grow the platform community in a natural and rewarding way.
                 </p>
                 <p class="wu-section-text" style="text-align:left; margin:0 0 24px 0;">
                     By sharing a personal referral link, users can bring new members to the platform and take part in an additional engagement channel built around community growth.
@@ -872,7 +872,7 @@ l.parentNode.insertBefore(s, l);
         <div class="text-center mb-5">
             <h2 class="wu-section-title">Our Premium Services</h2>
             <p class="wu-section-text">
-                In addition to micro jobs and platform activities, Workup BD offers service-based support for individuals, creators, and businesses that need dependable online assistance.
+                In addition to micro jobs and platform activities, Protidin Mega Earn offers service-based support for individuals, creators, and businesses that need dependable online assistance.
             </p>
         </div>
 
@@ -893,7 +893,7 @@ l.parentNode.insertBefore(s, l);
 <section class="wu-cta">
     <div class="container">
         <div class="wu-cta-box">
-            <h2>Ready to Explore Workup BD?</h2>
+            <h2>Ready to Explore Protidin Mega Earn?</h2>
             <p>
                 Join the platform to discover micro jobs, browse service opportunities, take part in surveys, and become part of a growing online work community.
             </p>

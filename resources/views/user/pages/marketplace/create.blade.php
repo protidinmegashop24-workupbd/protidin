@@ -137,7 +137,7 @@
     <div class="mp-form-card">
 
         <div class="mp-form-hero">
-            <span class="mp-form-badge">Sell on Workup BD</span>
+            <span class="mp-form-badge">Sell on Protidin Mega Earn</span>
             <div class="mp-form-title">Create a new service listing</div>
             <p class="mp-form-subtitle">
                 Add a clear title, delivery terms, pricing, and a professional description so buyers can understand your offer quickly and decide with confidence.

@@ -321,7 +321,7 @@
                     </h1>
 
                     <p class="wu-register-text">
-                        Create your account to access platform features, explore digital opportunities, participate in activities, and become part of the growing Workup BD community.
+                        Create your account to access platform features, explore digital opportunities, participate in activities, and become part of the growing Protidin Mega Earn community.
                     </p>
 
                     <ul class="wu-register-points">
@@ -344,7 +344,7 @@
                 <div class="wu-register-card">
                     <div class="wu-register-logo">
                         <a href="{{ url('/') }}">
-                            <img src="{{ URL::to(website_logo()) }}" alt="Workup BD Logo">
+                            <img src="{{ URL::to(website_logo()) }}" alt="Protidin Mega Earn Logo">
                         </a>
                     </div>
 

@@ -230,10 +230,10 @@
 
 <section class="wu-contact-hero">
     <div class="container">
-        <span class="wu-contact-badge">Contact Workup BD</span>
+        <span class="wu-contact-badge">Contact Protidin Mega Earn</span>
         <h1 class="wu-contact-title">We’re Here to Help</h1>
         <p class="wu-contact-text">
-            If you have questions about Workup BD, need assistance, or want to learn more about our platform, you can contact us anytime through the available support channels below.
+            If you have questions about Protidin Mega Earn, need assistance, or want to learn more about our platform, you can contact us anytime through the available support channels below.
         </p>
     </div>
 </section>
@@ -247,7 +247,7 @@
                     <div class="wu-contact-left">
                         <h3>Get in Touch</h3>
                         <p>
-                            Workup BD aims to provide a simple and accessible platform experience. If you need help with your account, platform access, support, or public information, feel free to reach out.
+                            Protidin Mega Earn aims to provide a simple and accessible platform experience. If you need help with your account, platform access, support, or public information, feel free to reach out.
                         </p>
 
                         <ul class="wu-contact-list">
@@ -277,7 +277,7 @@
                                 </div>
                                 <div>
                                     <h5>Platform Access</h5>
-                                    <p>Users can explore Workup BD through our public pages and account features.</p>
+                                    <p>Users can explore Protidin Mega Earn through our public pages and account features.</p>
                                 </div>
                             </li>
                         </ul>

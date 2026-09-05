@@ -123,9 +123,9 @@
 
 <div class="card mt-4" style="width:100%; max-width:520px; border-radius:16px; border:1px solid #e5e7eb;">
     <div class="card-body text-center">
-        <h4 style="font-weight:800; color:#111827;">Share Workup BD & Get Bonus</h4>
+        <h4 style="font-weight:800; color:#111827;">Share Protidin Mega Earn & Get Bonus</h4>
         <p style="color:#64748b; line-height:1.7;">
-            Share Workup BD with your friends and claim a small daily activity bonus.
+            Share Protidin Mega Earn with your friends and claim a small daily activity bonus.
         </p>
 
         <button type="button"

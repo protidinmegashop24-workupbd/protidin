@@ -142,7 +142,7 @@
                 <span class="wu-policy-badge">Policy Information</span>
                 <h1 class="wu-policy-title">{{ $policy->title }}</h1>
                 <p class="wu-policy-subtitle">
-                    Please review this policy carefully to understand the terms, conditions, and important platform information related to Workup BD.
+                    Please review this policy carefully to understand the terms, conditions, and important platform information related to Protidin Mega Earn.
                 </p>
             </div>
 

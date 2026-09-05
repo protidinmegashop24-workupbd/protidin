@@ -284,10 +284,10 @@
 
 <section class="wu-about-hero">
     <div class="container">
-        <span class="wu-about-badge">About Workup BD</span>
+        <span class="wu-about-badge">About Protidin Mega Earn</span>
         <h1 class="wu-about-title">A Platform Built Around Opportunity, Structure, and Growth</h1>
         <p class="wu-about-text">
-            Workup BD is designed to create a more organized digital environment where users can explore micro jobs, freelance services, surveys, referrals, and community-based online activities through a modern and accessible platform.
+            Protidin Mega Earn is designed to create a more organized digital environment where users can explore micro jobs, freelance services, surveys, referrals, and community-based online activities through a modern and accessible platform.
         </p>
     </div>
 </section>
@@ -299,7 +299,7 @@
                 <div class="wu-about-card">
                     <h3>Who We Are</h3>
                     <p>
-    Workup BD is a modern micro job and freelance services platform designed to create a structured and accessible online environment for users and businesses. Our goal is to simplify how people explore digital opportunities and connect with useful platform features.
+    Protidin Mega Earn is a modern micro job and freelance services platform designed to create a structured and accessible online environment for users and businesses. Our goal is to simplify how people explore digital opportunities and connect with useful platform features.
 </p>
 
 <p>
@@ -307,7 +307,7 @@
 </p>
 
 <p>
-    We focus on building a clean, user-friendly experience where individuals can manage their accounts, explore platform tools, and interact with different features in an organized way. Workup BD continues to improve its system to make online activity more structured and accessible.
+    We focus on building a clean, user-friendly experience where individuals can manage their accounts, explore platform tools, and interact with different features in an organized way. Protidin Mega Earn continues to improve its system to make online activity more structured and accessible.
 </p>
 
 <p>
@@ -429,7 +429,7 @@
 <section class="wu-about-cta">
     <div class="container">
         <div class="wu-about-cta-box">
-            <h3>Want to Learn More About Workup BD?</h3>
+            <h3>Want to Learn More About Protidin Mega Earn?</h3>
             <p>
                 Explore our platform, discover how it works, and connect with us if you want to know more about our services, support, and public-facing features.
             </p>

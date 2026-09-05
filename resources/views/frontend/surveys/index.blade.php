@@ -8,10 +8,10 @@
 
             <div class="col-lg-6">
                 <div class="sv-hero-content">
-                    <span class="sv-badge">WorkUp BD Surveys</span>
+                    <span class="sv-badge">Protidin Mega Earn Surveys</span>
                     <h1>Earn Online by Completing Simple Survey Tasks</h1>
                     <p>
-                        Discover a simple way to earn online through survey participation on Workup BD. 
+                        Discover a simple way to earn online through survey participation on Protidin Mega Earn. 
                         Answer question-based tasks, stay active, and build a steady earning habit with a user-friendly system made for beginners and regular users alike.
                     </p>
 
@@ -72,7 +72,7 @@
     <div class="container">
         <div class="sv-section-head text-center">
             <span class="sv-mini-title">Simple Process</span>
-            <h2>How Survey Earning Works on Workup BD</h2>
+            <h2>How Survey Earning Works on Protidin Mega Earn</h2>
             <p>
                 Start from your account dashboard, open available surveys, submit your answers, and grow your activity inside the platform step by step.
             </p>
@@ -84,7 +84,7 @@
                     <div class="sv-step-number">01</div>
                     <h3>Login to Your Account</h3>
                     <p>
-                        Access the survey area from your Workup BD account and explore currently available survey tasks.
+                        Access the survey area from your Protidin Mega Earn account and explore currently available survey tasks.
                     </p>
                 </div>
             </div>
@@ -121,7 +121,7 @@
                     <h2>A Flexible Earning Option for New and Active Users</h2>
                     <p>
                         Survey tasks are designed for users who want a simple entry point into online earning. 
-                        The process is easy to understand, user-friendly, and ideal for building consistent activity inside Workup BD.
+                        The process is easy to understand, user-friendly, and ideal for building consistent activity inside Protidin Mega Earn.
                     </p>
 
                     <ul class="sv-benefit-list">
@@ -141,7 +141,7 @@
                     </div>
                     <h3>Survey Task System</h3>
                     <p>
-                        Workup BD survey tools are created to make question-based earning more structured and approachable. 
+                        Protidin Mega Earn survey tools are created to make question-based earning more structured and approachable. 
                         You can log in, view available survey titles, open the tasks, and begin completing them with a smooth user journey.
                     </p>
 
@@ -175,7 +175,7 @@
             <span class="sv-mini-title">Start Today</span>
             <h2>Explore the Survey Area and Start Your Progress</h2>
             <p>
-                Log in to your account, enter the survey page, and begin answering tasks through the Workup BD system.
+                Log in to your account, enter the survey page, and begin answering tasks through the Protidin Mega Earn system.
             </p>
 
             <a href="{{ route('surveys.index') }}" class="sv-btn-primary">

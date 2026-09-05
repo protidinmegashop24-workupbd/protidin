@@ -1,3 +1,3 @@
 <footer class="main-footer">
-    <strong> &copy; Workup BD Freelancer Microjob website
+    <strong> &copy; Protidin Mega Earn Freelancer Microjob website
 </footer>

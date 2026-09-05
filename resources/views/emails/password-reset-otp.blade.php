@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>{{ $subject ?? 'Workup BD Password Reset OTP' }}</title>
+    <title>{{ $subject ?? 'Protidin Mega Earn Password Reset OTP' }}</title>
 </head>
 <body style="margin:0; padding:0; background:#f4f7fb; font-family: Arial, Helvetica, sans-serif;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7fb; padding:30px 0;">
@@ -11,7 +11,7 @@
                 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #e6edf5;">
                     <tr>
                         <td style="background:linear-gradient(135deg,#eefaf2 0%,#f8fbff 100%); padding:28px 30px; text-align:center;">
-                            <h2 style="margin:0; color:#172b4d; font-size:28px; font-weight:800;">Workup BD Password Reset OTP</h2>
+                            <h2 style="margin:0; color:#172b4d; font-size:28px; font-weight:800;">Protidin Mega Earn Password Reset OTP</h2>
                             <p style="margin:10px 0 0; color:#64748b; font-size:15px; line-height:1.7;">
                                 Use the OTP below to reset your password.
                             </p>
@@ -23,7 +23,7 @@
                             <p style="margin:0 0 14px; color:#172b4d; font-size:15px;">Hello {{ $name ?? 'User' }},</p>
 
                             <p style="margin:0 0 14px; color:#56697f; font-size:15px; line-height:1.8;">
-                                We received a request to reset your Workup BD account password. Your OTP code is:
+                                We received a request to reset your Protidin Mega Earn account password. Your OTP code is:
                             </p>
 
                             <div style="margin:20px 0; padding:16px 18px; background:#f8fbff; border:1px dashed #cbd8e6; border-radius:12px; text-align:center;">

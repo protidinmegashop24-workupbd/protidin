@@ -141,7 +141,7 @@
 <nav class="navbar navbar-expand-lg wu-navbar">
     <div class="container">
         <a href="{{ url('/') }}" class="navbar-brand">
-            <img src="{{ URL::to(website_logo()) }}" class="light-logo" alt="Workup BD Logo">
+            <img src="{{ URL::to(website_logo()) }}" class="light-logo" alt="Protidin Mega Earn Logo">
         </a>
 
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">

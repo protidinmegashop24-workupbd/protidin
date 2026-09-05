@@ -113,7 +113,7 @@
                     <span class="otp-badge">Email Verification</span>
                     <h1 class="otp-title">Verify your account with OTP</h1>
                     <p class="otp-text">
-                        We sent a 6-digit verification code to your email address. Enter the OTP below to activate your Workup BD account and continue using the platform securely.
+                        We sent a 6-digit verification code to your email address. Enter the OTP below to activate your Protidin Mega Earn account and continue using the platform securely.
                     </p>
                 </div>
             </div>

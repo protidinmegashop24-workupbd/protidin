@@ -70,7 +70,7 @@
         <div class="wu-auth-card">
             <div class="wu-auth-header">
                 <h2>Set New Password</h2>
-                <p>Create a new secure password for your Workup BD account.</p>
+                <p>Create a new secure password for your Protidin Mega Earn account.</p>
             </div>
 
             <div class="wu-auth-body">

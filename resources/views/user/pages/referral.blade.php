@@ -125,7 +125,7 @@
         <button type="button" class="rf-btn rf-btn-copy" onclick="copyReferLink()">Copy Link</button>
 
         <a class="rf-btn rf-btn-wa" target="_blank"
-           href="https://wa.me/?text={{ urlencode('Join Workup BD with my referral link: ' . $referralLink) }}">
+           href="https://wa.me/?text={{ urlencode('Join Protidin Mega Earn with my referral link: ' . $referralLink) }}">
             WhatsApp
         </a>
 
@@ -135,7 +135,7 @@
         </a>
 
         <a class="rf-btn rf-btn-tg" target="_blank"
-           href="https://t.me/share/url?url={{ urlencode($referralLink) }}&text={{ urlencode('Join Workup BD through my referral link') }}">
+           href="https://t.me/share/url?url={{ urlencode($referralLink) }}&text={{ urlencode('Join Protidin Mega Earn through my referral link') }}">
             Telegram
         </a>
     </div>

@@ -477,12 +477,12 @@
 
             <div class="col-lg-6">
                 <div class="mp-hero-content">
-                    <span class="mp-badge">WorkUp BD Marketplace</span>
+                    <span class="mp-badge">Protidin Mega Earn Marketplace</span>
                     <h1>Buy and Sell Digital Services in a Professional Marketplace</h1>
                     <p>
                         Explore a smart digital service marketplace where buyers can discover skilled sellers,
                         chat before placing orders, and complete projects through a structured order system.
-                        Workup BD Marketplace helps users start, grow, and manage service-based online work with confidence.
+                        Protidin Mega Earn Marketplace helps users start, grow, and manage service-based online work with confidence.
                     </p>
 
                     <ul class="mp-hero-points">
@@ -682,7 +682,7 @@
             <div class="wu-section-title">
                 <h2>Why users may prefer this marketplace</h2>
                 <p>
-                    Workup BD Marketplace focuses on clarity, controlled communication, and a process that is easier to understand for both newer and experienced users.
+                    Protidin Mega Earn Marketplace focuses on clarity, controlled communication, and a process that is easier to understand for both newer and experienced users.
                 </p>
             </div>
 
@@ -772,7 +772,7 @@
             <div class="wu-cta-box">
                 <h2>Ready to offer a service or hire someone for a task?</h2>
                 <p>
-                    Create an account to explore buyer tools, seller tools, service chat, and internal order management through the Workup BD Marketplace.
+                    Create an account to explore buyer tools, seller tools, service chat, and internal order management through the Protidin Mega Earn Marketplace.
                 </p>
                 <a href="{{ route('register') }}" class="wu-hero-btn wu-hero-btn-primary">Start With an Account</a>
                 <a href="{{ route('user.marketplace.services') }}" class="mp-btn-secondary">Login to Continue</a>
