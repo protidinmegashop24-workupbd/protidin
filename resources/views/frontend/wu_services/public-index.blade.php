@@ -508,7 +508,7 @@
 
             <div class="col-lg-6 text-center">
                 <div class="mp-hero-img">
-                    <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/Marketplace-homepage-imege.png" alt="Marketplace Hero">
+                    <img src="{{ asset('uploads/site-assets/marketplace-hero.png') }}" alt="Marketplace Hero">
                 </div>
             </div>
 

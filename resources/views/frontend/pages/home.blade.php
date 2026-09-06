@@ -565,7 +565,7 @@ l.parentNode.insertBefore(s, l);
             <div class="col-lg-6">
                 <div class="wu-hero-image-wrap">
                     <div class="wu-hero-card">
-                        <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/workupbd-main-home.png" alt="Protidin Mega Earn Marketplace" loading="lazy">
+                        <img src="{{ asset('uploads/site-assets/home-hero.png') }}" alt="Protidin Mega Earn Marketplace" loading="lazy">
                     </div>
                     <div class="wu-mini-box top">Task-Based Digital Platform</div>
                     <div class="wu-mini-box bottom">Structured Work • Active Community</div>
@@ -737,7 +737,7 @@ l.parentNode.insertBefore(s, l);
 
             <div class="col-lg-6 text-center">
                 <div class="hmp-image-wrap">
-                    <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/Marketplace-homepage-imege.png" alt="Protidin Mega Earn Marketplace" class="hmp-image">
+                    <img src="{{ asset('uploads/site-assets/marketplace-hero.png') }}" alt="Protidin Mega Earn Marketplace" class="hmp-image">
                 </div>
             </div>
 
@@ -822,7 +822,7 @@ l.parentNode.insertBefore(s, l);
             <div class="col-lg-6 order-lg-2 order-1">
                 <div class="wu-hero-image-wrap">
                     <div class="wu-hero-card">
-                        <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/survey-task-page-e1776704812838.png" alt="Survey and Quiz Tasks" loading="lazy">
+                        <img src="{{ asset('uploads/site-assets/survey-hero.png') }}" alt="Survey and Quiz Tasks" loading="lazy">
                     </div>
                 </div>
             </div>
