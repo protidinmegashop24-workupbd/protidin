@@ -1209,6 +1209,50 @@ Route::get('/system-debug-login-deep/{token}', function ($token) {
     return response()->json($result, 200, [], JSON_PRETTY_PRINT);
 });
 
+// Admin-only manual password reset -- for accounts whose password was
+// changed on the OLD site (workupbd.com) after the one-time database
+// copy to this site, so their new-site password hash is stale. Skips
+// email delivery entirely. Requires the token AND a confirm string, and
+// the new password is echoed back in the URL, so this link must never
+// be shared or reused after the reset is done.
+Route::get('/system-reset-password/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $email = request('email');
+    $newPassword = request('new_password');
+
+    if (!$email || !$newPassword) {
+        return response()->json([
+            'error' => 'Pass ?email=&new_password=&confirm=RESET-PASSWORD in the URL.',
+        ], 400, [], JSON_PRETTY_PRINT);
+    }
+
+    $user = \App\Models\User::where('email', $email)->first();
+    if (!$user) {
+        return response()->json(['error' => "No user found with email: {$email}"], 404, [], JSON_PRETTY_PRINT);
+    }
+
+    if (request('confirm') !== 'RESET-PASSWORD') {
+        return response()->json([
+            'action' => 'DRY RUN -- nothing changed',
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'to_actually_reset' => 'add &confirm=RESET-PASSWORD to this same URL',
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    $user->password = \Illuminate\Support\Facades\Hash::make($newPassword);
+    $user->save();
+
+    return response()->json([
+        'action' => 'PASSWORD RESET',
+        'user_id' => $user->id,
+        'email' => $user->email,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-time reset: wipe every PTC job (old + running) so job-posters start
 // fresh with the new wait-time packages. No refund is issued for unused
 // clicks on unfinished jobs -- that was an explicit, deliberate choice.
