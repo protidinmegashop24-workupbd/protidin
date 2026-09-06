@@ -1200,3 +1200,34 @@ Route::get('/system-debug-login-deep/{token}', function ($token) {
 
     return response()->json($result, 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-time reset: wipe every PTC job (old + running) so job-posters start
+// fresh with the new wait-time packages. No refund is issued for unused
+// clicks on unfinished jobs -- that was an explicit, deliberate choice.
+// Requires a second confirmation string on top of the token so it can never
+// fire from just guessing/scanning the token URL.
+Route::get('/system-ptc-reset/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $countBefore = \App\Models\ptc_job::count();
+
+    if (request('confirm') !== 'DELETE-ALL-PTC-JOBS') {
+        return response()->json([
+            'action' => 'DRY RUN -- nothing deleted',
+            'ptc_jobs_that_would_be_deleted' => $countBefore,
+            'to_actually_delete' => 'add ?confirm=DELETE-ALL-PTC-JOBS to this same URL',
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    \Illuminate\Support\Facades\DB::table('ptc_job')->truncate();
+    \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+    return response()->json([
+        'action' => 'DELETED',
+        'ptc_jobs_deleted' => $countBefore,
+        'ptc_jobs_remaining' => \App\Models\ptc_job::count(),
+    ], 200, [], JSON_PRETTY_PRINT);
+});
