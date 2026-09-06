@@ -304,10 +304,6 @@ class HomeController extends Controller
 
             $new_password = rand(100000,999999);
 
-            $up_user = User::find($ck_user->id);
-            $up_user->password = Hash::make($new_password);
-            $up_user->save();
-
             $data = array(
                 'name' => $ck_user->name,
                 'email' => $ck_user->email,
@@ -316,11 +312,25 @@ class HomeController extends Controller
                 'new_password' => $new_password
             );
 
-            Mail::send('email', $data, function ($mail) use ($data) {
-                $mail->from(website_info()->mail_from, website_info()->title)
-                    ->to($data['email'], website_info()->title)
-                    ->subject($data['subject']);
-            });
+            try {
+                Mail::send('email', $data, function ($mail) use ($data) {
+                    $mail->from(website_info()->mail_from, website_info()->title)
+                        ->to($data['email'], website_info()->title)
+                        ->subject($data['subject']);
+                });
+            } catch (\Throwable $e) {
+                // Don't touch the user's password unless the mail carrying
+                // the new one actually went out -- otherwise a mail-server
+                // outage silently locks them out with no way to recover.
+                \Illuminate\Support\Facades\Log::error('Password recovery mail failed: ' . $e->getMessage());
+                $website = Website::latest()->first();
+                $msg = 'দুঃখিত, এই মুহূর্তে মেইল পাঠানো যাচ্ছে না। একটু পর আবার চেষ্টা করুন।';
+                return view('auth.forget-password', compact('website', 'msg'));
+            }
+
+            $up_user = User::find($ck_user->id);
+            $up_user->password = Hash::make($new_password);
+            $up_user->save();
 
             $request->session()->put('email', 'Verification mail sent. Check your mail.');
 
