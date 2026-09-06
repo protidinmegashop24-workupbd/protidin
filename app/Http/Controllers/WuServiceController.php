@@ -1078,15 +1078,9 @@ public function downloadProduct($orderId)
             'You received a new order for "' . $service->title . '" ($' . number_format($price, 2) . ').'
         );
 
-        // Best-effort referral bonus hook -- must never turn a successful,
-        // already-committed order into a false "Order failed" message.
-        if (method_exists(\App\Http\Controllers\User\UserReferralController::class, 'processMarketplaceBonus')) {
-            try {
-                app(\App\Http\Controllers\User\UserReferralController::class)->processMarketplaceBonus($buyer->id);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('processMarketplaceBonus failed: ' . $e->getMessage());
-            }
-        }
+        // The referral bonus itself is paid later, out of the admin's
+        // commission, when the buyer completes/releases this order --
+        // see the referral bonus block in the order-completion method.
 
         return redirect()->route('user.marketplace.orders')->with('success', 'Order placed successfully. Payment is now held in escrow.');
     } catch (\Exception $e) {
