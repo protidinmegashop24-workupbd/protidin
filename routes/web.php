@@ -800,7 +800,7 @@ Route::get('/surveys', function () {
         return view('frontend.surveys.index');
     }
 
-    return app(\App\Http\Controllers\SurveyController::class)->index();
+    return app(\App\Http\Controllers\SurveyController::class)->index(request());
 })->name('surveys.index');
 
 /*
