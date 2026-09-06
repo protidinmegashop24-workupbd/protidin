@@ -159,15 +159,27 @@ body {
     .ptc-overlay-circle.done{
         border-color: #15ba5a;
     }
+    .ptc-overlay-circle.failed{
+        border-color: #e74c3c;
+    }
 </style>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const csrfToken = document.getElementById('csrfToken').value;
-        let activeTimer = null;
+
+        // Only one job can be "in progress" at a time -- the whole point is
+        // watching whether THIS tab regains focus too early, which only
+        // makes sense for a single pending claim.
+        let pending = null; // { jobId, earn, waitTime, clickTime, overlay }
 
         document.querySelectorAll('.track-click').forEach(function (link) {
             link.addEventListener('click', function (event) {
                 event.preventDefault();
+
+                if (pending) {
+                    alert('আগের বিজ্ঞাপনের সময় এখনো চলছে, আগে সেটা শেষ করুন।');
+                    return;
+                }
 
                 const jobId = link.getAttribute('data-id');
                 const waitTime = parseInt(link.getAttribute('data-time'), 10) || 10;
@@ -177,44 +189,84 @@ body {
                 // the only "view" that actually counts for the advertiser.
                 window.open(link.href, '_blank', 'noopener,noreferrer');
 
-                showOverlay(jobId, waitTime, earn);
+                startWaiting(jobId, waitTime, earn);
             });
         });
 
-        function showOverlay(jobId, waitTime, earn) {
+        function startWaiting(jobId, waitTime, earn) {
             const overlay = document.createElement('div');
             overlay.className = 'ptc-overlay';
             overlay.innerHTML = `
-                <div class="ptc-overlay-circle" id="ptc-overlay-circle">${waitTime}</div>
-                <p>অপেক্ষা করুন... এই পেজ থেকে সরে যাবেন না।</p>
-                <button type="button" id="ptc-overlay-claim" class="btn btn-success btn-lg" style="display:none;">Claim $${earn}</button>
+                <div class="ptc-overlay-circle" id="ptc-overlay-circle">⏳</div>
+                <p>বিজ্ঞাপনের ট্যাবে কমপক্ষে <strong>${waitTime} সেকেন্ড</strong> থাকুন।<br>
+                এই পেজে খুব তাড়াতাড়ি ফিরে এলে রিওয়ার্ড পাবেন না।</p>
+                <button type="button" id="ptc-overlay-cancel" class="btn btn-outline-light btn-sm">Cancel</button>
             `;
             document.body.appendChild(overlay);
 
-            const circle = overlay.querySelector('#ptc-overlay-circle');
-            let remaining = waitTime;
+            pending = {
+                jobId: jobId,
+                earn: earn,
+                waitTime: waitTime,
+                clickTime: Date.now(),
+                overlay: overlay,
+            };
 
-            function beforeUnloadHandler(e) {
-                e.preventDefault();
-                e.returnValue = '';
-                return '';
+            overlay.querySelector('#ptc-overlay-cancel').addEventListener('click', function () {
+                cleanupListeners();
+                overlay.remove();
+                pending = null;
+            });
+
+            document.addEventListener('visibilitychange', onVisibilityChange);
+        }
+
+        function onVisibilityChange() {
+            if (document.visibilityState !== 'visible' || !pending) {
+                return;
             }
-            window.addEventListener('beforeunload', beforeUnloadHandler);
 
-            activeTimer = setInterval(function () {
-                remaining--;
-                if (remaining <= 0) {
-                    clearInterval(activeTimer);
-                    window.removeEventListener('beforeunload', beforeUnloadHandler);
-                    circle.textContent = '✓';
-                    circle.classList.add('done');
-                    overlay.querySelector('#ptc-overlay-claim').style.display = 'inline-block';
-                } else {
-                    circle.textContent = remaining;
-                }
-            }, 1000);
+            const elapsedMs = Date.now() - pending.clickTime;
+            const requiredMs = pending.waitTime * 1000;
 
-            overlay.querySelector('#ptc-overlay-claim').addEventListener('click', function () {
+            if (elapsedMs < requiredMs) {
+                failPending();
+            } else {
+                successPending();
+            }
+        }
+
+        function cleanupListeners() {
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        }
+
+        function failPending() {
+            const p = pending;
+            cleanupListeners();
+            pending = null;
+
+            p.overlay.innerHTML = `
+                <div class="ptc-overlay-circle failed">✕</div>
+                <p>আপনি খুব তাড়াতাড়ি ফিরে এসেছেন! বিজ্ঞাপন ট্যাবে পুরো সময় থাকতে হবে।</p>
+                <button type="button" class="btn btn-danger btn-sm" id="ptc-overlay-close">বন্ধ করুন</button>
+            `;
+            p.overlay.querySelector('#ptc-overlay-close').addEventListener('click', function () {
+                p.overlay.remove();
+            });
+        }
+
+        function successPending() {
+            const p = pending;
+            cleanupListeners();
+            pending = null;
+
+            p.overlay.innerHTML = `
+                <div class="ptc-overlay-circle done">✓</div>
+                <p>সময় শেষ! এখন রিওয়ার্ড ক্লেইম করুন।</p>
+                <button type="button" id="ptc-overlay-claim" class="btn btn-success btn-lg">Claim $${p.earn}</button>
+            `;
+
+            p.overlay.querySelector('#ptc-overlay-claim').addEventListener('click', function () {
                 const btn = this;
                 btn.disabled = true;
                 btn.textContent = 'Claiming...';
@@ -225,7 +277,7 @@ body {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrfToken
                     },
-                    body: JSON.stringify({ id: jobId })
+                    body: JSON.stringify({ id: p.jobId })
                 })
                 .then(res => res.text())
                 .then(data => {
@@ -234,7 +286,7 @@ body {
                 })
                 .catch(() => {
                     alert('কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন।');
-                    overlay.remove();
+                    p.overlay.remove();
                 });
             });
         }
