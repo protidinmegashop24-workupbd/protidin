@@ -37,4 +37,30 @@ class Handler extends ExceptionHandler
             //
         });
     }
+
+    /**
+     * Render an exception into an HTTP response.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Throwable  $e
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function render($request, Throwable $e)
+    {
+        // A stale tab (session/CSRF token expired) submitting a form --
+        // logout included -- used to show Laravel's raw "419 Page
+        // Expired" screen. Send the user back to login instead of
+        // crashing the page.
+        if ($e instanceof \Illuminate\Session\TokenMismatchException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your session has expired. Please refresh the page and try again.',
+                ], 419);
+            }
+
+            return redirect()->route('login')->with('error', 'আপনার সেশনের মেয়াদ শেষ হয়ে গেছে, আবার লগইন করুন।');
+        }
+
+        return parent::render($request, $e);
+    }
 }
