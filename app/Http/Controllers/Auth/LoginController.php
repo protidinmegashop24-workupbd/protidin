@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Carbon\Carbon;
@@ -87,6 +89,10 @@ class LoginController extends Controller
                 }
             }
             
+            if ($this->blockUnverifiedRegistration($user)) {
+                return redirect()->route('otp.verify', ['email' => $user->email]);
+            }
+
             if($user->ip_address == NULL){
                 $user->ip_address = $request->ip();
             }
@@ -120,6 +126,10 @@ class LoginController extends Controller
                 }
             }
             
+            if ($this->blockUnverifiedRegistration($user)) {
+                return redirect()->route('otp.verify', ['email' => $user->email]);
+            }
+
             if($user->ip_address == NULL){
                 $user->ip_address = $request->ip();
             }
@@ -139,6 +149,39 @@ class LoginController extends Controller
             return redirect()->back();
         }
 
+    }
+
+    /**
+     * True (and a fresh OTP resent) if this account was created through the
+     * OTP-verification registration flow and never completed it -- only
+     * accounts with a pending otp_code are affected, so the ~1000+ existing
+     * accounts from before this flow existed (otp_code always null) are
+     * never blocked from logging in.
+     */
+    private function blockUnverifiedRegistration($user)
+    {
+        if (empty($user->otp_code) || $user->hasVerifiedEmail()) {
+            return false;
+        }
+
+        Auth::logout();
+
+        $otp = (string) rand(100000, 999999);
+        $user->otp_code = $otp;
+        $user->otp_expires_at = now()->addMinutes(15);
+        $user->save();
+
+        try {
+            Mail::send('emails.otp', ['name' => $user->name, 'otp' => $otp], function ($mail) use ($user) {
+                $mail->from(website_info()->mail_from, website_info()->title)
+                    ->to($user->email, $user->name)
+                    ->subject('Verify your email - ' . website_info()->title);
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Login-time OTP resend failed: ' . $e->getMessage());
+        }
+
+        return true;
     }
 
 }

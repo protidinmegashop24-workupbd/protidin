@@ -278,7 +278,57 @@ class HomeController extends Controller
             $s_user->save();
         }
 
-        return redirect()->route('login');
+        // Account is created but not yet usable -- an OTP has to be
+        // entered on the next page (see showOtpForm/verifyOtp) before the
+        // email counts as verified. If the OTP mail can't be sent, don't
+        // leave an unverifiable "ghost" account behind: delete it and let
+        // the visitor try registering again once mail is working.
+        $otp = (string) rand(100000, 999999);
+        $user->otp_code = $otp;
+        $user->otp_expires_at = now()->addMinutes(15);
+        $user->save();
+
+        try {
+            Mail::send('emails.otp', ['name' => $user->name, 'otp' => $otp], function ($mail) use ($user) {
+                $mail->from(website_info()->mail_from, website_info()->title)
+                    ->to($user->email, $user->name)
+                    ->subject('Verify your email - ' . website_info()->title);
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Registration OTP mail failed: ' . $e->getMessage());
+            $user->delete();
+            $website = Website::latest()->first();
+            $msg = 'দুঃখিত, ভেরিফিকেশন মেইল এই মুহূর্তে পাঠানো যাচ্ছে না। একটু পর আবার রেজিস্ট্রেশন করার চেষ্টা করুন।';
+            return view('auth.register', ['code' => $request->referral, 'msg' => $msg]);
+        }
+
+        return redirect()->route('otp.verify', ['email' => $user->email]);
+    }
+
+    public function showOtpForm(Request $request)
+    {
+        return view('auth.verify-otp', ['email' => $request->query('email')]);
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !$user->otp_code || $user->otp_code !== trim($request->otp) || now()->greaterThan($user->otp_expires_at)) {
+            return back()->withErrors(['otp' => 'ভুল অথবা মেয়াদোত্তীর্ণ OTP। আবার চেষ্টা করুন।'])->withInput();
+        }
+
+        $user->email_verified_at = now();
+        $user->otp_code = null;
+        $user->otp_expires_at = null;
+        $user->save();
+
+        return redirect()->route('login')->with('message', 'Email verified successfully! Please login.');
     }
 
     public function device_validation_error()
