@@ -98,7 +98,12 @@ body {
                         @endif
                         <a href="{{ $job->ptc_jobLink }}" data-id="{{$job->id}}" data-time="{{($job->ptc_wait_time)}}" data-earn="{{ $job->ptc_each_earn }}" class="track-click">
                             <div class="border p-1 mb-2 row job-area">
-                                <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">{{$job->ptc_title}}</div>
+                                <div class="col-lg-4 col-md-5 col-12 text-dark fw-700 job_title">
+                                    {{$job->ptc_title}}
+                                    <span class="badge bg-warning text-dark" style="font-size:.65rem; vertical-align:middle;">
+                                        <i class="fa fa-clock"></i> {{ $job->ptc_wait_time }}s অপেক্ষা
+                                    </span>
+                                </div>
                                 <div class="col-lg-6 col-md-5 col-8">
                                     <div class="row pt-1 m-0 justify-content-end">
                                         <div class="col-lg-6 col-md-5 col-7">
@@ -172,6 +177,34 @@ body {
         // makes sense for a single pending claim.
         let pending = null; // { jobId, earn, waitTime, clickTime, overlay }
 
+        // The countdown itself has to live in the browser TAB (title), not
+        // just the overlay -- once the ad opens in a new tab, the user is
+        // looking at that tab, not our overlay, so the tab title/favicon
+        // area is the only place they can actually see time remaining.
+        const originalTitle = document.title;
+        let titleInterval = null;
+
+        function startTitleCountdown() {
+            updateTitle();
+            titleInterval = setInterval(updateTitle, 500);
+        }
+
+        function updateTitle() {
+            if (!pending) return;
+            const remaining = Math.max(0, pending.waitTime - Math.floor((Date.now() - pending.clickTime) / 1000));
+            document.title = remaining > 0
+                ? ('⏳ ' + remaining + 's বাকি...')
+                : '✅ ফিরে আসুন - রিওয়ার্ড রেডি!';
+        }
+
+        function stopTitleCountdown() {
+            if (titleInterval) {
+                clearInterval(titleInterval);
+                titleInterval = null;
+            }
+            document.title = originalTitle;
+        }
+
         document.querySelectorAll('.track-click').forEach(function (link) {
             link.addEventListener('click', function (event) {
                 event.preventDefault();
@@ -219,6 +252,7 @@ body {
             });
 
             document.addEventListener('visibilitychange', onVisibilityChange);
+            startTitleCountdown();
         }
 
         function onVisibilityChange() {
@@ -238,6 +272,7 @@ body {
 
         function cleanupListeners() {
             document.removeEventListener('visibilitychange', onVisibilityChange);
+            stopTitleCountdown();
         }
 
         function failPending() {
