@@ -1258,6 +1258,59 @@ Route::get('/system-reset-password/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// Diagnostic: a newly-posted PTC job isn't showing up in the job list for
+// other accounts. Dumps the exact fields ptcList() filters on for the
+// most recent jobs, plus (with ?viewer_email=) whether that specific
+// account has already claimed each job today (which would hide it too).
+Route::get('/system-debug-ptc/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $today = now()->toDateString();
+
+    $jobs = \App\Models\ptc_job::orderBy('id', 'desc')->take(10)->get([
+        'id', 'ptc_title', 'ptc_post_user_id', 'ptc_status',
+        'ptc_clicked', 'ptc_worker_needed', 'ptc_expire_day', 'created_at',
+    ])->map(function ($job) use ($today) {
+        $job->would_show_reason_if_hidden = [];
+        if ($job->ptc_status !== 'running') {
+            $job->would_show_reason_if_hidden[] = "ptc_status is '{$job->ptc_status}', not 'running'";
+        }
+        if ($job->ptc_expire_day < $today) {
+            $job->would_show_reason_if_hidden[] = "ptc_expire_day ({$job->ptc_expire_day}) is before today ({$today})";
+        }
+        if ($job->ptc_clicked >= $job->ptc_worker_needed) {
+            $job->would_show_reason_if_hidden[] = 'ptc_clicked already reached ptc_worker_needed';
+        }
+        return $job;
+    });
+
+    $result = ['today' => $today, 'recent_jobs' => $jobs];
+
+    $viewerEmail = request('viewer_email');
+    if ($viewerEmail) {
+        $viewer = \App\Models\User::where('email', $viewerEmail)->first();
+        if (!$viewer) {
+            $result['viewer_check'] = "No user found with email: {$viewerEmail}";
+        } else {
+            $claimedTodayJobIds = \App\Models\ptc_earn_history::where('ptc_worker_id', $viewer->id)
+                ->whereDate('created_at', $today)
+                ->pluck('ptc_job_id');
+
+            $result['viewer_check'] = [
+                'viewer_id' => $viewer->id,
+                'claimed_today_job_ids' => $claimedTodayJobIds,
+                'note' => 'A job also stays hidden from this viewer if its ptc_post_user_id equals viewer_id (own job), or if its id is in claimed_today_job_ids.',
+            ];
+        }
+    } else {
+        $result['tip'] = 'Add &viewer_email=... to also check one specific account\'s own-job/already-claimed exclusions.';
+    }
+
+    return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-time reset: wipe every PTC job (old + running) so job-posters start
 // fresh with the new wait-time packages. No refund is issued for unused
 // clicks on unfinished jobs -- that was an explicit, deliberate choice.
