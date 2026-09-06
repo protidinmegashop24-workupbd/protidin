@@ -213,6 +213,11 @@
                         <textarea name="ad_two_code" class="form-control"  placeholder="Ad Two" rows="2">{{$website->ad_two_code}}</textarea>
                     </div>
 
+                    <div class="form-group col-12">
+                        <label for="ad_blog_code">Blog Sidebar Ad Code</label>
+                        <textarea name="ad_blog_code" class="form-control"  placeholder="Paste your Google AdSense code here to show it on the blog page's right sidebar" rows="4">{{$website->ad_blog_code}}</textarea>
+                    </div>
+
                     <div class="form-group col-lg-12 col-md-12 col-12">
                         <label for="title">Description</label>
                         <textarea name="description" class="form-control"  placeholder="Description" rows="2">{{$website->description}} </textarea>

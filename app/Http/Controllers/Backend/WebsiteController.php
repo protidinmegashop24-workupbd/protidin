@@ -188,6 +188,7 @@ class WebsiteController extends Controller
         $data['marketplace_referral_bonus_percent'] = $request->marketplace_referral_bonus_percent;
         $data['ad_one_code'] = $request->ad_one_code;
         $data['ad_two_code'] = $request->ad_two_code;
+        $data['ad_blog_code'] = $request->ad_blog_code;
         $data['meta_keyword'] = $request->meta_keyword;
         $data['meta_tag'] = $request->meta_tag;
         $data['email'] = $request->email;

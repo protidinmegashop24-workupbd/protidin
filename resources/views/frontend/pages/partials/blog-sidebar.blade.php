@@ -1,6 +1,6 @@
-@if(google_body_ad())
+@if(site_info() && site_info()->ad_blog_code)
     <div class="wu-blog-widget wu-blog-ad-widget">
-        {!! google_body_ad()->code !!}
+        {!! site_info()->ad_blog_code !!}
     </div>
 @endif
 
