@@ -108,7 +108,13 @@
                                 <i class="fa fa-arrow-right" aria-hidden="true"></i>
                             <p>Contact Information</p>
                             </a>
-                        </li>                    
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('admin.google-ad') }}" class="nav-link {{ Route::is('admin.google-ad') ? 'active' : '' }}">
+                                <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                            <p>Google Ads</p>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a href="{{ route('admin.policy') }}" class="nav-link {{ Route::is('admin.policy') ? 'active' : '' }}">
                                 <i class="fa fa-arrow-right" aria-hidden="true"></i>
