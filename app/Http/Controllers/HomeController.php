@@ -119,8 +119,9 @@ class HomeController extends Controller
     {
         $website = Website::latest()->first();
         $blogs = News::where('status', 1)->orderBy('news_date', 'DESC')->orderBy('id', 'DESC')->paginate(9);
+        $recentBlogs = News::where('status', 1)->latest()->take(5)->get();
 
-        return view('frontend.pages.blog-index', compact('website', 'blogs'));
+        return view('frontend.pages.blog-index', compact('website', 'blogs', 'recentBlogs'));
     }
 
     public function blog_details($slug)

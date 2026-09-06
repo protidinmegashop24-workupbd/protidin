@@ -121,6 +121,111 @@
         padding: 60px 20px;
         color: var(--wu-muted);
     }
+
+    /* Sidebar */
+    .wu-blog-sidebar {
+        position: sticky;
+        top: 20px;
+    }
+
+    .wu-blog-widget {
+        background: var(--wu-white);
+        border: 1px solid var(--wu-border);
+        border-radius: 16px;
+        box-shadow: var(--wu-shadow);
+        padding: 18px;
+        margin-bottom: 22px;
+    }
+
+    .wu-blog-ad-widget {
+        text-align: center;
+        overflow: hidden;
+        padding: 12px;
+    }
+
+    .wu-blog-widget-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--wu-text);
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--wu-border);
+    }
+
+    .wu-blog-widget-item {
+        display: flex;
+        gap: 12px;
+        text-decoration: none;
+        margin-bottom: 14px;
+        align-items: center;
+    }
+
+    .wu-blog-widget-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .wu-blog-widget-img {
+        width: 60px;
+        height: 48px;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: #e2e8f0;
+    }
+
+    .wu-blog-widget-item-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--wu-text);
+        line-height: 1.4;
+    }
+
+    .wu-blog-widget-item-date {
+        font-size: 11px;
+        color: var(--wu-muted);
+        margin-top: 4px;
+    }
+
+    .wu-blog-cta-widget {
+        background: linear-gradient(135deg, var(--wu-primary) 0%, var(--wu-primary-dark) 100%);
+        color: #fff;
+    }
+
+    .wu-blog-cta-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .wu-blog-cta-text {
+        font-size: 13px;
+        opacity: .9;
+        line-height: 1.7;
+        margin-bottom: 14px;
+    }
+
+    .wu-blog-cta-btn {
+        display: inline-block;
+        background: #fff;
+        color: var(--wu-primary-dark);
+        font-weight: 700;
+        font-size: 13px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        text-decoration: none;
+    }
+
+    .wu-blog-cta-btn:hover {
+        opacity: .9;
+        color: var(--wu-primary-dark);
+    }
+
+    @media (max-width: 991px) {
+        .wu-blog-sidebar {
+            position: static;
+            margin-top: 30px;
+        }
+    }
 </style>
 @endsection
 
@@ -133,42 +238,52 @@
             <p class="wu-blog-subtitle">আয়, মার্কেটপ্লেস, PTC এবং প্ল্যাটফর্ম সংক্রান্ত সব আপডেট ও গাইড এখানে পাবেন।</p>
         </div>
 
-        @if($blogs->count() > 0)
-            <div class="row">
-                @foreach($blogs as $blog)
-                    <div class="col-lg-4 col-md-6 col-12 mb-4">
-                        <a href="{{ route('blog.details', $blog->slug) }}" class="text-decoration-none">
-                            <div class="wu-blog-card">
-                                @if($blog->feature_image)
-                                    <img src="{{ URL::to($blog->feature_image) }}" class="wu-blog-card-img" alt="{{ $blog->title }}">
-                                @else
-                                    <img src="{{ asset('uploads/site-assets/home-hero.png') }}" class="wu-blog-card-img" alt="{{ $blog->title }}">
-                                @endif
-                                <div class="wu-blog-card-body">
-                                    <div class="wu-blog-card-date">
-                                        <i class="fa fa-calendar"></i> {{ \Carbon\Carbon::parse($blog->news_date)->format('d M Y') }}
+        <div class="row">
+            <div class="col-lg-8 col-12">
+                @if($blogs->count() > 0)
+                    <div class="row">
+                        @foreach($blogs as $blog)
+                            <div class="col-md-6 col-12 mb-4">
+                                <a href="{{ route('blog.details', $blog->slug) }}" class="text-decoration-none">
+                                    <div class="wu-blog-card">
+                                        @if($blog->feature_image)
+                                            <img src="{{ URL::to($blog->feature_image) }}" class="wu-blog-card-img" alt="{{ $blog->title }}">
+                                        @else
+                                            <img src="{{ asset('uploads/site-assets/home-hero.png') }}" class="wu-blog-card-img" alt="{{ $blog->title }}">
+                                        @endif
+                                        <div class="wu-blog-card-body">
+                                            <div class="wu-blog-card-date">
+                                                <i class="fa fa-calendar"></i> {{ \Carbon\Carbon::parse($blog->news_date)->format('d M Y') }}
+                                            </div>
+                                            <div class="wu-blog-card-title">{{ $blog->title }}</div>
+                                            <div class="wu-blog-card-excerpt">
+                                                {{ \Illuminate\Support\Str::limit(strip_tags($blog->details), 100) }}
+                                            </div>
+                                            <span class="wu-blog-read-more">আরও পড়ুন &rarr;</span>
+                                        </div>
                                     </div>
-                                    <div class="wu-blog-card-title">{{ $blog->title }}</div>
-                                    <div class="wu-blog-card-excerpt">
-                                        {{ \Illuminate\Support\Str::limit(strip_tags($blog->details), 110) }}
-                                    </div>
-                                    <span class="wu-blog-read-more">আরও পড়ুন &rarr;</span>
-                                </div>
+                                </a>
                             </div>
-                        </a>
+                        @endforeach
                     </div>
-                @endforeach
+
+                    <div class="d-flex justify-content-center mt-3">
+                        {{ $blogs->links() }}
+                    </div>
+                @else
+                    <div class="wu-blog-empty">
+                        <h4>এখনো কোনো ব্লগ পোস্ট নেই</h4>
+                        <p>শীঘ্রই নতুন পোস্ট আসছে।</p>
+                    </div>
+                @endif
             </div>
 
-            <div class="d-flex justify-content-center mt-3">
-                {{ $blogs->links() }}
+            <div class="col-lg-4 col-12">
+                <div class="wu-blog-sidebar">
+                    @include('frontend.pages.partials.blog-sidebar')
+                </div>
             </div>
-        @else
-            <div class="wu-blog-empty">
-                <h4>এখনো কোনো ব্লগ পোস্ট নেই</h4>
-                <p>শীঘ্রই নতুন পোস্ট আসছে।</p>
-            </div>
-        @endif
+        </div>
     </div>
 </section>
 @endsection

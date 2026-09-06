@@ -23,11 +23,6 @@
         min-height: 70vh;
     }
 
-    .wu-blog-details-wrap {
-        max-width: 900px;
-        margin: 0 auto;
-    }
-
     .wu-blog-details-back {
         display: inline-block;
         margin-bottom: 18px;
@@ -50,7 +45,10 @@
         box-shadow: var(--wu-shadow);
     }
 
-    .wu-blog-details-date {
+    .wu-blog-details-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
         color: var(--wu-muted);
         font-size: 13px;
         margin-bottom: 10px;
@@ -88,42 +86,109 @@
     .wu-blog-details-card img { max-width: 100%; height: auto; border-radius: 12px; }
     .wu-blog-details-card a { color: var(--wu-primary); }
 
-    .wu-blog-recent-title {
-        font-size: 1.2rem;
-        font-weight: 800;
-        color: var(--wu-text);
-        margin: 40px 0 18px;
+    /* Sidebar (shared widget look with blog-index) */
+    .wu-blog-sidebar {
+        position: sticky;
+        top: 20px;
     }
 
-    .wu-blog-recent-item {
-        display: flex;
-        gap: 14px;
+    .wu-blog-widget {
         background: var(--wu-white);
         border: 1px solid var(--wu-border);
-        border-radius: 14px;
+        border-radius: 16px;
+        box-shadow: var(--wu-shadow);
+        padding: 18px;
+        margin-bottom: 22px;
+    }
+
+    .wu-blog-ad-widget {
+        text-align: center;
+        overflow: hidden;
         padding: 12px;
-        margin-bottom: 12px;
+    }
+
+    .wu-blog-widget-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--wu-text);
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--wu-border);
+    }
+
+    .wu-blog-widget-item {
+        display: flex;
+        gap: 12px;
         text-decoration: none;
+        margin-bottom: 14px;
         align-items: center;
     }
 
-    .wu-blog-recent-item:hover {
-        border-color: var(--wu-primary);
+    .wu-blog-widget-item:last-child {
+        margin-bottom: 0;
     }
 
-    .wu-blog-recent-img {
-        width: 70px;
-        height: 55px;
+    .wu-blog-widget-img {
+        width: 60px;
+        height: 48px;
         object-fit: cover;
         border-radius: 8px;
         flex-shrink: 0;
         background: #e2e8f0;
     }
 
-    .wu-blog-recent-name {
-        font-size: 14px;
+    .wu-blog-widget-item-title {
+        font-size: 13px;
         font-weight: 700;
         color: var(--wu-text);
+        line-height: 1.4;
+    }
+
+    .wu-blog-widget-item-date {
+        font-size: 11px;
+        color: var(--wu-muted);
+        margin-top: 4px;
+    }
+
+    .wu-blog-cta-widget {
+        background: linear-gradient(135deg, var(--wu-primary) 0%, var(--wu-primary-dark) 100%);
+        color: #fff;
+    }
+
+    .wu-blog-cta-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .wu-blog-cta-text {
+        font-size: 13px;
+        opacity: .9;
+        line-height: 1.7;
+        margin-bottom: 14px;
+    }
+
+    .wu-blog-cta-btn {
+        display: inline-block;
+        background: #fff;
+        color: var(--wu-primary-dark);
+        font-weight: 700;
+        font-size: 13px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        text-decoration: none;
+    }
+
+    .wu-blog-cta-btn:hover {
+        opacity: .9;
+        color: var(--wu-primary-dark);
+    }
+
+    @media (max-width: 991px) {
+        .wu-blog-sidebar {
+            position: static;
+            margin-top: 30px;
+        }
     }
 
     @media (max-width: 767px) {
@@ -136,33 +201,30 @@
 @section('front-content')
 <section class="wu-blog-details-section">
     <div class="container">
-        <div class="wu-blog-details-wrap">
-            <a href="{{ route('blog.index') }}" class="wu-blog-details-back"><i class="fa fa-arrow-left"></i> সব ব্লগ পোস্ট দেখুন</a>
+        <div class="row">
+            <div class="col-lg-8 col-12">
+                <a href="{{ route('blog.index') }}" class="wu-blog-details-back"><i class="fa fa-arrow-left"></i> সব ব্লগ পোস্ট দেখুন</a>
 
-            @if($blog->feature_image)
-                <img src="{{ URL::to($blog->feature_image) }}" class="wu-blog-details-hero" alt="{{ $blog->title }}">
-            @endif
+                @if($blog->feature_image)
+                    <img src="{{ URL::to($blog->feature_image) }}" class="wu-blog-details-hero" alt="{{ $blog->title }}">
+                @endif
 
-            <div class="wu-blog-details-date"><i class="fa fa-calendar"></i> {{ \Carbon\Carbon::parse($blog->news_date)->format('d M Y') }}</div>
-            <h1 class="wu-blog-details-title">{{ $blog->title }}</h1>
+                <div class="wu-blog-details-meta">
+                    <span><i class="fa fa-calendar"></i> {{ \Carbon\Carbon::parse($blog->news_date)->format('d M Y') }}</span>
+                    <span><i class="fa fa-clock-o"></i> {{ max(1, ceil(str_word_count(strip_tags($blog->details)) / 200)) }} মিনিট পড়ার সময়</span>
+                </div>
+                <h1 class="wu-blog-details-title">{{ $blog->title }}</h1>
 
-            <div class="wu-blog-details-card">
-                {!! $blog->details !!}
+                <div class="wu-blog-details-card">
+                    {!! $blog->details !!}
+                </div>
             </div>
 
-            @if($recentBlogs->count() > 0)
-                <div class="wu-blog-recent-title">আরও পড়ুন</div>
-                @foreach($recentBlogs as $recent)
-                    <a href="{{ route('blog.details', $recent->slug) }}" class="wu-blog-recent-item">
-                        @if($recent->feature_image)
-                            <img src="{{ URL::to($recent->feature_image) }}" class="wu-blog-recent-img" alt="{{ $recent->title }}">
-                        @else
-                            <img src="{{ asset('uploads/site-assets/home-hero.png') }}" class="wu-blog-recent-img" alt="{{ $recent->title }}">
-                        @endif
-                        <span class="wu-blog-recent-name">{{ $recent->title }}</span>
-                    </a>
-                @endforeach
-            @endif
+            <div class="col-lg-4 col-12">
+                <div class="wu-blog-sidebar">
+                    @include('frontend.pages.partials.blog-sidebar')
+                </div>
+            </div>
         </div>
     </div>
 </section>
