@@ -495,7 +495,7 @@
                     </ul>
 
                     <div class="mp-hero-btns">
-                        <a href="https://workupbd.com/blog/" class="mp-btn-primary">
+                        <a href="{{ route('blog.index') }}" class="mp-btn-primary">
                             Learning Marketplace
                         </a>
 
