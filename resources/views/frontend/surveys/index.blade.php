@@ -32,7 +32,7 @@
 
             <div class="col-lg-6 text-center">
                 <div class="sv-hero-img">
-                    <img src="https://workupbd.com/blog/wp-content/uploads/2026/04/survey-imej-mainpage.png" alt="Survey Earning">
+                    <img src="{{ asset('uploads/site-assets/survey-hero.png') }}" alt="Survey Earning">
                 </div>
             </div>
 

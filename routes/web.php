@@ -779,11 +779,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/verify', [VerifyController::class, 'show'])->name('verify.show');
     Route::post('/verify', [VerifyController::class, 'verify'])->name('verify.verify');
 
-    Route::get('/surveys', [\App\Http\Controllers\SurveyController::class, 'index'])->name('surveys.index');
     Route::get('/surveys/{survey}', [\App\Http\Controllers\SurveyController::class, 'show'])->name('surveys.show');
     Route::post('/surveys/{survey}/save', [\App\Http\Controllers\SurveyController::class, 'saveAnswer'])->name('surveys.saveAnswer');
     Route::post('/surveys/{survey}/submit', [\App\Http\Controllers\SurveyController::class, 'submit'])->name('surveys.submit');
 });
+
+// /surveys itself is public, like /marketplace -- guests see the marketing
+// landing page (frontend.surveys.index) instead of being redirected to
+// login; logged-in users get the real survey list from SurveyController.
+Route::get('/surveys', function () {
+    if (!auth()->check()) {
+        return view('frontend.surveys.index');
+    }
+
+    return app(\App\Http\Controllers\SurveyController::class)->index();
+})->name('surveys.index');
 
 /*
 |--------------------------------------------------------------------------
