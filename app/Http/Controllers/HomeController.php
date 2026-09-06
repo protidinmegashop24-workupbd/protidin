@@ -8,6 +8,7 @@ use App\Models\Admin\Category;
 use App\Models\Admin\Client;
 use App\Models\Admin\ContactUsText;
 use App\Models\Admin\HeavyEquipment;
+use App\Models\Admin\News;
 use App\Models\Admin\PhotoGallery;
 use App\Models\Admin\ProjectOverview;
 use App\Models\Admin\Service;
@@ -112,6 +113,23 @@ class HomeController extends Controller
         $policy = Policy::where('slug', $slug)->first();
 
         return view('frontend.pages.policy-details', compact('website', 'policy'));
+    }
+
+    public function blog_index()
+    {
+        $website = Website::latest()->first();
+        $blogs = News::where('status', 1)->orderBy('news_date', 'DESC')->orderBy('id', 'DESC')->paginate(9);
+
+        return view('frontend.pages.blog-index', compact('website', 'blogs'));
+    }
+
+    public function blog_details($slug)
+    {
+        $website = Website::latest()->first();
+        $blog = News::where('slug', $slug)->where('status', 1)->firstOrFail();
+        $recentBlogs = News::where('status', 1)->where('id', '!=', $blog->id)->latest()->take(4)->get();
+
+        return view('frontend.pages.blog-details', compact('website', 'blog', 'recentBlogs'));
     }
 
     public function photo_gallery()

@@ -12,6 +12,7 @@ use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\LotteryController;
 use App\Http\Controllers\Backend\ServiceItemController;
 use App\Http\Controllers\Backend\PolicyController;
+use App\Http\Controllers\Backend\BlogController;
 use App\Http\Controllers\Backend\UserVerifyDocumentController;
 use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\SubCategoryController;
@@ -116,6 +117,8 @@ Route::get('/about', [HomeController::class, 'about_us'])->name('about-us');
 Route::get('/service', [HomeController::class, 'service'])->name('service');
 Route::get('/service/{slug}', [HomeController::class, 'service_details'])->name('service_details');
 Route::get('/policy-details/{slug}', [HomeController::class, 'policy_details'])->name('policy-details');
+Route::get('/blog', [HomeController::class, 'blog_index'])->name('blog.index');
+Route::get('/blog/{slug}', [HomeController::class, 'blog_details'])->name('blog.details');
 Route::get('/photo-gallery', [HomeController::class, 'photo_gallery'])->name('photo-gallery');
 Route::get('/contact', [HomeController::class, 'contact_us'])->name('contact-us');
 Route::post('/contact-message', [ContactMessageController::class, 'store'])->name('contact_message.send');
@@ -249,6 +252,11 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::post('policy-store', [PolicyController::class, 'store'])->name('policy.store');
     Route::post('policy-update-{id}', [PolicyController::class, 'update'])->name('policy.update');
     Route::get('policy-delete-{id}', [PolicyController::class, 'destroy'])->name('policy.delete');
+
+    Route::get('blog', [BlogController::class, 'index'])->name('blog');
+    Route::post('blog-store', [BlogController::class, 'store'])->name('blog.store');
+    Route::post('blog-update-{id}', [BlogController::class, 'update'])->name('blog.update');
+    Route::get('blog-delete-{id}', [BlogController::class, 'destroy'])->name('blog.delete');
 
     Route::get('service', [ServiceController::class, 'index'])->name('service');
     Route::post('service-store', [ServiceController::class, 'store'])->name('service.store');

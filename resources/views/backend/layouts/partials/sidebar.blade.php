@@ -36,6 +36,13 @@
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a href="{{ route('admin.blog') }}" class="nav-link {{ Route::is('admin.blog') ? 'active' : '' }}">
+                    <i class="nav-icon fa fa-newspaper-o"></i>
+                    <p> Blog </p>
+                </a>
+            </li>
+
             {{-- <li class="nav-header">User & Area Manage</li> --}}
             <li class="nav-item has-treeview {{ Route::is('admin.kyc-user-unapprove') || Route::is('admin.kyc-user-list') || Route::is('admin.kyc-verify-check') || Route::is('admin.role') || Route::is('admin.user') || Route::is('admin.duplicate-users') || Route::is('admin.user.edit') ? 'menu-open' : '' }}">
                 <a href="#" class="nav-link">
