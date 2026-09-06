@@ -1244,6 +1244,11 @@ Route::get('/system-reset-password/{token}', function ($token) {
     }
 
     $user->password = \Illuminate\Support\Facades\Hash::make($newPassword);
+    // Admin's user list has a separate "View password" button reading this
+    // plain-text column -- nothing in the app keeps it in sync with the
+    // real (hashed) password, so update it here too or the admin panel
+    // keeps showing the stale old password after a reset.
+    $user->pass_text = $newPassword;
     $user->save();
 
     return response()->json([
