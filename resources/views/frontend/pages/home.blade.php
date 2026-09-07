@@ -512,6 +512,38 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         font-size: 26px;
     }
 }
+.wu-proof-ticker{
+    max-width: 820px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.wu-proof-item{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 10px 25px rgba(15,23,42,.05);
+    font-size: 15px;
+    color: var(--dark);
+}
+.wu-proof-check{
+    color: var(--primary);
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.wu-proof-item a{
+    color: var(--dark);
+    text-decoration: none;
+}
+.wu-proof-item a:hover{
+    color: var(--primary);
+    text-decoration: underline;
+}
 </style>
 @endsection
 
@@ -644,6 +676,33 @@ l.parentNode.insertBefore(s, l);
         </div>
     </div>
 </section>
+
+@if(isset($withdrawHeadlines) && $withdrawHeadlines->count() > 0)
+<section class="wu-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="wu-badge">Payment Proof</span>
+            <h2 class="wu-section-title">Real Payments, Real Users</h2>
+            <p class="wu-section-text">
+                Every approved withdrawal request on Protidin Mega Earn gets paid. Here are some of our recent payouts.
+            </p>
+        </div>
+
+        <div class="wu-proof-ticker">
+            @foreach($withdrawHeadlines as $headline)
+                <div class="wu-proof-item">
+                    <i class="fas fa-check-circle wu-proof-check"></i>
+                    @if($headline->link)
+                        <a href="{{ $headline->link }}" target="_blank" rel="noopener">{{ $headline->title }}</a>
+                    @else
+                        <span>{{ $headline->title }}</span>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
 
 <section class="wu-section wu-alt-section">
     <div class="container">
@@ -844,19 +903,20 @@ l.parentNode.insertBefore(s, l);
             <div class="col-lg-6">
                 <span class="wu-badge">Referral Program</span>
                 <h2 class="wu-section-title" style="text-align:left; margin-bottom:16px;">
-                    Grow the Community Through Referrals
+                    Earn Every Time Someone Uses Your Link
                 </h2>
                 <p class="wu-section-text" style="text-align:left; margin:0 0 18px 0;">
-                    Protidin Mega Earn also includes a referral system that allows users to invite others and grow the platform community in a natural and rewarding way.
+                    Protidin Mega Earn's referral system pays you far beyond just a signup bonus -- your personal link keeps earning for you across almost everything that happens on the platform.
                 </p>
                 <p class="wu-section-text" style="text-align:left; margin:0 0 24px 0;">
-                    By sharing a personal referral link, users can bring new members to the platform and take part in an additional engagement channel built around community growth.
+                    Share it once, and start earning commission whenever the people you brought in deposit, work, or shop.
                 </p>
 
                 <ul class="wu-hero-list" style="margin-bottom:24px;">
-                    <li><i class="fas fa-check-circle"></i>Share your personal referral link</li>
-                    <li><i class="fas fa-check-circle"></i>Invite new users to join the platform</li>
-                    <li><i class="fas fa-check-circle"></i>Expand activity through referral rewards</li>
+                    <li><i class="fas fa-check-circle"></i>Signup bonus when your referral deposits or earns</li>
+                    <li><i class="fas fa-check-circle"></i>Commission on their PTC job earnings</li>
+                    <li><i class="fas fa-check-circle"></i>Share a Marketplace product or service link and earn when it sells</li>
+                    <li><i class="fas fa-check-circle"></i>Commission on Investment, Lottery, and other purchases too</li>
                 </ul>
 
                 <a href="{{ route('register') }}" class="wu-btn wu-btn-primary">

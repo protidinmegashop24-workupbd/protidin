@@ -66,9 +66,10 @@ class HomeController extends Controller
         $services = Service::orderBy('id', 'DESC')->latest()->limit('6')->get();
         $p_categorys = Category::orderBy('id', 'DESC')->latest()->get();
         $clients = Client::orderBy('id', 'DESC')->latest()->get();
-        $jobs = Job::where('status', 1)->where('pause', 0)->where('worker_need', '!=', 'worker_confirmed')->orderBy('created_at', 'DESC')->limit(6)->get();
+        $jobs = Job::where('status', 1)->where('pause', 0)->whereColumn('worker_need', '!=', 'worker_confirmed')->orderBy('created_at', 'DESC')->limit(6)->get();
+        $withdrawHeadlines = \App\Models\WithdrawHeadline::latest()->take(8)->get();
 
-        return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs'));
+        return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs', 'withdrawHeadlines'));
     }
 
     public function refreshCaptcha()
