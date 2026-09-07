@@ -513,8 +513,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     }
 }
 .wu-proof-ticker{
-    max-width: 820px;
-    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -680,26 +678,39 @@ l.parentNode.insertBefore(s, l);
 @if(isset($recentPayouts) && $recentPayouts->count() > 0)
 <section class="wu-section">
     <div class="container">
-        <div class="text-center mb-5">
-            <span class="wu-badge">Payment Proof</span>
-            <h2 class="wu-section-title">Real Payments, Real Users</h2>
-            <p class="wu-section-text">
-                A live look at our most recently approved withdrawals -- updates automatically as new ones are paid.
-            </p>
-        </div>
-
-        <div class="wu-proof-ticker">
-            @foreach($recentPayouts as $payout)
-                <div class="wu-proof-item">
-                    <i class="fas fa-check-circle wu-proof-check"></i>
-                    <span>
-                        <strong>{{ mask_name($payout->name) }}</strong>
-                        withdrew <strong>${{ number_format($payout->amount - $payout->charge, 2) }}</strong>
-                        via {{ $payout->account_type }} ({{ mask_account_no($payout->account_no) }})
-                        &middot; {{ \Carbon\Carbon::parse($payout->updated_at)->diffForHumans() }}
-                    </span>
+        <div class="row align-items-center g-4">
+            <div class="col-lg-5">
+                <div class="wu-hero-image-wrap">
+                    <div class="wu-hero-card">
+                        <img src="{{ asset('uploads/site-assets/payment-proof-hero.png') }}" alt="Payment Proof" loading="lazy">
+                    </div>
                 </div>
-            @endforeach
+            </div>
+
+            <div class="col-lg-7">
+                <span class="wu-badge">Payment Proof</span>
+                <h2 class="wu-section-title" style="text-align:left; margin-bottom:16px;">Real Payments, Real Users</h2>
+                <p class="wu-section-text" style="text-align:left; margin:0 0 12px 0;">
+                    A live look at our most recently approved withdrawals -- updates automatically as new ones are paid.
+                </p>
+                <p class="wu-section-text" style="text-align:left; margin:0 0 24px 0;">
+                    মাত্র <strong>$1.5 (৳150)</strong> হলেই এই সাইট থেকে বিকাশ ও নগদের মাধ্যমে পেমেন্ট নিতে পারবেন।
+                </p>
+
+                <div class="wu-proof-ticker" style="margin:0;">
+                    @foreach($recentPayouts as $payout)
+                        <div class="wu-proof-item">
+                            <i class="fas fa-check-circle wu-proof-check"></i>
+                            <span>
+                                <strong>{{ mask_name($payout->name) }}</strong>
+                                withdrew <strong>${{ number_format($payout->amount - $payout->charge, 2) }}</strong>
+                                via {{ $payout->account_type }} ({{ mask_account_no($payout->account_no) }})
+                                &middot; {{ \Carbon\Carbon::parse($payout->updated_at)->diffForHumans() }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -896,7 +907,7 @@ l.parentNode.insertBefore(s, l);
             <div class="col-lg-6">
                 <div class="wu-hero-image-wrap">
                     <div class="wu-hero-card">
-                        <img src="https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80" alt="Referral Program" loading="lazy">
+                        <img src="{{ asset('uploads/site-assets/referral-hero.png') }}" alt="Referral Program" loading="lazy">
                     </div>
                 </div>
             </div>
