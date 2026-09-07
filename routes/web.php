@@ -1341,3 +1341,31 @@ Route::get('/system-ptc-reset/{token}', function ($token) {
         'ptc_jobs_remaining' => \App\Models\ptc_job::count(),
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Diagnostic: home page's "Payment Proof" section stays hidden even after
+// approving a withdrawal. Runs the EXACT same query HomeController@index
+// uses for $recentPayouts, plus raw counts, to tell apart a data problem
+// from a "the updated HomeController.php was never actually deployed"
+// problem.
+Route::get('/system-debug-payment-proof/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $totalWithdraws = \Illuminate\Support\Facades\DB::table('withdraws')->count();
+    $approvedCount = \Illuminate\Support\Facades\DB::table('withdraws')->where('approval', 1)->count();
+
+    $recentPayouts = \Illuminate\Support\Facades\DB::table('withdraws')
+        ->join('users', 'users.id', '=', 'withdraws.user_id')
+        ->where('withdraws.approval', 1)
+        ->orderBy('withdraws.id', 'desc')
+        ->take(8)
+        ->get(['withdraws.id', 'withdraws.user_id', 'withdraws.amount', 'withdraws.charge', 'withdraws.account_type', 'withdraws.account_no', 'withdraws.approval', 'withdraws.updated_at', 'users.name']);
+
+    return response()->json([
+        'total_withdraw_rows' => $totalWithdraws,
+        'approved_withdraw_rows' => $approvedCount,
+        'recent_payouts_query_result' => $recentPayouts,
+        'note' => 'If approved_withdraw_rows is 0, no withdrawal has approval=1 in the database yet -- approve one and recheck. If it is 1+ but recent_payouts_query_result is empty, the join to users is failing (bad user_id). If recent_payouts_query_result has data but the home page still shows nothing, the live HomeController.php was not actually updated with the $recentPayouts code -- re-deploy that file.',
+    ], 200, [], JSON_PRETTY_PRINT);
+});
