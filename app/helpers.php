@@ -932,6 +932,40 @@ function latest_notification($user_id){
     return UserMessage::where('user_id', $user_id)->where('seen', 0)->latest()->get();
 }
 
+// For public "payment proof" displays -- shows enough of a real name to
+// feel genuine without publishing someone's full identity, e.g.
+// "Karim Hossain" -> "Karim H.", or a single-word name "Karim" -> "Kar***".
+function mask_name($name){
+    $name = trim((string) $name);
+    if ($name === '') {
+        return 'A User';
+    }
+
+    $parts = preg_split('/\s+/', $name);
+    if (count($parts) > 1) {
+        return $parts[0] . ' ' . mb_substr(end($parts), 0, 1) . '.';
+    }
+
+    if (mb_strlen($name) <= 3) {
+        return mb_substr($name, 0, 1) . str_repeat('*', max(1, mb_strlen($name) - 1));
+    }
+
+    return mb_substr($name, 0, 3) . '***';
+}
+
+// Masks all but the last few digits of an account/phone number for the
+// same public "payment proof" display, e.g. "01711223344" -> "*******344".
+function mask_account_no($number, $showLast = 3){
+    $number = (string) $number;
+    $length = mb_strlen($number);
+
+    if ($length <= $showLast) {
+        return str_repeat('*', $length);
+    }
+
+    return str_repeat('*', $length - $showLast) . mb_substr($number, -$showLast);
+}
+
 function dollar_rate(){
     return DollarRate::latest()->first();
 }

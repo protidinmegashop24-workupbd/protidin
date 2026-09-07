@@ -67,9 +67,17 @@ class HomeController extends Controller
         $p_categorys = Category::orderBy('id', 'DESC')->latest()->get();
         $clients = Client::orderBy('id', 'DESC')->latest()->get();
         $jobs = Job::where('status', 1)->where('pause', 0)->whereColumn('worker_need', '!=', 'worker_confirmed')->orderBy('created_at', 'DESC')->limit(6)->get();
-        $withdrawHeadlines = \App\Models\WithdrawHeadline::latest()->take(8)->get();
 
-        return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs', 'withdrawHeadlines'));
+        // Live "payment proof" feed -- every approved withdrawal shows up
+        // here automatically, newest first, name/number masked for privacy.
+        $recentPayouts = \Illuminate\Support\Facades\DB::table('withdraws')
+            ->join('users', 'users.id', '=', 'withdraws.user_id')
+            ->where('withdraws.approval', 1)
+            ->orderBy('withdraws.id', 'desc')
+            ->take(8)
+            ->get(['withdraws.amount', 'withdraws.charge', 'withdraws.account_type', 'withdraws.account_no', 'withdraws.updated_at', 'users.name']);
+
+        return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs', 'recentPayouts'));
     }
 
     public function refreshCaptcha()

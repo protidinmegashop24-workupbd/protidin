@@ -677,26 +677,27 @@ l.parentNode.insertBefore(s, l);
     </div>
 </section>
 
-@if(isset($withdrawHeadlines) && $withdrawHeadlines->count() > 0)
+@if(isset($recentPayouts) && $recentPayouts->count() > 0)
 <section class="wu-section">
     <div class="container">
         <div class="text-center mb-5">
             <span class="wu-badge">Payment Proof</span>
             <h2 class="wu-section-title">Real Payments, Real Users</h2>
             <p class="wu-section-text">
-                Every approved withdrawal request on Protidin Mega Earn gets paid. Here are some of our recent payouts.
+                A live look at our most recently approved withdrawals -- updates automatically as new ones are paid.
             </p>
         </div>
 
         <div class="wu-proof-ticker">
-            @foreach($withdrawHeadlines as $headline)
+            @foreach($recentPayouts as $payout)
                 <div class="wu-proof-item">
                     <i class="fas fa-check-circle wu-proof-check"></i>
-                    @if($headline->link)
-                        <a href="{{ $headline->link }}" target="_blank" rel="noopener">{{ $headline->title }}</a>
-                    @else
-                        <span>{{ $headline->title }}</span>
-                    @endif
+                    <span>
+                        <strong>{{ mask_name($payout->name) }}</strong>
+                        withdrew <strong>${{ number_format($payout->amount - $payout->charge, 2) }}</strong>
+                        via {{ $payout->account_type }} ({{ mask_account_no($payout->account_no) }})
+                        &middot; {{ \Carbon\Carbon::parse($payout->updated_at)->diffForHumans() }}
+                    </span>
                 </div>
             @endforeach
         </div>
