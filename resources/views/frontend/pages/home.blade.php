@@ -1,10 +1,6 @@
 @extends('frontend.layouts.master')
 
 @section('css')
-    <meta name="monetag" content="590ea0442b3f6eaf6b40437e8a6ee8d5">
-    <meta name="7072e592928aec912817a3ff684e03124aa0853c" content="7072e592928aec912817a3ff684e03124aa0853c" />
-    <script src="https://5gvci.com/act/files/tag.min.js?z=11563748" data-cfasync="false" async></script>
-    <meta name='admaven-placement' content=BqHkGrdsG>
     <meta name="google-adsense-account" content="ca-pub-6314276342535503">
     <meta name="subject" content="Modern micro job and freelance services marketplace">
     <meta name="title" content="Home - {{ $website->title ?? 'Protidin Mega Earn' }}">
@@ -12,7 +8,6 @@
     <meta name="keywords" content="{{ $website->meta_keyword ?? 'micro jobs, freelance services, protidin mega earn, online tasks, referral rewards, survey tasks,learning online earning' }}">
     <meta name="author" content="Protidin Mega Earn">
     <meta name="copyright" content="Protidin Mega Earn">
-    <script>(function(s){s.dataset.zone='11563878',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
     <link rel="canonical" href="{{ url('/') }}" />
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

