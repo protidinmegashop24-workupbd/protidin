@@ -298,6 +298,14 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('/surveys/create', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'create'])->name('surveys.create');
     Route::post('/surveys', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'store'])->name('surveys.store');
     Route::delete('/surveys/{survey}', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'destroy'])->name('surveys.destroy');
+
+    // Survey Question Bank
+    Route::get('/question-bank', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'index'])->name('question-bank.index');
+    Route::get('/question-bank/create', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'create'])->name('question-bank.create');
+    Route::post('/question-bank', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'store'])->name('question-bank.store');
+    Route::get('/question-bank/{questionBank}/edit', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'edit'])->name('question-bank.edit');
+    Route::put('/question-bank/{questionBank}', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'update'])->name('question-bank.update');
+    Route::delete('/question-bank/{questionBank}', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'destroy'])->name('question-bank.destroy');
 });
 
 /*

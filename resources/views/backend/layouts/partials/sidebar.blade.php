@@ -604,6 +604,12 @@
                 <p>Survey Manage</p>
                 </a>
             </li>
+            <li class="nav-item has-treeview">
+              <a class="nav-link" href="/super-admin/question-bank">
+                <i class="nav-icon fas fa-list-ul"></i>
+                <p>Question Bank</p>
+                </a>
+            </li>
             <li>
     <a href="{{ route('admin.wu-marketplace-services') }}">
         <i class="fa fa-briefcase"></i>
