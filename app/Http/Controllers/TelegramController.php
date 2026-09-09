@@ -18,6 +18,9 @@ class TelegramController extends Controller
         return env('TELEGRAM_BOT_TOKEN');
     }
 
+    private const CHANNEL_URL = 'https://t.me/earnsocials';
+    private const GROUP_URL = 'https://t.me/WorkUpB';
+
     public function webhook(Request $request, $secret)
     {
         $expected = $this->webhookSecret();
@@ -47,20 +50,32 @@ class TelegramController extends Controller
                 "আপনি কি অনলাইনে কাজ করে আয় করতে চান? 🚀\n\n".
                 "Protidin Mega Earn-এর সাথে যুক্ত হয়ে বিভিন্ন earning opportunity, online work এবং useful resources সম্পর্কে জানুন।\n\n".
                 "👇 এখনই শুরু করুন!",
-                $registerUrl
+                [
+                    [['text' => '✅ Register Now', 'url' => $registerUrl]],
+                    [
+                        ['text' => '📢 Channel', 'url' => self::CHANNEL_URL],
+                        ['text' => '👥 Group', 'url' => self::GROUP_URL],
+                    ],
+                ]
             );
         } else {
             $this->sendMessage(
                 $chatId,
                 'অ্যাকাউন্ট খুলতে /start লিখে পাঠান, অথবা নিচের বাটনে ক্লিক করুন।',
-                url('/register')
+                [
+                    [['text' => '✅ Register Now', 'url' => url('/register')]],
+                    [
+                        ['text' => '📢 Channel', 'url' => self::CHANNEL_URL],
+                        ['text' => '👥 Group', 'url' => self::GROUP_URL],
+                    ],
+                ]
             );
         }
 
         return response()->json(['ok' => true]);
     }
 
-    private function sendMessage($chatId, $text, $url)
+    private function sendMessage($chatId, $text, array $buttonRows)
     {
         $token = $this->botToken();
         if (!$token) {
@@ -71,9 +86,7 @@ class TelegramController extends Controller
             'chat_id' => $chatId,
             'text' => $text,
             'reply_markup' => json_encode([
-                'inline_keyboard' => [[
-                    ['text' => '✅ Register Now', 'url' => $url],
-                ]],
+                'inline_keyboard' => $buttonRows,
             ]),
         ]);
     }
