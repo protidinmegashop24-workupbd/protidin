@@ -43,7 +43,10 @@ class TelegramController extends Controller
 
             $this->sendMessage(
                 $chatId,
-                "স্বাগতম Protidin Mega Shop-এ! 🎉\n\nনিচের বাটনে ক্লিক করে ফ্রি অ্যাকাউন্ট খুলে আজই ইনকাম শুরু করুন।",
+                "🎉 Welcome to Protidin Mega Earn!\n\n".
+                "আপনি কি অনলাইনে কাজ করে আয় করতে চান? 🚀\n\n".
+                "Protidin Mega Earn-এর সাথে যুক্ত হয়ে বিভিন্ন earning opportunity, online work এবং useful resources সম্পর্কে জানুন।\n\n".
+                "👇 এখনই শুরু করুন!",
                 $registerUrl
             );
         } else {
