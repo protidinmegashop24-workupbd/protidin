@@ -1413,3 +1413,33 @@ Route::get('/system-debug-ad-fields/{token}', function ($token) {
 
     return response()->json($result, 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-time setup: registers the Telegram bot's webhook URL with Telegram.
+// Visit this once in the browser after TELEGRAM_BOT_TOKEN and
+// TELEGRAM_WEBHOOK_SECRET are set in .env. Safe to visit again any time to
+// re-check / re-register.
+Route::get('/system-telegram-set-webhook/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $botToken = env('TELEGRAM_BOT_TOKEN');
+    $webhookSecret = env('TELEGRAM_WEBHOOK_SECRET');
+
+    if (!$botToken || !$webhookSecret) {
+        return response()->json([
+            'error' => 'TELEGRAM_BOT_TOKEN or TELEGRAM_WEBHOOK_SECRET missing in .env',
+        ], 500, [], JSON_PRETTY_PRINT);
+    }
+
+    $webhookUrl = url('/api/telegram-webhook/' . $webhookSecret);
+
+    $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/setWebhook", [
+        'url' => $webhookUrl,
+    ]);
+
+    return response()->json([
+        'webhook_url_registered' => $webhookUrl,
+        'telegram_response' => $response->json(),
+    ], 200, [], JSON_PRETTY_PRINT);
+});
