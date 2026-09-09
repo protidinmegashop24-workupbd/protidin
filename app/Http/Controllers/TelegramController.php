@@ -8,9 +8,9 @@ use Illuminate\Support\Str;
 
 class TelegramController extends Controller
 {
-    private const CHANNEL_USERNAME = '@earnsocials';
+    private const CHANNEL_USERNAME = '@WorkUpBD24';
     private const GROUP_USERNAME = '@WorkUpB';
-    private const CHANNEL_URL = 'https://t.me/earnsocials';
+    private const CHANNEL_URL = 'https://t.me/WorkUpBD24';
     private const GROUP_URL = 'https://t.me/WorkUpB';
 
     private function webhookSecret()
