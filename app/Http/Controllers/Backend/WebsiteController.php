@@ -209,13 +209,16 @@ class WebsiteController extends Controller
         $data['whatsapp'] = $request->whatsapp;
         $data['teligram'] = $request->teligram;
 
-        $update_result = DB::table('websites')->where('id', $id)->update($data);
+        // Note: DB::table()->update() returns the number of ROWS CHANGED, not
+        // whether the query ran. If the submitted values are identical to what
+        // is already saved (e.g. re-saving the form with no real changes, or
+        // saving an already-empty field as empty), MySQL reports 0 affected
+        // rows even though nothing is wrong. A real failure would throw a
+        // QueryException instead of reaching this line, so treat getting here
+        // as success regardless of the affected-row count.
+        DB::table('websites')->where('id', $id)->update($data);
 
-        if ($update_result) {
-            return redirect()->back()->with('message', 'Website info upadated Successfully!');
-        } else {
-            return redirect()->back()->with('error', 'Website info dose not upadated Successfully!');
-        }
+        return redirect()->back()->with('message', 'Website info updated Successfully!');
     }
 
     /**
