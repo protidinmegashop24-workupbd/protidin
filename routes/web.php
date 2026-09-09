@@ -1379,3 +1379,37 @@ Route::get('/system-debug-payment-proof/{token}', function ($token) {
         'note' => 'If approved_withdraw_rows is 0, no withdrawal has approval=1 in the database yet -- approve one and recheck. If it is 1+ but recent_payouts_query_result is empty, the join to users is failing (bad user_id). If recent_payouts_query_result has data but the home page still shows nothing, the live HomeController.php was not actually updated with the $recentPayouts code -- re-deploy that file.',
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Diagnostic: Monetag/AdMaven scripts were hardcoded into 4 blade files and
+// removed from all of them, but the site owner reports ads are still
+// showing. Website Settings has separate DB-stored fields ("Ad One Code",
+// "Ad Two Code", "Inside Head Tag Code", "Inside Body Tag Code") meant
+// exactly for pasting third-party ad/analytics scripts -- if the ad
+// network code was pasted there (via the admin panel, not the codebase),
+// removing it from blade files would never touch it. This dumps the
+// current raw content of every such field so we can see exactly what's
+// still being injected and from where.
+Route::get('/system-debug-ad-fields/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $website = \Illuminate\Support\Facades\DB::table('websites')->latest('id')->first();
+
+    if (!$website) {
+        return response()->json(['error' => 'No row found in websites table.'], 404, [], JSON_PRETTY_PRINT);
+    }
+
+    $fields = ['ad_one_code', 'ad_two_code', 'ad_blog_code', 'head_tag_data', 'after_start_body_tag'];
+    $result = [];
+    foreach ($fields as $field) {
+        $value = $website->{$field} ?? null;
+        $result[$field] = [
+            'is_empty' => empty(trim((string) $value)),
+            'length' => strlen((string) $value),
+            'content' => $value,
+        ];
+    }
+
+    return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
