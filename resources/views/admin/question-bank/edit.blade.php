@@ -32,6 +32,8 @@
           <select name="topic" class="form-control" required>
             <option value="general" {{ $question->topic==='general'?'selected':'' }}>General</option>
             <option value="islamic" {{ $question->topic==='islamic'?'selected':'' }}>Islamic</option>
+            <option value="bangladesh_gk" {{ $question->topic==='bangladesh_gk'?'selected':'' }}>Bangladesh GK</option>
+            <option value="sports" {{ $question->topic==='sports'?'selected':'' }}>Sports</option>
           </select>
         </div>
 

@@ -32,6 +32,8 @@
           <select class="form-control" name="topic" required>
             <option value="islamic">Islamic</option>
             <option value="general">General</option>
+            <option value="bangladesh_gk">Bangladesh GK</option>
+            <option value="sports">Sports</option>
           </select>
         </div>
 

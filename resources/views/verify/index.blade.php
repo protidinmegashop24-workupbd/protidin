@@ -10,11 +10,11 @@
 
       @php
         $used = $usedToday ?? (session('usedToday') ?? 0);
-        $left = $leftToday ?? (session('leftToday') ?? 10);
+        $left = $leftToday ?? (session('leftToday') ?? 20);
       @endphp
 
       <div style="font-weight:900;">
-        Verify left today: {{ $left }} <span style="opacity:.85;">(Used: {{ $used }}/10)</span>
+        Verify left today: {{ $left }} <span style="opacity:.85;">(Used: {{ $used }}/20)</span>
       </div>
     </div>
 

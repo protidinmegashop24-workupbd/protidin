@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 class SurveyController extends Controller
 {
     // ✅ Daily verify limit
-    private int $dailyLimit = 10;
+    private int $dailyLimit = 20;
 
     public function index(Request $request)
     {

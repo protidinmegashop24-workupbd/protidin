@@ -22,6 +22,8 @@ class AdminQuestionBankController extends Controller
         $counts = [
             'general' => QuestionBank::where('topic', 'general')->count(),
             'islamic' => QuestionBank::where('topic', 'islamic')->count(),
+            'bangladesh_gk' => QuestionBank::where('topic', 'bangladesh_gk')->count(),
+            'sports' => QuestionBank::where('topic', 'sports')->count(),
         ];
 
         return view('admin.question-bank.index', compact('questions', 'topic', 'counts'));
@@ -70,6 +72,87 @@ class AdminQuestionBankController extends Controller
         return back()->with('success', '✅ Question deleted.');
     }
 
+    public function bulkUploadForm()
+    {
+        return view('admin.question-bank.bulk-upload');
+    }
+
+    /**
+     * CSV columns, in order, no header row needed (a header row is fine
+     * too -- the first row is only skipped if it doesn't look like a
+     * real question row):
+     * topic, question, option1, option2, option3, option4, correct_answer
+     */
+    public function bulkUpload(Request $request)
+    {
+        $request->validate([
+            'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
+        $allowedTopics = ['general', 'islamic', 'bangladesh_gk', 'sports'];
+
+        $handle = fopen($request->file('csv_file')->getRealPath(), 'r');
+        if (!$handle) {
+            return back()->with('error', '❌ CSV ফাইল পড়া যায়নি।');
+        }
+
+        $added = 0;
+        $skipped = [];
+        $rowNum = 0;
+        $first = true;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $rowNum++;
+
+            // Skip a header row like "topic,question,option1,...".
+            if ($first) {
+                $first = false;
+                if (isset($row[0]) && strtolower(trim($row[0])) === 'topic') {
+                    continue;
+                }
+            }
+
+            if (count(array_filter($row, fn ($c) => trim((string) $c) !== '')) === 0) {
+                continue; // blank line
+            }
+
+            $topic = strtolower(trim($row[0] ?? ''));
+            $question = trim($row[1] ?? '');
+            $options = array_values(array_filter(
+                array_map('trim', array_slice($row, 2, 4)),
+                fn ($o) => $o !== ''
+            ));
+            $correct = trim($row[6] ?? '');
+
+            if (!in_array($topic, $allowedTopics, true)) {
+                $skipped[] = "Row {$rowNum}: অজানা topic '{$topic}'";
+                continue;
+            }
+            if ($question === '' || count($options) < 2) {
+                $skipped[] = "Row {$rowNum}: প্রশ্ন বা অপশন অনুপস্থিত";
+                continue;
+            }
+            if (!in_array($correct, $options, true)) {
+                $skipped[] = "Row {$rowNum}: সঠিক উত্তর কোনো অপশনের সাথে মিলছে না";
+                continue;
+            }
+
+            QuestionBank::create([
+                'topic' => $topic,
+                'question' => $question,
+                'options' => $options,
+                'correct_option' => $correct,
+            ]);
+            $added++;
+        }
+
+        fclose($handle);
+
+        return redirect()->route('admin.question-bank.index')
+            ->with('success', "✅ {$added} টা প্রশ্ন যোগ হয়েছে।")
+            ->with('skipped', $skipped);
+    }
+
     /**
      * Validates and normalizes the question form input. Returns the clean
      * data array on success, or a RedirectResponse (with errors) on failure
@@ -78,7 +161,7 @@ class AdminQuestionBankController extends Controller
     private function cleanQuestionInput(Request $request)
     {
         $request->validate([
-            'topic' => 'required|in:general,islamic',
+            'topic' => 'required|in:general,islamic,bangladesh_gk,sports',
             'question' => 'required|string|max:1000',
             'options' => 'required|array|min:2|max:6',
             'options.*' => 'required|string|max:255',

@@ -15,7 +15,7 @@
     <h4 class="mb-0" style="font-weight:900;">Surveys</h4>
 
     <span class="badge rounded-pill bg-primary">
-      Verify left today: {{ $leftToday ?? 10 }} (Used: {{ $usedToday ?? 0 }}/10)
+      Verify left today: {{ $leftToday ?? 20 }} (Used: {{ $usedToday ?? 0 }}/20)
     </span>
   </div>
 

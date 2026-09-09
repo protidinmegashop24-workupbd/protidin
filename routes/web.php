@@ -306,6 +306,8 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('/question-bank/{questionBank}/edit', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'edit'])->name('question-bank.edit');
     Route::put('/question-bank/{questionBank}', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'update'])->name('question-bank.update');
     Route::delete('/question-bank/{questionBank}', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'destroy'])->name('question-bank.destroy');
+    Route::get('/question-bank-bulk-upload', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'bulkUploadForm'])->name('question-bank.bulk-upload');
+    Route::post('/question-bank-bulk-upload', [\App\Http\Controllers\Admin\AdminQuestionBankController::class, 'bulkUpload'])->name('question-bank.bulk-upload.store');
 });
 
 /*

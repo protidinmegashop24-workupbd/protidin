@@ -27,6 +27,8 @@
           <select name="topic" class="form-control" required>
             <option value="general" {{ old('topic')==='general'?'selected':'' }}>General</option>
             <option value="islamic" {{ old('topic')==='islamic'?'selected':'' }}>Islamic</option>
+            <option value="bangladesh_gk" {{ old('topic')==='bangladesh_gk'?'selected':'' }}>Bangladesh GK</option>
+            <option value="sports" {{ old('topic')==='sports'?'selected':'' }}>Sports</option>
           </select>
         </div>
 

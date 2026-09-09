@@ -7,22 +7,31 @@
 
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="mb-0">Question Bank (Admin)</h3>
-    <a href="{{ route('admin.question-bank.create') }}" class="btn btn-primary">+ Add Question</a>
+    <div class="d-flex gap-2">
+      <a href="{{ route('admin.question-bank.bulk-upload') }}" class="btn btn-outline-primary">⬆ Bulk Upload (CSV)</a>
+      <a href="{{ route('admin.question-bank.create') }}" class="btn btn-primary">+ Add Question</a>
+    </div>
   </div>
 
   @if(session('success'))
     <div class="alert alert-success" style="font-weight:900;">{{ session('success') }}</div>
   @endif
 
-  <div class="mb-3 d-flex gap-2">
+  <div class="mb-3 d-flex gap-2 flex-wrap">
     <a href="{{ route('admin.question-bank.index') }}" class="btn btn-sm {{ $topic ? 'btn-outline-dark' : 'btn-dark' }}">
-      All ({{ $counts['general'] + $counts['islamic'] }})
+      All ({{ array_sum($counts) }})
     </a>
     <a href="{{ route('admin.question-bank.index', ['topic' => 'general']) }}" class="btn btn-sm {{ $topic === 'general' ? 'btn-dark' : 'btn-outline-dark' }}">
       General ({{ $counts['general'] }})
     </a>
     <a href="{{ route('admin.question-bank.index', ['topic' => 'islamic']) }}" class="btn btn-sm {{ $topic === 'islamic' ? 'btn-dark' : 'btn-outline-dark' }}">
       Islamic ({{ $counts['islamic'] }})
+    </a>
+    <a href="{{ route('admin.question-bank.index', ['topic' => 'bangladesh_gk']) }}" class="btn btn-sm {{ $topic === 'bangladesh_gk' ? 'btn-dark' : 'btn-outline-dark' }}">
+      Bangladesh GK ({{ $counts['bangladesh_gk'] }})
+    </a>
+    <a href="{{ route('admin.question-bank.index', ['topic' => 'sports']) }}" class="btn btn-sm {{ $topic === 'sports' ? 'btn-dark' : 'btn-outline-dark' }}">
+      Sports ({{ $counts['sports'] }})
     </a>
   </div>
 

@@ -24,7 +24,7 @@ class AdminSurveyController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'reward' => 'required|numeric|min:0.0001',
-            'topic' => 'required|in:islamic,general',
+            'topic' => 'required|in:islamic,general,bangladesh_gk,sports',
             'questions_per_attempt' => 'required|integer|min:5|max:50',
         ]);
 
