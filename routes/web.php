@@ -1443,3 +1443,68 @@ Route::get('/system-telegram-set-webhook/{token}', function ($token) {
         'telegram_response' => $response->json(),
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Shows the effective mail settings the app will actually use to send OTP
+// mail (pulled from the DB via website_info(), same as AppServiceProvider
+// does at boot). Sensitive values are masked.
+Route::get('/system-debug-mail-config/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $mask = function ($value) {
+        $value = (string) $value;
+        if ($value === '') {
+            return '(খালি)';
+        }
+        return substr($value, 0, 2) . str_repeat('*', max(strlen($value) - 2, 3));
+    };
+
+    $website = website_info();
+
+    return response()->json([
+        'mail_transport' => $website->mail_transport ?: '(খালি)',
+        'mail_host' => $website->mail_host ?: '(খালি)',
+        'mail_port' => $website->mail_port ?: '(খালি)',
+        'mail_encryption' => $website->mail_encryption ?: '(খালি)',
+        'mail_user_name' => $mask($website->mail_user_name),
+        'password_set' => !empty($website->pail_password),
+        'mail_from' => $website->mail_from ?: '(খালি)',
+        'effective_config_mail_default' => config('mail.default'),
+        'effective_config_mail_driver' => config('mail.driver'),
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
+// Sends a REAL test OTP-style email through the exact same code path
+// registration uses, so you can confirm mail is actually going out.
+// Visit: /system-debug-mail-test/{token}?email=you@example.com
+Route::get('/system-debug-mail-test/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $email = $request->query('email');
+    if (!$email) {
+        return response()->json(['error' => 'Add ?email=you@example.com to the URL.'], 400, [], JSON_PRETTY_PRINT);
+    }
+
+    $otp = (string) rand(100000, 999999);
+
+    try {
+        \Illuminate\Support\Facades\Mail::send('emails.otp', ['name' => 'Test', 'otp' => $otp], function ($mail) use ($email) {
+            $mail->from(website_info()->mail_from, website_info()->title)
+                ->to($email)
+                ->subject('Test OTP - ' . website_info()->title);
+        });
+    } catch (\Throwable $e) {
+        return response()->json([
+            'sent' => false,
+            'error' => $e->getMessage(),
+        ], 500, [], JSON_PRETTY_PRINT);
+    }
+
+    return response()->json([
+        'sent' => true,
+        'message' => "$email এই ঠিকানায় মেইল পাঠানো হয়েছে, ইনবক্স/স্প্যাম চেক করুন।",
+    ], 200, [], JSON_PRETTY_PRINT);
+});
