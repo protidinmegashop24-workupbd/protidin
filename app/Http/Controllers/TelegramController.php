@@ -39,10 +39,21 @@ class TelegramController extends Controller
         $chatType = $message['chat']['type'] ?? null;
         $text = trim((string) ($message['text'] ?? ''));
 
-        // The bot is an admin in the promo group/channel, so Telegram also
-        // forwards every message posted THERE to this webhook. Only reply to
-        // a private 1-on-1 chat with the bot, never back into the group/channel.
-        if (!$chatId || $chatType !== 'private') {
+        if (!$chatId) {
+            return response()->json(['ok' => true]);
+        }
+
+        // The bot is an admin in the promo group, so Telegram also forwards
+        // every message posted THERE to this webhook. Moderate links there
+        // instead of replying (never post the join-gate back into the group).
+        if (in_array($chatType, ['group', 'supergroup'], true)) {
+            $this->moderateGroupMessage($message);
+
+            return response()->json(['ok' => true]);
+        }
+
+        // Ignore channel posts and anything else that isn't a private DM.
+        if ($chatType !== 'private') {
             return response()->json(['ok' => true]);
         }
 
@@ -55,6 +66,81 @@ class TelegramController extends Controller
         $this->sendJoinGate($chatId, $refCode);
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Deletes messages containing links posted by non-admins in the group,
+     * per the site owner's request that no one but admins share links there.
+     */
+    private function moderateGroupMessage(array $message)
+    {
+        $chatId = $message['chat']['id'] ?? null;
+        $userId = $message['from']['id'] ?? null;
+        $messageId = $message['message_id'] ?? null;
+
+        if (!$chatId || !$userId || !$messageId) {
+            return;
+        }
+
+        if (!$this->containsLink($message)) {
+            return;
+        }
+
+        if ($this->isChatAdmin($chatId, $userId)) {
+            return;
+        }
+
+        $this->deleteMessage($chatId, $messageId);
+
+        $name = trim(($message['from']['first_name'] ?? '') . ' ' . ($message['from']['last_name'] ?? ''));
+        $this->sendMessage(
+            $chatId,
+            '🚫 এই গ্রুপে লিংক শেয়ার করা নিষেধ, তাই ' . ($name ?: 'একটি') . '-এর মেসেজ মুছে ফেলা হয়েছে।',
+            []
+        );
+    }
+
+    private function containsLink(array $message)
+    {
+        $text = $message['text'] ?? $message['caption'] ?? '';
+
+        foreach (array_merge($message['entities'] ?? [], $message['caption_entities'] ?? []) as $entity) {
+            if (in_array($entity['type'] ?? null, ['url', 'text_link'], true)) {
+                return true;
+            }
+        }
+
+        return (bool) preg_match('/(https?:\/\/|www\.|t\.me\/|telegram\.me\/)/i', $text);
+    }
+
+    private function isChatAdmin($chatId, $userId)
+    {
+        $token = $this->botToken();
+        if (!$token) {
+            return false;
+        }
+
+        $response = Http::get("https://api.telegram.org/bot{$token}/getChatMember", [
+            'chat_id' => $chatId,
+            'user_id' => $userId,
+        ]);
+
+        $status = $response->json('result.status');
+
+        return in_array($status, ['administrator', 'creator'], true);
+    }
+
+    private function deleteMessage($chatId, $messageId)
+    {
+        $token = $this->botToken();
+        if (!$token) {
+            return;
+        }
+
+        Http::asForm()->post("https://api.telegram.org/bot{$token}/deleteMessage", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+        ]);
     }
 
     private function sendJoinGate($chatId, $refCode)
@@ -149,19 +235,22 @@ class TelegramController extends Controller
         ]);
     }
 
-    private function sendMessage($chatId, $text, array $buttonRows)
+    private function sendMessage($chatId, $text, array $buttonRows = [])
     {
         $token = $this->botToken();
         if (!$token) {
             return;
         }
 
-        Http::asForm()->post("https://api.telegram.org/bot{$token}/sendMessage", [
+        $params = [
             'chat_id' => $chatId,
             'text' => $text,
-            'reply_markup' => json_encode([
-                'inline_keyboard' => $buttonRows,
-            ]),
-        ]);
+        ];
+
+        if (!empty($buttonRows)) {
+            $params['reply_markup'] = json_encode(['inline_keyboard' => $buttonRows]);
+        }
+
+        Http::asForm()->post("https://api.telegram.org/bot{$token}/sendMessage", $params);
     }
 }
