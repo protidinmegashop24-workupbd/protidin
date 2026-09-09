@@ -36,9 +36,13 @@ class TelegramController extends Controller
 
         $message = $request->input('message');
         $chatId = $message['chat']['id'] ?? null;
+        $chatType = $message['chat']['type'] ?? null;
         $text = trim((string) ($message['text'] ?? ''));
 
-        if (!$chatId) {
+        // The bot is an admin in the promo group/channel, so Telegram also
+        // forwards every message posted THERE to this webhook. Only reply to
+        // a private 1-on-1 chat with the bot, never back into the group/channel.
+        if (!$chatId || $chatType !== 'private') {
             return response()->json(['ok' => true]);
         }
 
