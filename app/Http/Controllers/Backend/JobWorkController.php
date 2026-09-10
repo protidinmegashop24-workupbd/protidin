@@ -14,17 +14,6 @@ use Illuminate\Http\Request;
 class JobWorkController extends Controller
 {
     /**
-     * Writes straight to its own file instead of Laravel's configured log
-     * channel, since a live LOG_LEVEL setting (e.g. "error") can silently
-     * drop info-level Log:: calls -- this always writes regardless of that.
-     */
-    private function debugLog(string $label, array $data)
-    {
-        $line = '[' . now()->toDateTimeString() . '] ' . $label . ' ' . json_encode($data) . PHP_EOL;
-        file_put_contents(storage_path('logs/job-work-debug.log'), $line, FILE_APPEND | LOCK_EX);
-    }
-
-    /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
@@ -74,13 +63,6 @@ class JobWorkController extends Controller
 
         $job->save();
 
-        $this->debugLog('JobWorkApprove: done', [
-            'job_work_id' => $id,
-            'user_id' => $user->id,
-            'each_worker_earn' => $job->each_worker_earn,
-            'balance_from_fresh_db_read' => User::find($user->id)->earning_balance,
-        ]);
-
         return redirect()->back()->with('message','Successfully approved this job!');
     }
 
@@ -121,15 +103,8 @@ class JobWorkController extends Controller
         $job_work = JobWork::find($id);
         $job = Job::find($job_work->job_id);
 
-        $this->debugLog('JobWorkFinalReject: start', [
-            'job_work_id' => $id,
-            'status_before' => $job_work->status,
-            'job_found' => (bool) $job,
-        ]);
-
         if ($job_work->status == 1 && $job) {
             $user = User::find($job_work->user_id);
-            $balance_before = $user->earning_balance;
             $user->earning_balance = $user->earning_balance - $job->each_worker_earn;
 
             $website = Website::latest()->first();
@@ -145,25 +120,10 @@ class JobWorkController extends Controller
                 $user->earning_commision_from_refer = $user->earning_commision_from_refer - $earning_commission;
             }
 
-            $save_result = $user->save();
-
-            $this->debugLog('JobWorkFinalReject: balance updated', [
-                'job_work_id' => $id,
-                'user_id' => $user->id,
-                'each_worker_earn' => $job->each_worker_earn,
-                'balance_before' => $balance_before,
-                'balance_after_in_memory' => $user->earning_balance,
-                'save_result' => $save_result,
-                'balance_from_fresh_db_read' => User::find($user->id)->earning_balance,
-            ]);
+            $user->save();
 
             $job->worker_confirmed = max(0, $job->worker_confirmed - 1);
             $job->save();
-        } else {
-            $this->debugLog('JobWorkFinalReject: skipped refund (status was not 1)', [
-                'job_work_id' => $id,
-                'status_before' => $job_work->status,
-            ]);
         }
 
         $job_work->status = 2;
