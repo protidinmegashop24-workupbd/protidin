@@ -170,12 +170,16 @@ class UserJobWorkController extends Controller
     public function job_work_approve($id)
     {
         $job_work = JobWork::find($id);
-        
+
+        if ($job_work->status == 1) {
+            return redirect()->back()->with('message', 'This job work is already approved and paid.');
+        }
+
         $msg_user_id = $job_work->user_id;
 
         $job = Job::find($job_work->job_id);
         $msg_title = $job->title;
-        
+
         $job_code = $job->code;
 
         $user = User::find($job_work->user_id);
@@ -217,13 +221,39 @@ class UserJobWorkController extends Controller
     {
         $job_work = JobWork::find($id);
         $msg_user_id = $job_work->user_id;
-        
-        $job_work->status = 2;
-        $job_work->reason = $request->reason;
 
         $job = Job::find($job_work->job_id);
         $msg_title = $job->title;
-        
+
+        // If this work was already approved and paid, reverse the payment
+        // (and any referral commission it triggered) before rejecting it --
+        // otherwise the worker keeps money for work the job owner just
+        // rejected.
+        if ($job_work->status == 1) {
+            $worker = User::find($job_work->user_id);
+            $worker->earning_balance = $worker->earning_balance - $job->each_worker_earn;
+
+            $website = Website::latest()->first();
+            if ($website->referral_earning_commission > 0 && $worker->rfered_by) {
+                $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
+
+                $refered_by = User::find($worker->rfered_by);
+                if ($refered_by) {
+                    $refered_by->earning_balance = $refered_by->earning_balance - $earning_commission;
+                    $refered_by->save();
+                }
+
+                $worker->earning_commision_from_refer = $worker->earning_commision_from_refer - $earning_commission;
+            }
+
+            $worker->save();
+
+            $job->worker_confirmed = max(0, $job->worker_confirmed - 1);
+        }
+
+        $job_work->status = 2;
+        $job_work->reason = $request->reason;
+
         $reject_done = $job->reject_done + 1;
         $job->reject_done = $reject_done;
         $job->save();
