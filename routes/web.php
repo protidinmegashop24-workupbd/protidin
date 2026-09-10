@@ -1609,3 +1609,27 @@ Route::get('/system-debug-log/{token}', function (\Illuminate\Http\Request $requ
 
     return response('<pre>' . e(implode("\n", $tail)) . '</pre>');
 });
+
+// Shows (and can clear) the dedicated job-work-debug.log written directly by
+// JobWorkController::debugLog(), which bypasses the app's configured
+// LOG_LEVEL entirely so these entries always show up even if LOG_LEVEL is
+// set to something that would otherwise drop info-level Log:: calls.
+// Visit: /system-debug-jobwork-log/{token}  (add &clear=1 to empty it first)
+Route::get('/system-debug-jobwork-log/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $logPath = storage_path('logs/job-work-debug.log');
+
+    if ($request->query('clear')) {
+        file_put_contents($logPath, '');
+        return response('Cleared. Now go Approve/Reject a job work, then reload this URL without &clear=1.');
+    }
+
+    if (!is_file($logPath) || trim(file_get_contents($logPath)) === '') {
+        return response('This file is empty -- no Approve/Reject action has run since it was last cleared, or the deployed JobWorkController.php does not have debugLog() in it yet.');
+    }
+
+    return response('<pre>' . e(file_get_contents($logPath)) . '</pre>');
+});

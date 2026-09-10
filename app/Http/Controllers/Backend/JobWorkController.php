@@ -14,6 +14,17 @@ use Illuminate\Http\Request;
 class JobWorkController extends Controller
 {
     /**
+     * Writes straight to its own file instead of Laravel's configured log
+     * channel, since a live LOG_LEVEL setting (e.g. "error") can silently
+     * drop info-level Log:: calls -- this always writes regardless of that.
+     */
+    private function debugLog(string $label, array $data)
+    {
+        $line = '[' . now()->toDateTimeString() . '] ' . $label . ' ' . json_encode($data) . PHP_EOL;
+        file_put_contents(storage_path('logs/job-work-debug.log'), $line, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
@@ -63,7 +74,7 @@ class JobWorkController extends Controller
 
         $job->save();
 
-        \Illuminate\Support\Facades\Log::info('JobWorkApprove: done', [
+        $this->debugLog('JobWorkApprove: done', [
             'job_work_id' => $id,
             'user_id' => $user->id,
             'each_worker_earn' => $job->each_worker_earn,
@@ -110,7 +121,7 @@ class JobWorkController extends Controller
         $job_work = JobWork::find($id);
         $job = Job::find($job_work->job_id);
 
-        \Illuminate\Support\Facades\Log::info('JobWorkFinalReject: start', [
+        $this->debugLog('JobWorkFinalReject: start', [
             'job_work_id' => $id,
             'status_before' => $job_work->status,
             'job_found' => (bool) $job,
@@ -136,7 +147,7 @@ class JobWorkController extends Controller
 
             $save_result = $user->save();
 
-            \Illuminate\Support\Facades\Log::info('JobWorkFinalReject: balance updated', [
+            $this->debugLog('JobWorkFinalReject: balance updated', [
                 'job_work_id' => $id,
                 'user_id' => $user->id,
                 'each_worker_earn' => $job->each_worker_earn,
@@ -149,7 +160,7 @@ class JobWorkController extends Controller
             $job->worker_confirmed = max(0, $job->worker_confirmed - 1);
             $job->save();
         } else {
-            \Illuminate\Support\Facades\Log::info('JobWorkFinalReject: skipped refund (status was not 1)', [
+            $this->debugLog('JobWorkFinalReject: skipped refund (status was not 1)', [
                 'job_work_id' => $id,
                 'status_before' => $job_work->status,
             ]);
