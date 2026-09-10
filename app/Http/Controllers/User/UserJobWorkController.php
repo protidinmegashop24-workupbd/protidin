@@ -30,17 +30,6 @@ class UserJobWorkController extends Controller
         $headlines = CompleteTaskHeadline::all();
         $title = 'Complete Worked Job List';
 
-        $l_date = Carbon::now()->subDays(7);
-        $date = Carbon::parse($l_date)->format('Y-m-d 23:59:59');
-        $complete_works = JobWork::where('created_at', '<=', $date)->get();
-        if($complete_works->count() > 0){
-            foreach($complete_works as $work){
-                $job_work = JobWork::find($work->id);
-                $job_work->trash = 1;
-                $job_work->save();
-            }
-        }
-
         return view('user.pages.worked-job-list', compact('title', 'datas', 'headlines'));
     }
 
@@ -179,6 +168,10 @@ class UserJobWorkController extends Controller
 
         $job = Job::find($job_work->job_id);
         $msg_title = $job->title;
+
+        if ($job->worker_confirmed >= $job->worker_need) {
+            return redirect()->back()->with('error', 'This job already has its full number of paid workers (' . $job->worker_need . '). Reject this submission or increase Worker Need first.');
+        }
 
         $job_code = $job->code;
 

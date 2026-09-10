@@ -36,7 +36,8 @@
               <td>{{ (int)$s->questions_per_attempt }}</td>
               <td>{{ $s->is_active ? 'Yes' : 'No' }}</td>
               <td>
-                <form action="{{ route('admin.surveys.destroy', $s->id) }}" method="POST"
+                <a href="{{ route('admin.surveys.edit', $s->id) }}" class="btn btn-success btn-sm">Edit</a>
+                <form action="{{ route('admin.surveys.destroy', $s->id) }}" method="POST" class="d-inline"
                       onsubmit="return confirm('Delete this survey?');">
                   @csrf
                   @method('DELETE')

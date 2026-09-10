@@ -52,44 +52,11 @@ class UserDashboardController extends Controller
             }
         }
         
-        // Auto-approve work proofs the job owner didn't review within 24 hours.
-        // Must mirror job_work_approve()'s effects exactly (pay the worker,
-        // referral commission, and increment worker_confirmed) -- otherwise
-        // worker_confirmed drifts from the real approved count and progress
-        // bars/"job complete" checks go wrong.
-        $works = JobWork::where('created_at', '<', Carbon::parse('-24 hours'))->where('status', 0)->get();
-        if($works->count() > 0){
-            $website = Website::latest()->first();
-            foreach($works as $job_work){
-                $job = Job::find($job_work->job_id);
-                if($job){
-                    $user = User::find($job_work->user_id);
-                    $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
-                    $user->referral_activated = 1;
+        // Auto-approving stale pending work proofs now runs out-of-band via
+        // JobMaintenanceController (hit periodically by a cPanel cron job)
+        // instead of on every dashboard page load -- see that class for the
+        // logic, which mirrors job_work_approve()'s effects exactly.
 
-                    if($website && $website->referral_earning_commission > 0){
-                        $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-
-                        $refered_by = User::find($user->rfered_by);
-                        if($refered_by){
-                            $refered_by->earning_balance = $refered_by->earning_balance + $earning_commission;
-                            $refered_by->save();
-
-                            $user->earning_commision_from_refer = $user->earning_commision_from_refer + $earning_commission;
-                        }
-                    }
-
-                    $user->save();
-
-                    $job->worker_confirmed = $job->worker_confirmed + 1;
-                    $job->save();
-                }
-
-                $job_work->status = 1;
-                $job_work->save();
-            }
-        }
-        
         // delete data more than 30 days
         
         // For auto user block-------------------

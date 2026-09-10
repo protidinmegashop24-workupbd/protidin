@@ -297,6 +297,8 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('/surveys', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'index'])->name('surveys.index');
     Route::get('/surveys/create', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'create'])->name('surveys.create');
     Route::post('/surveys', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'store'])->name('surveys.store');
+    Route::get('/surveys/{survey}/edit', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'edit'])->name('surveys.edit');
+    Route::put('/surveys/{survey}', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'update'])->name('surveys.update');
     Route::delete('/surveys/{survey}', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'destroy'])->name('surveys.destroy');
 
     // Survey Question Bank
@@ -1610,26 +1612,49 @@ Route::get('/system-debug-log/{token}', function (\Illuminate\Http\Request $requ
     return response('<pre>' . e(implode("\n", $tail)) . '</pre>');
 });
 
-// Shows (and can clear) the dedicated job-work-debug.log written directly by
-// JobWorkController::debugLog(), which bypasses the app's configured
-// LOG_LEVEL entirely so these entries always show up even if LOG_LEVEL is
-// set to something that would otherwise drop info-level Log:: calls.
-// Visit: /system-debug-jobwork-log/{token}  (add &clear=1 to empty it first)
-Route::get('/system-debug-jobwork-log/{token}', function (\Illuminate\Http\Request $request, $token) {
+// Runs the periodic job-work maintenance (trash old rows, auto-approve
+// day-old pending ones) that used to run inline on every page load.
+// Point a cPanel Cron Job at this URL (e.g. hourly) instead of visiting it
+// by hand -- see JobMaintenanceController for the logic.
+Route::get('/system-cron-job-work-maintenance/{token}', [\App\Http\Controllers\JobMaintenanceController::class, 'run']);
+
+// Checks (and, with &fix=1, corrects) a job's worker_confirmed counter
+// against the real count of status=1 (approved/paid) job_work rows for it --
+// useful after manual testing or the old missing-quota-guard bug let the
+// counter drift from reality. Never touches anyone's balance, only the
+// counter used for progress bars and the worker_need cap.
+// Visit: /system-fix-worker-confirmed/{token}?job_code=1000965  (add &fix=1 to apply)
+Route::get('/system-fix-worker-confirmed/{token}', function (\Illuminate\Http\Request $request, $token) {
     if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
         abort(403);
     }
 
-    $logPath = storage_path('logs/job-work-debug.log');
-
-    if ($request->query('clear')) {
-        file_put_contents($logPath, '');
-        return response('Cleared. Now go Approve/Reject a job work, then reload this URL without &clear=1.');
+    $code = $request->query('job_code');
+    if (!$code) {
+        return response()->json(['error' => 'Add ?job_code=1000965 to the URL.'], 400, [], JSON_PRETTY_PRINT);
     }
 
-    if (!is_file($logPath) || trim(file_get_contents($logPath)) === '') {
-        return response('This file is empty -- no Approve/Reject action has run since it was last cleared, or the deployed JobWorkController.php does not have debugLog() in it yet.');
+    $job = \App\Models\Job::where('code', $code)->first();
+    if (!$job) {
+        return response()->json(['error' => "No job found with code $code"], 404, [], JSON_PRETTY_PRINT);
     }
 
-    return response('<pre>' . e(file_get_contents($logPath)) . '</pre>');
+    $realCount = \App\Models\JobWork::where('job_id', $job->id)->where('status', 1)->count();
+    $stored = $job->worker_confirmed;
+    $fixed = false;
+
+    if ($request->query('fix') && $realCount !== $stored) {
+        $job->worker_confirmed = $realCount;
+        $job->save();
+        $fixed = true;
+    }
+
+    return response()->json([
+        'job_code' => $job->code,
+        'worker_need' => $job->worker_need,
+        'stored_worker_confirmed' => $stored,
+        'real_approved_job_work_count' => $realCount,
+        'mismatch' => $realCount !== $stored,
+        'fixed' => $fixed,
+    ], 200, [], JSON_PRETTY_PRINT);
 });

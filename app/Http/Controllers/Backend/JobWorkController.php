@@ -37,6 +37,10 @@ class JobWorkController extends Controller
 
         $job = Job::find($job_work->job_id);
 
+        if ($job->worker_confirmed >= $job->worker_need) {
+            return redirect()->back()->with('error', 'This job already has its full number of paid workers (' . $job->worker_need . '). Reject this submission or increase Worker Need first.');
+        }
+
         $user = User::find($job_work->user_id);
         $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
         $user->referral_activated = 1;
