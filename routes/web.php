@@ -1713,3 +1713,45 @@ Route::get('/system-perf-check/{token}', function ($token) {
         ],
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Adds indexes on the columns that get queried constantly across the app
+// (job_works.job_id/user_id/status especially -- 59k+ rows with NO index
+// but the primary key means every JobWork::where('job_id', ...) etc. is a
+// full table scan). Purely additive/non-destructive: an index changes
+// nothing about query results, only how fast MySQL finds matching rows.
+// Safe to run more than once -- an index that already exists is skipped.
+Route::get('/system-add-performance-indexes/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $statements = [
+        'job_works_job_id' => 'ALTER TABLE `job_works` ADD INDEX `job_works_job_id_index` (`job_id`)',
+        'job_works_user_id' => 'ALTER TABLE `job_works` ADD INDEX `job_works_user_id_index` (`user_id`)',
+        'job_works_status' => 'ALTER TABLE `job_works` ADD INDEX `job_works_status_index` (`status`)',
+        'job_works_trash' => 'ALTER TABLE `job_works` ADD INDEX `job_works_trash_index` (`trash`)',
+        'job_works_job_woner' => 'ALTER TABLE `job_works` ADD INDEX `job_works_job_woner_index` (`job_woner`)',
+        'job_works_job_id_status' => 'ALTER TABLE `job_works` ADD INDEX `job_works_job_id_status_index` (`job_id`, `status`)',
+        'jobs_status' => 'ALTER TABLE `jobs` ADD INDEX `jobs_status_index` (`status`)',
+        'jobs_user_id' => 'ALTER TABLE `jobs` ADD INDEX `jobs_user_id_index` (`user_id`)',
+        'jobs_code' => 'ALTER TABLE `jobs` ADD INDEX `jobs_code_index` (`code`)',
+        'users_email' => 'ALTER TABLE `users` ADD INDEX `users_email_index` (`email`)',
+        'users_code' => 'ALTER TABLE `users` ADD INDEX `users_code_index` (`code`)',
+        'users_rfered_by' => 'ALTER TABLE `users` ADD INDEX `users_rfered_by_index` (`rfered_by`)',
+        'users_phone' => 'ALTER TABLE `users` ADD INDEX `users_phone_index` (`phone`)',
+    ];
+
+    $results = [];
+    foreach ($statements as $label => $sql) {
+        try {
+            \Illuminate\Support\Facades\DB::statement($sql);
+            $results[$label] = 'added';
+        } catch (\Throwable $e) {
+            $results[$label] = str_contains($e->getMessage(), 'Duplicate key name')
+                ? 'already exists (skipped)'
+                : 'error: ' . $e->getMessage();
+        }
+    }
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+});
