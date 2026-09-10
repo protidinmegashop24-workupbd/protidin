@@ -412,8 +412,10 @@ class HomeController extends Controller
     public function user_logout()
     {
         $user = Auth::user();
-        $user->activity = 0;
-        $user->save();
+        if ($user) {
+            $user->activity = 0;
+            $user->save();
+        }
         Auth::logout();
 
         return redirect()->route('home');
