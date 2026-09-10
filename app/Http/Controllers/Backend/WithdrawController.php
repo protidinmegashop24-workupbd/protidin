@@ -8,6 +8,10 @@ use App\Models\Admin\Website;
 use App\Models\User;
 use App\Models\Admin\UserMessage;
 use App\Models\Withdraw;
+use App\Models\Job;
+use App\Models\JobWork;
+use App\Models\ptc_earn_history;
+use App\Models\SurveySubmission;
 use Illuminate\Http\Request;
 
 class WithdrawController extends Controller
@@ -31,6 +35,81 @@ class WithdrawController extends Controller
         $website = Website::latest()->first();
         $title = 'Pending Withdraw Request';
         return view('backend.pages.system-setting.withdraw', compact('title', 'datas', 'website'));
+    }
+
+    /**
+     * A before-you-pay trust summary for a withdrawing user: account
+     * standing (ban/suspend/duplicate-device), how their earnings were
+     * actually made, and any rejected/reported work -- so the admin can
+     * see whether this account "caused any problem anywhere" before
+     * approving the payout, without having to click through half a
+     * dozen separate admin pages by hand.
+     */
+    public function userCheck($userId)
+    {
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json(['error' => 'User not found.'], 404);
+        }
+
+        $approvedJobs = JobWork::where('user_id', $userId)->where('status', 1)->count();
+        $rejectedJobs = JobWork::where('user_id', $userId)->where('status', 2)->count();
+        $reportedJobs = JobWork::where('user_id', $userId)->where('status', 3)->count();
+        $pendingJobs = JobWork::where('user_id', $userId)->where('status', 0)->count();
+
+        $ptcClicks = ptc_earn_history::where('ptc_worker_id', $userId)->count();
+        $surveysVerified = SurveySubmission::where('user_id', $userId)->where('code_status', 'used')->count();
+
+        $duplicateDeviceUsers = User::where('id', '!=', $userId)
+            ->where('ip_address', $user->ip_address)
+            ->where('device_name', $user->device_name)
+            ->where('device_brand', $user->device_brand)
+            ->where('device_model', $user->device_model)
+            ->whereNotNull('device_name')
+            ->pluck('code');
+
+        $referredCount = User::where('rfered_by', $userId)->count();
+
+        $flags = [];
+        if ($user->is_ban) {
+            $flags[] = 'অ্যাকাউন্ট ব্যান করা আছে';
+        }
+        if ($user->is_suspended) {
+            $flags[] = 'অ্যাকাউন্ট সাসপেন্ড করা আছে';
+        }
+        if (!$user->hasVerifiedEmail()) {
+            $flags[] = 'ইমেইল ভেরিফাই করা নেই';
+        }
+        if ($duplicateDeviceUsers->count() > 0) {
+            $flags[] = 'একই ডিভাইস/আইপি থেকে আরও ' . $duplicateDeviceUsers->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateDeviceUsers->implode(', ') . ')';
+        }
+        if ($rejectedJobs > 0 && $approvedJobs > 0 && $rejectedJobs >= $approvedJobs) {
+            $flags[] = "Approved-এর চেয়ে Rejected job বেশি বা সমান ({$rejectedJobs} rejected vs {$approvedJobs} approved)";
+        }
+        if ($reportedJobs > 0) {
+            $flags[] = "{$reportedJobs}টা কাজ Reported হয়েছে";
+        }
+
+        return response()->json([
+            'name' => $user->name,
+            'code' => $user->code,
+            'email' => $user->email,
+            'email_verified' => $user->hasVerifiedEmail(),
+            'joined_at' => optional($user->created_at)->format('d/m/Y'),
+            'is_ban' => (bool) $user->is_ban,
+            'is_suspended' => (bool) $user->is_suspended,
+            'earning_balance' => (float) $user->earning_balance,
+            'approved_jobs' => $approvedJobs,
+            'rejected_jobs' => $rejectedJobs,
+            'reported_jobs' => $reportedJobs,
+            'pending_jobs' => $pendingJobs,
+            'ptc_clicks' => $ptcClicks,
+            'surveys_verified' => $surveysVerified,
+            'total_referrals' => $referredCount,
+            'duplicate_device_accounts' => $duplicateDeviceUsers->values(),
+            'flags' => $flags,
+            'looks_clean' => count($flags) === 0,
+        ]);
     }
 
     public function withdraw_request_approved(Request $request, $id)

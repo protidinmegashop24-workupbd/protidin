@@ -90,6 +90,13 @@
                                                         </div>
                                                         <div class="modal-body">
                                                             <div class="form-group col-lg-12 col-md-12 col-12">
+                                                                <button type="button" class="btn btn-outline-info btn-sm mb-2"
+                                                                        onclick="checkWithdrawUser({{ $data->user_id }}, 'user-check-{{ $data->id }}')">
+                                                                    🔍 Check This User Before Paying
+                                                                </button>
+                                                                <div id="user-check-{{ $data->id }}"></div>
+                                                            </div>
+                                                            <div class="form-group col-lg-12 col-md-12 col-12">
                                                                 <label for="status">Status</label>
                                                                 <select class="form-control" name="approval" id="approval">
                                                                     <option value="0" @if($data->approval == 0) selected @endif>Pending</option>
@@ -142,6 +149,45 @@
                 "responsive": true,
             });
         });
+
+        function checkWithdrawUser(userId, targetId) {
+            var box = document.getElementById(targetId);
+            box.innerHTML = '<div class="text-muted">চেক করা হচ্ছে...</div>';
+
+            fetch('/admin/withdraw-user-check/' + userId)
+                .then(function(res) { return res.json(); })
+                .then(function(d) {
+                    if (d.error) {
+                        box.innerHTML = '<div class="alert alert-danger">' + d.error + '</div>';
+                        return;
+                    }
+
+                    var flagsHtml = '';
+                    if (d.flags.length > 0) {
+                        flagsHtml = '<div class="alert alert-danger mb-2"><strong>⚠️ সমস্যা পাওয়া গেছে:</strong><ul class="mb-0">';
+                        d.flags.forEach(function(f) { flagsHtml += '<li>' + f + '</li>'; });
+                        flagsHtml += '</ul></div>';
+                    } else {
+                        flagsHtml = '<div class="alert alert-success mb-2">✅ কোনো সমস্যা পাওয়া যায়নি — পেমেন্ট করা যেতে পারে।</div>';
+                    }
+
+                    box.innerHTML = flagsHtml +
+                        '<table class="table table-sm table-bordered mb-0">' +
+                        '<tr><td>নাম</td><td>' + d.name + ' (' + d.code + ')</td></tr>' +
+                        '<tr><td>ইমেইল ভেরিফাইড</td><td>' + (d.email_verified ? 'হ্যাঁ' : 'না') + '</td></tr>' +
+                        '<tr><td>জয়েন</td><td>' + d.joined_at + '</td></tr>' +
+                        '<tr><td>ব্যান / সাসপেন্ড</td><td>' + (d.is_ban ? 'ব্যান' : '') + ' ' + (d.is_suspended ? 'সাসপেন্ড' : (!d.is_ban ? 'না' : '')) + '</td></tr>' +
+                        '<tr><td>Approved / Rejected / Reported জব</td><td>' + d.approved_jobs + ' / ' + d.rejected_jobs + ' / ' + d.reported_jobs + '</td></tr>' +
+                        '<tr><td>PTC ক্লিক</td><td>' + d.ptc_clicks + '</td></tr>' +
+                        '<tr><td>সার্ভে ভেরিফাইড</td><td>' + d.surveys_verified + '</td></tr>' +
+                        '<tr><td>মোট রেফার</td><td>' + d.total_referrals + '</td></tr>' +
+                        '<tr><td>বর্তমান ব্যালেন্স</td><td>$' + d.earning_balance.toFixed(4) + '</td></tr>' +
+                        '</table>';
+                })
+                .catch(function() {
+                    box.innerHTML = '<div class="alert alert-danger">চেক করতে ব্যর্থ হয়েছে, আবার চেষ্টা করুন।</div>';
+                });
+        }
 
         function depositApproved(id) {
             if (confirm("Are you sure?")) {

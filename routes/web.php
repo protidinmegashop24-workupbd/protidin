@@ -429,6 +429,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'a
     Route::get('withdraw-request', [WithdrawController::class, 'index'])->name('withdraw-request');
     Route::get('pending-withdraw-request', [WithdrawController::class, 'pending_withdraw_request'])->name('pending-withdraw-request');
     Route::post('withdraw-request-approved/{id}', [WithdrawController::class, 'withdraw_request_approved'])->name('withdraw-request-approved');
+    Route::get('withdraw-user-check/{userId}', [WithdrawController::class, 'userCheck'])->name('withdraw-user-check');
 
     Route::get('advertisement', [AdvertisementController::class, 'index'])->name('advertisement');
     Route::get('pending-advertisement', [AdvertisementController::class, 'pending_advertisement'])->name('pending-advertisement');
