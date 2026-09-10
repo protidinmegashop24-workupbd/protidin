@@ -58,7 +58,16 @@ class WithdrawController extends Controller
         $pendingJobs = JobWork::where('user_id', $userId)->where('status', 0)->count();
 
         $ptcClicks = ptc_earn_history::where('ptc_worker_id', $userId)->count();
+        $ptcEarned = (float) ptc_earn_history::where('ptc_worker_id', $userId)
+            ->join('ptc_job', 'ptc_earn_history.ptc_job_id', '=', 'ptc_job.id')
+            ->sum('ptc_job.ptc_each_earn');
+
         $surveysVerified = SurveySubmission::where('user_id', $userId)->where('code_status', 'used')->count();
+        $surveyEarned = (float) SurveySubmission::where('user_id', $userId)->where('code_status', 'used')->sum('earned_usd');
+
+        $jobEarned = (float) JobWork::where('job_works.user_id', $userId)->where('job_works.status', 1)
+            ->join('jobs', 'job_works.job_id', '=', 'jobs.id')
+            ->sum('jobs.each_worker_earn');
 
         $duplicateDeviceUsers = User::where('id', '!=', $userId)
             ->where('ip_address', $user->ip_address)
@@ -90,6 +99,16 @@ class WithdrawController extends Controller
             $flags[] = "{$reportedJobs}টা কাজ Reported হয়েছে";
         }
 
+        $referralCommission = (float) $user->deposit_commision_from_refer + (float) $user->earning_commision_from_refer;
+        $totalTrackedEarned = $jobEarned + $ptcEarned + $surveyEarned + $referralCommission;
+
+        // A balance well above everything we can trace to a real earning
+        // event usually means a manual admin balance edit happened -- not
+        // necessarily wrong, but worth the admin's attention before payout.
+        if ($user->earning_balance > $totalTrackedEarned + 0.01) {
+            $flags[] = 'ব্যালেন্স ($' . number_format($user->earning_balance, 4) . ') ট্র্যাক-করা মোট ইনকামের ($' . number_format($totalTrackedEarned, 4) . ') চেয়ে বেশি -- সম্ভবত ম্যানুয়াল অ্যাডজাস্টমেন্ট হয়েছে, একবার দেখে নাও';
+        }
+
         return response()->json([
             'name' => $user->name,
             'code' => $user->code,
@@ -100,12 +119,17 @@ class WithdrawController extends Controller
             'is_suspended' => (bool) $user->is_suspended,
             'earning_balance' => (float) $user->earning_balance,
             'approved_jobs' => $approvedJobs,
+            'job_earned' => $jobEarned,
             'rejected_jobs' => $rejectedJobs,
             'reported_jobs' => $reportedJobs,
             'pending_jobs' => $pendingJobs,
             'ptc_clicks' => $ptcClicks,
+            'ptc_earned' => $ptcEarned,
             'surveys_verified' => $surveysVerified,
+            'survey_earned' => $surveyEarned,
+            'referral_commission' => $referralCommission,
             'total_referrals' => $referredCount,
+            'total_tracked_earned' => $totalTrackedEarned,
             'duplicate_device_accounts' => $duplicateDeviceUsers->values(),
             'flags' => $flags,
             'looks_clean' => count($flags) === 0,

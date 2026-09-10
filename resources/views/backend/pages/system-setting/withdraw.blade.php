@@ -177,10 +177,11 @@
                         '<tr><td>ইমেইল ভেরিফাইড</td><td>' + (d.email_verified ? 'হ্যাঁ' : 'না') + '</td></tr>' +
                         '<tr><td>জয়েন</td><td>' + d.joined_at + '</td></tr>' +
                         '<tr><td>ব্যান / সাসপেন্ড</td><td>' + (d.is_ban ? 'ব্যান' : '') + ' ' + (d.is_suspended ? 'সাসপেন্ড' : (!d.is_ban ? 'না' : '')) + '</td></tr>' +
-                        '<tr><td>Approved / Rejected / Reported জব</td><td>' + d.approved_jobs + ' / ' + d.rejected_jobs + ' / ' + d.reported_jobs + '</td></tr>' +
-                        '<tr><td>PTC ক্লিক</td><td>' + d.ptc_clicks + '</td></tr>' +
-                        '<tr><td>সার্ভে ভেরিফাইড</td><td>' + d.surveys_verified + '</td></tr>' +
-                        '<tr><td>মোট রেফার</td><td>' + d.total_referrals + '</td></tr>' +
+                        '<tr><td>Approved / Rejected / Reported জব</td><td>' + d.approved_jobs + ' / ' + d.rejected_jobs + ' / ' + d.reported_jobs + ' = $' + d.job_earned.toFixed(4) + '</td></tr>' +
+                        '<tr><td>PTC ক্লিক</td><td>' + d.ptc_clicks + 'টা = $' + d.ptc_earned.toFixed(4) + '</td></tr>' +
+                        '<tr><td>সার্ভে ভেরিফাইড</td><td>' + d.surveys_verified + 'টা = $' + d.survey_earned.toFixed(4) + '</td></tr>' +
+                        '<tr><td>রেফার কমিশন</td><td>' + d.total_referrals + ' জন রেফার = $' + d.referral_commission.toFixed(4) + '</td></tr>' +
+                        '<tr><td><strong>মোট ট্র্যাক-করা ইনকাম</strong></td><td><strong>$' + d.total_tracked_earned.toFixed(4) + '</strong></td></tr>' +
                         '<tr><td>বর্তমান ব্যালেন্স</td><td>$' + d.earning_balance.toFixed(4) + '</td></tr>' +
                         '</table>';
                 })
