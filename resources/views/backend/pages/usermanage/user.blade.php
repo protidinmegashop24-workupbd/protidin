@@ -329,31 +329,20 @@
                         
                         
                         
-                <!-- Modal for updating user information -->
+                <!-- Modal for updating user balance -->
 <div class="modal fade" id="edit_{{ $user->id }}" tabindex="-1" role="dialog" aria-labelledby="userEditModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <form action="{{ route('user.update', $user->id) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.user-balance.update', $user->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('POST')
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="userEditModalLabel">Edit User Information</h5>
+                    <h5 class="modal-title" id="userEditModalLabel">Edit User Balance</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body row">
-                    <!-- User Name -->
-                    <div class="form-group col-lg-6 col-md-6 col-12">
-                        <label for="name">Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required value="{{ $user->name }}">
-                    </div>
-                    <!-- User Email -->
-                    <div class="form-group col-lg-6 col-md-6 col-12">
-                        <label for="email">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" required value="{{ $user->email }}">
-                    </div>
-                    
                     <!-- User Deposit Balance -->
                     <div class="form-group col-lg-6 col-md-6 col-12">
                         <label for="deposit_balance">Deposit Balance</label>

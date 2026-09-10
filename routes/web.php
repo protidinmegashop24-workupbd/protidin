@@ -1508,3 +1508,48 @@ Route::get('/system-debug-mail-test/{token}', function (\Illuminate\Http\Request
         'message' => "$email এই ঠিকানায় মেইল পাঠানো হয়েছে, ইনবক্স/স্প্যাম চেক করুন।",
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Shows every job_work row for a Job (by its `code`), each worker's current
+// earning_balance, and this job's each_worker_earn -- so an approve/reject
+// on the admin panel can be checked against real before/after numbers.
+// Visit: /system-debug-job-work/{token}?code=1000965
+Route::get('/system-debug-job-work/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $code = $request->query('code');
+    if (!$code) {
+        return response()->json(['error' => 'Add ?code=1000965 (the job code) to the URL.'], 400, [], JSON_PRETTY_PRINT);
+    }
+
+    $job = \App\Models\Job::where('code', $code)->first();
+    if (!$job) {
+        return response()->json(['error' => "No job found with code $code"], 404, [], JSON_PRETTY_PRINT);
+    }
+
+    $works = \App\Models\JobWork::where('job_id', $job->id)->latest()->get()->map(function ($w) {
+        $user = \App\Models\User::find($w->user_id);
+        return [
+            'job_work_id' => $w->id,
+            'user_id' => $w->user_id,
+            'user_name' => $user->name ?? null,
+            'user_current_earning_balance' => $user->earning_balance ?? null,
+            'status' => $w->status,
+            'status_meaning' => [0 => 'pending', 1 => 'approved/paid', 2 => 'rejected', 3 => 'reported', 4 => 'resumed', 5 => 'request for reject'][$w->status] ?? 'unknown',
+            'trash' => $w->trash,
+            'created_at' => (string) $w->created_at,
+            'updated_at' => (string) $w->updated_at,
+        ];
+    });
+
+    return response()->json([
+        'job_id' => $job->id,
+        'job_code' => $job->code,
+        'job_title' => $job->title,
+        'each_worker_earn' => $job->each_worker_earn,
+        'worker_need' => $job->worker_need,
+        'worker_confirmed' => $job->worker_confirmed,
+        'job_work_rows' => $works,
+    ], 200, [], JSON_PRETTY_PRINT);
+});

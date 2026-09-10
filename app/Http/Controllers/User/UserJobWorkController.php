@@ -381,6 +381,11 @@ class UserJobWorkController extends Controller
             return redirect()->back()->with('error','You can not work this job. This job posted by you!');
         }
 
+        $already_worked = JobWork::where('job_id', $request->job_id)->where('user_id', Auth::user()->id)->exists();
+        if ($already_worked) {
+            return redirect()->back()->with('error', 'You have already submitted work for this job!');
+        }
+
         $work = new JobWork();
         $work->job_id = $request->job_id;
         $work->work_proof = $request->work_proof;

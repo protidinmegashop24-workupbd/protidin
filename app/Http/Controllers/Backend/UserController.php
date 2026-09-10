@@ -200,7 +200,9 @@ class UserController extends Controller
         $user->name = Str::ucfirst($request->input('name'));
         $user->username = $request->input('username');
         $user->email = $request->input('email');
-        $user->role_id = $request->input('role_id');
+        if ($request->filled('role_id')) {
+            $user->role_id = $request->input('role_id');
+        }
         $user->phone = $request->input('phone');
 
         $image = $request->file('image');
