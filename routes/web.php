@@ -1553,3 +1553,33 @@ Route::get('/system-debug-job-work/{token}', function (\Illuminate\Http\Request 
         'job_work_rows' => $works,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Confirms which version of a file is actually live on the server -- lets
+// us tell a real code bug apart from a deploy that didn't fully take.
+// Visit: /system-debug-file/{token}?file=app/Http/Controllers/Backend/JobWorkController.php
+Route::get('/system-debug-file/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $relative = $request->query('file');
+    if (!$relative) {
+        return response()->json(['error' => 'Add ?file=app/Http/Controllers/Backend/JobWorkController.php to the URL.'], 400, [], JSON_PRETTY_PRINT);
+    }
+
+    $fullPath = realpath(base_path($relative));
+    if (!$fullPath || strpos($fullPath, realpath(base_path())) !== 0 || !is_file($fullPath)) {
+        return response()->json(['error' => 'File not found under the app root.'], 404, [], JSON_PRETTY_PRINT);
+    }
+
+    $contents = file_get_contents($fullPath);
+
+    return response()->json([
+        'file' => $relative,
+        'size_bytes' => strlen($contents),
+        'md5' => md5($contents),
+        'last_modified' => date('Y-m-d H:i:s', filemtime($fullPath)),
+        'contains_job_work_final_reject' => strpos($contents, 'function job_work_final_reject') !== false,
+        'contains_status_check' => strpos($contents, '$job_work->status == 1 && $job') !== false,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
