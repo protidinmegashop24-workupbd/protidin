@@ -76,6 +76,7 @@ class VerifyController extends Controller
 
             // ✅ add to main balance
             $u->earning_balance = (float)($u->earning_balance ?? 0) + $earned;
+            $u->referral_activated = 1;
             $u->save();
 
             // ✅ mark submission used

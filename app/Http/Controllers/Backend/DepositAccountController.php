@@ -52,6 +52,7 @@ class DepositAccountController extends Controller
         if($request->approval == 1){
             $user = User::find($deposit->user_id);
             $user->deposit_balance = $user->deposit_balance + $deposit->amount;
+            $user->referral_activated = 1;
 
             $website = Website::latest()->first();
             if($website->referral_deposit_commission > 0){

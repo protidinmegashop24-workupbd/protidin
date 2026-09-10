@@ -775,6 +775,7 @@ class UserJobController extends Controller
 
         $user = User::find(Auth::id());
         $user->earning_balance = $user->earning_balance + $job->ptc_each_earn;
+        $user->referral_activated = 1;
         $user->save();
 
         return 'Yes, you got the balance: $' . number_format($job->ptc_each_earn, 5);

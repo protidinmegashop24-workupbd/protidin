@@ -50,6 +50,7 @@ class ServiceItemController extends Controller
 
         if($request->approval == 1){
             $user = User::find($deposit->user_id);
+            $user->referral_activated = 1;
 
             // Unlike a deposit, the buyer's balance was already deducted
             // when they booked this service item -- so we do NOT credit
@@ -65,9 +66,10 @@ class ServiceItemController extends Controller
                     $refered_by->save();
 
                     $user->deposit_commision_from_refer = $user->deposit_commision_from_refer + $deposit_commission;
-                    $user->save();
                 }
             }
+
+            $user->save();
         }elseif($request->approval == 2){
             $deposit->reason = $request->reason;
         

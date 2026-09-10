@@ -1755,3 +1755,35 @@ Route::get('/system-add-performance-indexes/{token}', function ($token) {
 
     return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-time backfill: referral_activated was only ever set to 1 by regular
+// Job approval, so a referred user who only ever did PTC clicks, surveys,
+// or deposits still shows "Pending" on /user/referral-user even though
+// they're a genuinely active user. New activity of those kinds now sets
+// the flag too (see UserJobController/VerifyController/DepositAccountController
+// etc.), but this backfills everyone who already qualifies, retroactively.
+// Visit: /system-backfill-referral-activated/{token}  (safe to run more than once)
+Route::get('/system-backfill-referral-activated/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $activeIds = collect()
+        ->merge(\App\Models\ptc_earn_history::pluck('ptc_worker_id'))
+        ->merge(\App\Models\SurveySubmission::where('code_status', 'used')->pluck('user_id'))
+        ->merge(\App\Models\JobWork::where('status', 1)->pluck('user_id'))
+        ->merge(\App\Models\Deposit::where('approval', 1)->pluck('user_id'))
+        ->unique()
+        ->values();
+
+    $updated = \App\Models\User::whereIn('id', $activeIds)
+        ->where(function ($q) {
+            $q->where('referral_activated', '!=', 1)->orWhereNull('referral_activated');
+        })
+        ->update(['referral_activated' => 1]);
+
+    return response()->json([
+        'users_checked' => $activeIds->count(),
+        'users_newly_marked_active' => $updated,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
