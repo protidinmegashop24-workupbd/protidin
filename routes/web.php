@@ -1658,3 +1658,58 @@ Route::get('/system-fix-worker-confirmed/{token}', function (\Illuminate\Http\Re
         'fixed' => $fixed,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Measures the real cost of the job-browsing endpoints (get_recent_job etc.)
+// which loop over every active Job and call complete_work_this_job(),
+// work_by_me(), this_job_for_me() per job -- each of those runs its own DB
+// query, so this reports table sizes, key indexes, and the actual query
+// count + time for one such loop, to confirm/deny it as a slowness cause.
+Route::get('/system-perf-check/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $counts = [
+        'jobs_total' => \App\Models\Job::count(),
+        'jobs_active_status_1' => \App\Models\Job::where('status', 1)->count(),
+        'job_works_total' => \App\Models\JobWork::count(),
+        'users_total' => \App\Models\User::count(),
+    ];
+
+    $indexes = [];
+    foreach (['jobs', 'job_works', 'users'] as $table) {
+        $indexes[$table] = collect(\Illuminate\Support\Facades\DB::select("SHOW INDEX FROM `$table`"))
+            ->map(fn($row) => ['column' => $row->Column_name, 'index_name' => $row->Key_name, 'unique' => !$row->Non_unique])
+            ->all();
+    }
+
+    // Simulate get_recent_job()'s first loop (the one that scans ALL active
+    // jobs, unbounded, just to compute a "Total Found" count) against a
+    // fake logged-in user context, counting every query it triggers.
+    \Illuminate\Support\Facades\DB::enableQueryLog();
+    $start = microtime(true);
+
+    $activeJobs = \App\Models\Job::where('status', 1)->orderBy('created_at', 'DESC')->get();
+    $matched = 0;
+    foreach ($activeJobs as $job) {
+        $completed = \App\Models\JobWork::where('job_id', $job->id)->where('status', '!=', 2)->count();
+        if ($job->worker_need > $job->worker_confirmed && $job->worker_need > $completed) {
+            $matched++;
+        }
+    }
+
+    $elapsedMs = round((microtime(true) - $start) * 1000, 1);
+    $queryCount = count(\Illuminate\Support\Facades\DB::getQueryLog());
+    \Illuminate\Support\Facades\DB::disableQueryLog();
+
+    return response()->json([
+        'table_row_counts' => $counts,
+        'indexes' => $indexes,
+        'job_listing_loop_simulation' => [
+            'active_jobs_scanned' => $activeJobs->count(),
+            'queries_triggered' => $queryCount,
+            'time_ms' => $elapsedMs,
+            'note' => 'Real page load also calls work_by_me() and this_job_for_me() per job (2 more queries each) plus renders cards for matches -- this undercounts the true cost.',
+        ],
+    ], 200, [], JSON_PRETTY_PRINT);
+});
