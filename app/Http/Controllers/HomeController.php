@@ -284,6 +284,7 @@ class HomeController extends Controller
         if($check_user){
             $s_user = User::find($check_user->id);
             $s_user->earning_balance = $s_user->earning_balance + $welcome_bonus->amount;
+            $s_user->deposit_balance = $s_user->deposit_balance + $welcome_bonus->depo_amount;
             $s_user->save();
         }
 

@@ -72,10 +72,12 @@ class WelcomeBonusController extends Controller
     {
         $request->validate([
             'amount' => 'required',
+            'depo_amount' => 'required',
         ]);
 
         $data = WelcomeBonus::find($id);
         $data->amount = $request->input('amount');
+        $data->depo_amount = $request->input('depo_amount');
         $data->save();
 
         return redirect()->back()->with('message','Data updated Successfully');
