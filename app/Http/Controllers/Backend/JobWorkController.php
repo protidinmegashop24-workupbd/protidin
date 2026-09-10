@@ -63,6 +63,13 @@ class JobWorkController extends Controller
 
         $job->save();
 
+        \Illuminate\Support\Facades\Log::info('JobWorkApprove: done', [
+            'job_work_id' => $id,
+            'user_id' => $user->id,
+            'each_worker_earn' => $job->each_worker_earn,
+            'balance_from_fresh_db_read' => User::find($user->id)->earning_balance,
+        ]);
+
         return redirect()->back()->with('message','Successfully approved this job!');
     }
 
@@ -103,8 +110,15 @@ class JobWorkController extends Controller
         $job_work = JobWork::find($id);
         $job = Job::find($job_work->job_id);
 
+        \Illuminate\Support\Facades\Log::info('JobWorkFinalReject: start', [
+            'job_work_id' => $id,
+            'status_before' => $job_work->status,
+            'job_found' => (bool) $job,
+        ]);
+
         if ($job_work->status == 1 && $job) {
             $user = User::find($job_work->user_id);
+            $balance_before = $user->earning_balance;
             $user->earning_balance = $user->earning_balance - $job->each_worker_earn;
 
             $website = Website::latest()->first();
@@ -120,10 +134,25 @@ class JobWorkController extends Controller
                 $user->earning_commision_from_refer = $user->earning_commision_from_refer - $earning_commission;
             }
 
-            $user->save();
+            $save_result = $user->save();
+
+            \Illuminate\Support\Facades\Log::info('JobWorkFinalReject: balance updated', [
+                'job_work_id' => $id,
+                'user_id' => $user->id,
+                'each_worker_earn' => $job->each_worker_earn,
+                'balance_before' => $balance_before,
+                'balance_after_in_memory' => $user->earning_balance,
+                'save_result' => $save_result,
+                'balance_from_fresh_db_read' => User::find($user->id)->earning_balance,
+            ]);
 
             $job->worker_confirmed = max(0, $job->worker_confirmed - 1);
             $job->save();
+        } else {
+            \Illuminate\Support\Facades\Log::info('JobWorkFinalReject: skipped refund (status was not 1)', [
+                'job_work_id' => $id,
+                'status_before' => $job_work->status,
+            ]);
         }
 
         $job_work->status = 2;

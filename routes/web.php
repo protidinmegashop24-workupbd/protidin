@@ -1583,3 +1583,29 @@ Route::get('/system-debug-file/{token}', function (\Illuminate\Http\Request $req
         'contains_status_check' => strpos($contents, '$job_work->status == 1 && $job') !== false,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Tails storage/logs/laravel.log, optionally filtered to lines containing
+// $q, so log output can be checked without shell/FTP access.
+// Visit: /system-debug-log/{token}?lines=200&q=JobWork
+Route::get('/system-debug-log/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $logPath = storage_path('logs/laravel.log');
+    if (!is_file($logPath)) {
+        return response()->json(['error' => 'No log file found at ' . $logPath], 404, [], JSON_PRETTY_PRINT);
+    }
+
+    $maxLines = min((int) $request->query('lines', 200), 2000);
+    $query = $request->query('q');
+
+    $allLines = file($logPath, FILE_IGNORE_NEW_LINES);
+    if ($query) {
+        $allLines = array_values(array_filter($allLines, fn($line) => stripos($line, $query) !== false));
+    }
+
+    $tail = array_slice($allLines, -$maxLines);
+
+    return response('<pre>' . e(implode("\n", $tail)) . '</pre>');
+});
