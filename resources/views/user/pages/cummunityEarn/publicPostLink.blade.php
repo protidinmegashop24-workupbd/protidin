@@ -194,9 +194,10 @@
                     @endif
 
                     @if($post->fetchUrl)
+                        @php $hasOwnMedia = $post->video || $post->image; @endphp
                         @if($isProductPost)
                             <div class="product-post-card">
-                                @if($post->fetchImg)
+                                @if($post->fetchImg && !$hasOwnMedia)
                                     <img src="{{ $post->fetchImg }}" alt="{{ $post->fetchTitle }}">
                                 @endif
                                 <div class="product-post-body">
@@ -208,7 +209,7 @@
                         @else
                             <div class="url-preview-card">
                                 <a href="{{ $post->fetchUrl }}" target="_blank" rel="noopener nofollow ugc" class="preview-link">
-                                    @if($post->fetchImg)
+                                    @if($post->fetchImg && !$hasOwnMedia)
                                         <div class="preview-image-wrapper">
                                             <img src="{{ $post->fetchImg }}" alt="{{ $post->fetchTitle }}" class="preview-img">
                                         </div>
