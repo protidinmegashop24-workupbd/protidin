@@ -1001,11 +1001,25 @@ if (!function_exists('linkify')) {
 
         $escaped = e($text);
 
-        return preg_replace_callback('/(https?:\/\/[^\s<]+)/i', function ($m) {
+        // Markdown-style [text](url) links, inserted via the "mark text and
+        // add a link" composer button, are converted first and shielded
+        // behind placeholders so the bare-URL pass below doesn't also try
+        // to linkify the URL sitting inside their href attribute.
+        $placeholders = [];
+        $withMarkdownLinks = preg_replace_callback('/\[([^\]]+)\]\((https?:\/\/[^\s()]+)\)/i', function ($m) use (&$placeholders) {
+            $anchor = '<a href="' . e($m[2]) . '" target="_blank" rel="noopener nofollow ugc">' . $m[1] . '</a>';
+            $key = '@@LINK' . count($placeholders) . '@@';
+            $placeholders[$key] = $anchor;
+            return $key;
+        }, $escaped);
+
+        $withBareUrls = preg_replace_callback('/(https?:\/\/[^\s<]+)/i', function ($m) {
             $url = rtrim($m[1], '.,!?)]');
             $trailing = substr($m[1], strlen($url));
             return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a>' . $trailing;
-        }, $escaped);
+        }, $withMarkdownLinks);
+
+        return strtr($withBareUrls, $placeholders);
     }
 }
 

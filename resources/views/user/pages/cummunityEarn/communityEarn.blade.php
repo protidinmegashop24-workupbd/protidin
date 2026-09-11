@@ -650,6 +650,10 @@
                             <i class="bi bi-image-fill text-success fs-5"></i>
                             <span>Add a Photo</span>
                         </div>
+                        <div class="image-upload-trigger flex-grow-1" onclick="insertLinkOnSelection()">
+                            <i class="bi bi-link-45deg text-primary fs-5"></i>
+                            <span>Insert Link</span>
+                        </div>
                     </div>
 
                     <!-- Hidden Real Inputs -->
@@ -733,8 +737,8 @@
 
                         @unless($isProductPost)
                             <div class="post-side-ad">
-                                @if(isset($communitySideAd) && $communitySideAd)
-                                    {!! $communitySideAd->code !!}
+                                @if(isset($communitySideAds) && $communitySideAds->count())
+                                    {!! $communitySideAds[$loop->index % $communitySideAds->count()]->code !!}
                                 @else
                                     <div class="ad-placeholder">Ad</div>
                                 @endif
@@ -984,7 +988,7 @@
             const fileUrl = URL.createObjectURL(input.files[0]);
             previewVideoEl.src = fileUrl;
             previewContainer.style.display = 'block';
-            trigger.style.display = 'none';
+            if (trigger) trigger.style.display = 'none';
             urlPreviewDiv.style.display = 'none';
         }
     }
@@ -998,7 +1002,7 @@
         input.value = "";
         previewVideoEl.src = "";
         previewContainer.style.display = 'none';
-        trigger.style.display = 'flex';
+        if (trigger) trigger.style.display = 'flex';
     }
 
     // --- Product Attach Logic ---
@@ -1139,6 +1143,36 @@
             }
         }, 500);
     }
+    // Lets the user select (mark) some words in the post text and turn just
+    // that text into a clickable link, instead of only being able to paste
+    // a raw URL. Inserts [selected text](url) and reuses the existing
+    // input-listener (URL auto-detect/preview) by dispatching 'input'.
+    function insertLinkOnSelection() {
+        const textarea = document.getElementById('post-input');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+
+        const url = prompt('লিংক দিন (http:// অথবা https:// দিয়ে শুরু করুন):');
+        if (!url) return;
+        if (!/^https?:\/\//i.test(url.trim())) {
+            toastr.error('http:// বা https:// দিয়ে লিংক শুরু করুন।');
+            return;
+        }
+
+        const linkText = selectedText || prompt('লিংকে কী লেখা দেখাবে?') || url;
+        const markdown = '[' + linkText + '](' + url.trim() + ')';
+
+        if (textarea.setRangeText) {
+            textarea.setRangeText(markdown, start, end, 'end');
+        } else {
+            textarea.value = textarea.value.slice(0, start) + markdown + textarea.value.slice(end);
+        }
+
+        textarea.dispatchEvent(new Event('input'));
+        textarea.focus();
+    }
+
     function setPostType(type, btn) {
         document.getElementById('post_type').value = type;
         document.querySelectorAll('.post-type-btn').forEach(function (b) {
@@ -1151,7 +1185,42 @@
         btn.style.color = '#fff';
     }
 
-    document.getElementById('main-post-form').addEventListener('submit', function(e) {
+    // Shrinks a photo in the browser before it's ever uploaded, since the
+    // server-side resize only runs AFTER the full original file (often
+    // several MB straight off a phone camera) has already been uploaded --
+    // on this host's PHP upload limits that upload gets cut off first,
+    // showing as a generic connection error. Falls back to the original
+    // file untouched if anything about compression fails.
+    function compressImageFile(file, maxWidth = 1600, quality = 0.8) {
+        return new Promise(function (resolve) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = Math.round(height * (maxWidth / width));
+                        width = maxWidth;
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    canvas.toBlob(function (blob) {
+                        if (!blob) { resolve(file); return; }
+                        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = function () { resolve(file); };
+                img.src = e.target.result;
+            };
+            reader.onerror = function () { resolve(file); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    document.getElementById('main-post-form').addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const form = this;
@@ -1165,6 +1234,16 @@
         }
 
         const formData = new FormData(form);
+
+        const imageInput = document.getElementById('post_image');
+        if (imageInput.files && imageInput.files[0]) {
+            try {
+                const compressed = await compressImageFile(imageInput.files[0]);
+                formData.set('post_image', compressed);
+            } catch (err) {
+                console.error('Image compression failed, sending original file', err);
+            }
+        }
 
         fetch(form.action, {
             method: "POST",

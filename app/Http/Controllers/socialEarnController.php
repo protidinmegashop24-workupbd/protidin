@@ -332,9 +332,11 @@ class socialEarnController extends Controller
 
         $website = Website::latest()->first();
         $inFeedAds = GoogleAd::where('position','In-Feed')->get();
-        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->first();
+        // A pool of ads, not just one -- each post's side slot cycles
+        // through them (Quora-style) instead of repeating the same ad.
+        $communitySideAds = GoogleAd::where('position','Community-Sidebar')->get();
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAd'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds'));
     }
     public function communityPostStore(Request $request) {
         $request->validate([
@@ -456,7 +458,7 @@ class socialEarnController extends Controller
             return redirect()->route('home')->with('error','Post Not Found');
         }
         $comments = feedPostComments::where('postId',$post->id)->get();
-        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->first();
+        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
         // dd($post);
         return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments','communitySideAd'));
     }
@@ -641,7 +643,7 @@ class socialEarnController extends Controller
         // dd($post);
         $post = feedpost::where('id',$id)->first();
         $comments = feedPostComments::with('user')->where('postId', $post->id)->orderBy('created_at', 'ASC')->get();
-        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->first();
+        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
         return view('user.pages.cummunityEarn.publicPostLink',compact('post','comments','communitySideAd'));
     }
     public function postFeedDashboard(){
