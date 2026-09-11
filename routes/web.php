@@ -1788,3 +1788,23 @@ Route::get('/system-backfill-referral-activated/{token}', function ($token) {
         'users_newly_marked_active' => $updated,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-off: adds the postType column to feedposts (Community posts), so a
+// post can be tagged 'product' (image + Buy Now button) or 'article'
+// (Q&A/blog-style, with a side ad slot). Existing posts default to
+// 'article' so they keep rendering exactly as before. Safe to run more
+// than once -- no-ops if the column already exists.
+Route::get('/system-add-post-type-column/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'postType')) {
+        \Illuminate\Support\Facades\Schema::table('feedposts', function ($table) {
+            $table->string('postType', 20)->default('article')->after('video');
+        });
+        return 'postType column added at ' . now();
+    }
+
+    return 'postType column already exists -- nothing to do.';
+});

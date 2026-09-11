@@ -332,14 +332,21 @@ class socialEarnController extends Controller
 
         $website = Website::latest()->first();
         $inFeedAds = GoogleAd::where('position','In-Feed')->get();
+        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->first();
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAd'));
     }
     public function communityPostStore(Request $request) {
         $request->validate([
             'post_content' => 'required|string',
             'post_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
-            'fatchUrl'     => 'nullable|url',
+            // A link is mandatory -- this feature exists specifically so
+            // users can post their own affiliate/site link for a backlink,
+            // so a post without one defeats the point.
+            'fatchUrl'     => 'required|url',
+            'post_type'    => 'required|in:product,article',
+        ], [
+            'fatchUrl.required' => 'আপনার পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) দিতে হবে।',
         ]);
 
         // Max Post Limit per Day Start 
@@ -403,6 +410,7 @@ class socialEarnController extends Controller
             'likes'            => 0,
             'commnets'         => 0,
             'userId'           => Auth::id() ?? 1,
+            'postType'         => $request->post_type,
         ]);
 
         // Earning & Referral Logic
@@ -448,8 +456,9 @@ class socialEarnController extends Controller
             return redirect()->route('home')->with('error','Post Not Found');
         }
         $comments = feedPostComments::where('postId',$post->id)->get();
+        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->first();
         // dd($post);
-        return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments'));
+        return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments','communitySideAd'));
     }
     public function newComment($id, Request $request){
         if(!$id){
@@ -632,7 +641,8 @@ class socialEarnController extends Controller
         // dd($post);
         $post = feedpost::where('id',$id)->first();
         $comments = feedPostComments::with('user')->where('postId', $post->id)->orderBy('created_at', 'ASC')->get();
-        return view('user.pages.cummunityEarn.publicPostLink',compact(['post','comments']));
+        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->first();
+        return view('user.pages.cummunityEarn.publicPostLink',compact('post','comments','communitySideAd'));
     }
     public function postFeedDashboard(){
        $userId = Auth::id();

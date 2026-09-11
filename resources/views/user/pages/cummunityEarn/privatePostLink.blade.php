@@ -409,6 +409,61 @@
             .post-body { padding: 5px 15px 12px; }
             .comment-bubble { max-width: 100%; }
         }
+
+        .product-post-card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+            margin-top: 10px;
+        }
+        .product-post-card img {
+            width: 100%;
+            max-height: 320px;
+            object-fit: cover;
+            display: block;
+        }
+        .product-post-body { padding: 10px 12px; }
+        .buy-now-btn {
+            display: block;
+            text-align: center;
+            margin: 10px 12px 12px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f97316;
+            color: #fff !important;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .buy-now-btn:hover { background: #ea580c; }
+
+        .post-body-with-ad {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .post-body-with-ad .post-main-content { flex: 1; min-width: 0; }
+        .post-side-ad {
+            width: 160px;
+            flex-shrink: 0;
+        }
+        .post-side-ad .ad-placeholder {
+            width: 100%;
+            min-height: 250px;
+            border: 1px dashed #bbb;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .post-body-with-ad { flex-direction: column; }
+            .post-side-ad { width: 100%; }
+            .post-side-ad .ad-placeholder { min-height: 100px; }
+        }
     </style>
 @endsection 
 
@@ -438,25 +493,52 @@
                     <i class="bi bi-three-dots text-muted"></i>
                 </div>
                 
-                <div class="post-body">
-                    {!! linkify($post->postContent) !!}
-                    @if($post->video)
-                        <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
-                    @elseif($post->image)
-                        <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
-                    @endif
-                    @if($post->fetchUrl)
-                    <div class="url-preview-viewpart">
-                        <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc">
-                            @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
-                            <div class="url-preview-content">
-                                @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
-                                @if($post->fetchDescription)<p style="margin:0;">{{$post->fetchDescription}}</p>@endif
-                                <small>{{$post->fetchUrl}}</small>
-                            </div>
-                        </a>
+                @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
+                <div class="post-body {{ $isProductPost ? '' : 'post-body-with-ad' }}">
+                    <div class="post-main-content">
+                        {!! linkify($post->postContent) !!}
+                        @if($post->video)
+                            <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
+                        @elseif($post->image)
+                            <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
+                        @endif
+
+                        @if($post->fetchUrl)
+                            @if($isProductPost)
+                                <div class="product-post-card">
+                                    @if($post->fetchImg)
+                                        <img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">
+                                    @endif
+                                    <div class="product-post-body">
+                                        @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
+                                        @if($post->fetchDescription)<p style="margin:4px 0 0;">{{ Str::limit($post->fetchDescription, 120) }}</p>@endif
+                                    </div>
+                                    <a href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc" class="buy-now-btn">🛒 Buy Now</a>
+                                </div>
+                            @else
+                                <div class="url-preview-viewpart">
+                                    <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc">
+                                        @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
+                                        <div class="url-preview-content">
+                                            @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
+                                            @if($post->fetchDescription)<p style="margin:0;">{{$post->fetchDescription}}</p>@endif
+                                            <small>{{$post->fetchUrl}}</small>
+                                        </div>
+                                    </a>
+                                </div>
+                            @endif
+                        @endif
                     </div>
-                    @endif
+
+                    @unless($isProductPost)
+                        <div class="post-side-ad">
+                            @if(isset($communitySideAd) && $communitySideAd)
+                                {!! $communitySideAd->code !!}
+                            @else
+                                <div class="ad-placeholder">Ad</div>
+                            @endif
+                        </div>
+                    @endunless
                 </div>
 
                 <div class="post-stats">

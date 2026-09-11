@@ -499,20 +499,90 @@
             opacity: 0.6;
             pointer-events: none;
         }
+
+        .product-post-card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+            margin-top: 10px;
+        }
+        .product-post-card img {
+            width: 100%;
+            max-height: 320px;
+            object-fit: cover;
+            display: block;
+        }
+        .product-post-body { padding: 10px 12px; }
+        .buy-now-btn {
+            display: block;
+            text-align: center;
+            margin: 10px 12px 12px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f97316;
+            color: #fff !important;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .buy-now-btn:hover { background: #ea580c; }
+
+        .post-body-with-ad {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .post-body-with-ad .post-main-content { flex: 1; min-width: 0; }
+        .post-side-ad {
+            width: 160px;
+            flex-shrink: 0;
+        }
+        .post-side-ad .ad-placeholder {
+            width: 100%;
+            min-height: 250px;
+            border: 1px dashed #bbb;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .post-body-with-ad { flex-direction: column; }
+            .post-side-ad { width: 100%; }
+            .post-side-ad .ad-placeholder { min-height: 100px; }
+        }
     </style>
-@endsection 
+@endsection
 {{-- Css End Here For Single Page  --}}
 @section('user-content')
 <div id="copy-alert">Link copied to clipboard!</div>
 <div class="row" style="background-color:#d6ebf1;">
     <div class="feed-container">
-        
+
+        <div class="post-card" style="padding:14px 18px; font-weight:700; text-align:center; background:#0f766e; color:#fff;">
+            🎉 এখানে ফ্রি ফ্রি আপনার নিজের এফিলিয়েট লিংক বা আপনার নিজের সাইটের লিংক ব্যাক লিংকের জন্য পোস্ট করুন!
+        </div>
+
         <!-- Post Creator Form -->
         <div class="post-card">
             <!-- Note: Action # is for demo. Replace with real backend URL (e.g., /posts/store) -->
             <form action="{{route('user.communityPostStore')}}" method="POST" class="create-post-container" enctype="multipart/form-data" id="main-post-form">
                 @csrf
-                
+                <input type="hidden" name="post_type" id="post_type" value="article">
+                <div class="post-type-toggle" style="display:flex; gap:8px; padding:10px 12px 0;">
+                    <button type="button" class="post-type-btn active" data-type="article" onclick="setPostType('article', this)"
+                        style="flex:1; padding:8px; border-radius:8px; border:2px solid #0f766e; background:#0f766e; color:#fff; font-weight:600; cursor:pointer;">
+                        ❓ Q&amp;A / Article (ব্যাকলিংক)
+                    </button>
+                    <button type="button" class="post-type-btn" data-type="product" onclick="setPostType('product', this)"
+                        style="flex:1; padding:8px; border-radius:8px; border:2px solid #0f766e; background:#fff; color:#0f766e; font-weight:600; cursor:pointer;">
+                        🛍️ Product (Buy Now)
+                    </button>
+                </div>
+
                 <div id="initial-state" onclick="toggleEditor(true)">
                     <div class="profile-icon">
                         @if(Auth::user()->image)
@@ -624,25 +694,52 @@
                         <i class="bi bi-three-dots text-muted"></i>
                     </div>
                     
-                    <div class="post-body">
-                        {!! linkify($post->postContent) !!}
-                        @if($post->video)
-                            <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
-                        @elseif($post->image)
-                            <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
-                        @endif
-                        @if($post->fetchUrl)
-                        <div class="url-preview-viewpart">
-                            <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc">
-                                @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
-                                <div class="url-preview-content">
-                                    @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
-                                    @if($post->fetchDescription)<p style="margin:0;">{{$post->fetchDescription}}</p>@endif
-                                    <small>{{$post->fetchUrl}}</small>
-                                </div>
-                            </a>
+                    @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
+                    <div class="post-body {{ $isProductPost ? '' : 'post-body-with-ad' }}">
+                        <div class="post-main-content">
+                            {!! linkify($post->postContent) !!}
+                            @if($post->video)
+                                <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
+                            @elseif($post->image)
+                                <img src="{{asset($post->image)}}" class="post-image-full" alt="Post content" loading="lazy" >
+                            @endif
+
+                            @if($post->fetchUrl)
+                                @if($isProductPost)
+                                    <div class="product-post-card">
+                                        @if($post->fetchImg)
+                                            <img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">
+                                        @endif
+                                        <div class="product-post-body">
+                                            @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
+                                            @if($post->fetchDescription)<p style="margin:4px 0 0;">{{ Str::limit($post->fetchDescription, 120) }}</p>@endif
+                                        </div>
+                                        <a href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc" class="buy-now-btn">🛒 Buy Now</a>
+                                    </div>
+                                @else
+                                    <div class="url-preview-viewpart">
+                                        <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc">
+                                            @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
+                                            <div class="url-preview-content">
+                                                @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
+                                                @if($post->fetchDescription)<p style="margin:0;">{{$post->fetchDescription}}</p>@endif
+                                                <small>{{$post->fetchUrl}}</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
-                        @endif
+
+                        @unless($isProductPost)
+                            <div class="post-side-ad">
+                                @if(isset($communitySideAd) && $communitySideAd)
+                                    {!! $communitySideAd->code !!}
+                                @else
+                                    <div class="ad-placeholder">Ad</div>
+                                @endif
+                            </div>
+                        @endunless
                     </div>
 
                     <div class="post-stats">
@@ -1042,10 +1139,31 @@
             }
         }, 500);
     }
+    function setPostType(type, btn) {
+        document.getElementById('post_type').value = type;
+        document.querySelectorAll('.post-type-btn').forEach(function (b) {
+            b.classList.remove('active');
+            b.style.background = '#fff';
+            b.style.color = '#0f766e';
+        });
+        btn.classList.add('active');
+        btn.style.background = '#0f766e';
+        btn.style.color = '#fff';
+    }
+
     document.getElementById('main-post-form').addEventListener('submit', function(e) {
         e.preventDefault();
 
         const form = this;
+
+        // A link is mandatory -- this feature exists so users can post
+        // their own affiliate/site link for a backlink, so block the
+        // submit early instead of round-tripping to the server to find out.
+        if (!document.getElementById('post-url').value) {
+            toastr.error('পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) যোগ করুন।');
+            return;
+        }
+
         const formData = new FormData(form);
 
         fetch(form.action, {
