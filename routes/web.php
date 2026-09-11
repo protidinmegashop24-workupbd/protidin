@@ -659,6 +659,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::post('/community-follow/{userId}', [socialEarnController::class, 'toggleFollow'])->name('community.follow');
     Route::post('/community-save/{postId}', [socialEarnController::class, 'toggleSave'])->name('community.save');
     Route::post('/community-report/{postId}', [socialEarnController::class, 'reportPost'])->name('community.report');
+    Route::get('/community-profile/{userId}', [socialEarnController::class, 'communityProfile'])->name('community.profile');
     Route::get('/feed-post-dashboard', [socialEarnController::class, 'postFeedDashboard'])->name('postFeedDashboard');
     Route::get('/feed-post-list', [socialEarnController::class, 'myPostFeedList'])->name('myPostFeedList');
 

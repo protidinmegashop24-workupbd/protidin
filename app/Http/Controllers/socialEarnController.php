@@ -464,6 +464,36 @@ class socialEarnController extends Controller
 
         return response()->json(['status' => true, 'message' => 'রিপোর্ট জমা হয়েছে, ধন্যবাদ। এডমিন রিভিউ করবে।']);
     }
+    // Public-within-the-community profile: stats + this user's own approved
+    // posts. Sits behind the same 'auth' group as the rest of Community
+    // Earn, so only logged-in users can view it for now.
+    public function communityProfile($userId){
+        $profileUser = User::find($userId);
+        if (!$profileUser) {
+            return redirect()->route('user.communityEarn')->with('error', 'User Not Found');
+        }
+
+        $posts = feedpost::where('userId', $userId)
+            ->where('status', 'approved')
+            ->latest()
+            ->paginate(10);
+
+        $postCount = feedpost::where('userId', $userId)->where('status', 'approved')->count();
+
+        $followersCount = communityFollowEnabled()
+            ? CommunityFollow::where('followed_id', $userId)->count()
+            : 0;
+        $followingCount = communityFollowEnabled()
+            ? CommunityFollow::where('follower_id', $userId)->count()
+            : 0;
+        $isFollowing = communityFollowEnabled() && Auth::id() != $userId
+            ? CommunityFollow::where('follower_id', Auth::id())->where('followed_id', $userId)->exists()
+            : false;
+
+        return view('user.pages.cummunityEarn.communityProfile', compact(
+            'profileUser', 'posts', 'postCount', 'followersCount', 'followingCount', 'isFollowing'
+        ));
+    }
     public function communityPostStore(Request $request) {
         $request->validate([
             'post_content' => 'required|string',

@@ -545,7 +545,7 @@
                     </div>
                     <div class="flex-grow-1">
                         <h6 class="mb-0 fw-bold" style="font-size: 0.95rem;">
-                            {{$post->user->name}} @if($post->user->kyc_status == 'approve')<i class="bi bi-patch-check-fill verified-badge"></i> @endif
+                            <a href="{{ route('user.community.profile', $post->userId) }}" style="color:inherit; text-decoration:none;">{{$post->user->name}}</a> @if($post->user->kyc_status == 'approve')<i class="bi bi-patch-check-fill verified-badge"></i> @endif
                             {{-- <span class="owner-tag">Owner</span> --}}
                         </h6>
                         <small class="text-muted" style="font-size: 0.7rem;">
