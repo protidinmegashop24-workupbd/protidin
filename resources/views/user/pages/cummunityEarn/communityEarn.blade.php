@@ -650,10 +650,6 @@
                             <i class="bi bi-image-fill text-success fs-5"></i>
                             <span>Add a Photo</span>
                         </div>
-                        <div class="image-upload-trigger flex-grow-1" onclick="insertLinkOnSelection()">
-                            <i class="bi bi-link-45deg text-primary fs-5"></i>
-                            <span>Insert Link</span>
-                        </div>
                     </div>
 
                     <!-- Hidden Real Inputs -->
@@ -913,11 +909,34 @@
         }, 500);
     });
     
+    // Quora-style: once we know the page's title, replace the raw pasted
+    // URL inside the textarea with [Title](url) so the long link itself
+    // stays hidden and only a clean link label shows in the post text.
+    function autoLinkifyPastedUrl(url, title) {
+        const textarea = document.getElementById('post-input');
+        if (!url || !textarea) return;
+        // Already converted (or the user typed it inside brackets themselves) -- don't touch it again.
+        if (textarea.value.includes('](' + url + ')')) return;
+        if (!textarea.value.includes(url)) return;
+
+        let linkText = title;
+        if (!linkText) {
+            try { linkText = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { linkText = url; }
+        }
+        // Strip characters that would break the [text](url) markdown itself.
+        linkText = linkText.replace(/[\[\]\r\n]/g, '').trim() || url;
+
+        textarea.value = textarea.value.replace(url, '[' + linkText + '](' + url + ')');
+        textarea.dispatchEvent(new Event('input'));
+    }
+
     function showUrlPreview(data) {
         document.getElementById('fetchTitle').value = data.title || '';
         document.getElementById('fetchDescription').value = data.description || '';
         document.getElementById('fetchImg').value = data.image || '';
-    
+
+        autoLinkifyPastedUrl(document.getElementById('post-url').value, data.title);
+
         const previewImgEl = document.getElementById('url-preview-img');
         if (data.image) {
             previewImgEl.src = data.image;
@@ -1144,36 +1163,6 @@
             }
         }, 500);
     }
-    // Lets the user select (mark) some words in the post text and turn just
-    // that text into a clickable link, instead of only being able to paste
-    // a raw URL. Inserts [selected text](url) and reuses the existing
-    // input-listener (URL auto-detect/preview) by dispatching 'input'.
-    function insertLinkOnSelection() {
-        const textarea = document.getElementById('post-input');
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = textarea.value.substring(start, end);
-
-        const url = prompt('লিংক দিন (http:// অথবা https:// দিয়ে শুরু করুন):');
-        if (!url) return;
-        if (!/^https?:\/\//i.test(url.trim())) {
-            toastr.error('http:// বা https:// দিয়ে লিংক শুরু করুন।');
-            return;
-        }
-
-        const linkText = selectedText || prompt('লিংকে কী লেখা দেখাবে?') || url;
-        const markdown = '[' + linkText + '](' + url.trim() + ')';
-
-        if (textarea.setRangeText) {
-            textarea.setRangeText(markdown, start, end, 'end');
-        } else {
-            textarea.value = textarea.value.slice(0, start) + markdown + textarea.value.slice(end);
-        }
-
-        textarea.dispatchEvent(new Event('input'));
-        textarea.focus();
-    }
-
     function setPostType(type, btn) {
         document.getElementById('post_type').value = type;
         document.querySelectorAll('.post-type-btn').forEach(function (b) {
