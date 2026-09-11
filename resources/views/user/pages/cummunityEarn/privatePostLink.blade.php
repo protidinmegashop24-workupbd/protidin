@@ -515,6 +515,16 @@
             background: var(--feed-brand-green-soft);
             color: var(--feed-brand-green);
         }
+        .report-btn {
+            flex-shrink: 0;
+            margin-left: 6px;
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        .report-btn:hover { opacity: 1; }
     </style>
 @endsection
 
@@ -553,6 +563,9 @@
                         <button type="button" class="follow-btn {{ $isFollowingAuthor ? 'active' : '' }}" data-user-id="{{ $post->userId }}">
                             {{ $isFollowingAuthor ? 'Following' : '+ Follow' }}
                         </button>
+                    @endif
+                    @if(communityReportsEnabled() && Auth::id() != $post->userId)
+                        <button type="button" class="report-btn" data-post-id="{{ $post->id }}" title="Report this post">🚩</button>
                     @endif
                 </div>
 
@@ -965,6 +978,32 @@
                         label.text('Save');
                     }
                     toastr.success(response.message);
+                } else {
+                    toastr.error(response.message);
+                }
+            },
+            error: function () {
+                toastr.error('Something went wrong. Try again.');
+            }
+        });
+    });
+
+    $(document).on('click', '.report-btn', function () {
+        let btn = $(this);
+        let postId = btn.data('post-id');
+        let reason = prompt('কেন এই পোস্টটা রিপোর্ট করছেন? (ঐচ্ছিক)');
+        if (reason === null) {
+            return; // cancelled
+        }
+
+        $.ajax({
+            url: '/user/community-report/' + postId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}", reason: reason },
+            success: function (response) {
+                if (response.status === true) {
+                    toastr.success(response.message);
+                    btn.prop('disabled', true).css('opacity', 0.3);
                 } else {
                     toastr.error(response.message);
                 }

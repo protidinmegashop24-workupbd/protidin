@@ -17,6 +17,7 @@ use App\Models\GoogleAd;
 use App\Models\CommunityTopic;
 use App\Models\CommunityFollow;
 use App\Models\CommunityBookmark;
+use App\Models\CommunityReport;
 use App\Models\Admin\UserMessage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -439,6 +440,29 @@ class socialEarnController extends Controller
         }
 
         return redirect()->away($post->fetchUrl);
+    }
+    public function reportPost(Request $request, $postId){
+        if (!communityReportsEnabled()) {
+            return response()->json(['status' => false, 'message' => 'Feature not set up yet.']);
+        }
+        $post = feedpost::find($postId);
+        if (!$post) {
+            return response()->json(['status' => false, 'message' => 'Post not found.']);
+        }
+
+        $existing = CommunityReport::where('post_id', $postId)->where('user_id', Auth::id())->first();
+        if ($existing) {
+            return response()->json(['status' => false, 'message' => 'You have already reported this post.']);
+        }
+
+        CommunityReport::create([
+            'post_id' => $postId,
+            'user_id' => Auth::id(),
+            'reason'  => $request->input('reason'),
+            'status'  => 'pending',
+        ]);
+
+        return response()->json(['status' => true, 'message' => 'রিপোর্ট জমা হয়েছে, ধন্যবাদ। এডমিন রিভিউ করবে।']);
     }
     public function communityPostStore(Request $request) {
         $request->validate([

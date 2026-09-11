@@ -7,6 +7,7 @@ use App\Http\Controllers\Backend\AboutUsController;
 use App\Http\Controllers\Backend\SpinSettingController;
 use App\Http\Controllers\Backend\ServiceController;
 use App\Http\Controllers\Backend\GoogleAdController;
+use App\Http\Controllers\Backend\CommunityReportController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\LotteryController;
@@ -273,6 +274,10 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('contact-info', [ContactUsTextController::class, 'index'])->name('contact_info');
     Route::post('contact-info-update-{id}', [ContactUsTextController::class, 'update'])->name('contact_info.update');
     Route::get('contact-message-list', [ContactUsTextController::class, 'contact_msg'])->name('contact_msg');
+
+    Route::get('community-reports', [CommunityReportController::class, 'index'])->name('community-reports');
+    Route::get('community-reports-dismiss/{id}', [CommunityReportController::class, 'dismiss'])->name('community-reports.dismiss');
+    Route::get('community-reports-hide-post/{id}', [CommunityReportController::class, 'hidePost'])->name('community-reports.hide-post');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -653,6 +658,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::post('/new-share', [socialEarnController::class, 'newShare'])->name('newShare');
     Route::post('/community-follow/{userId}', [socialEarnController::class, 'toggleFollow'])->name('community.follow');
     Route::post('/community-save/{postId}', [socialEarnController::class, 'toggleSave'])->name('community.save');
+    Route::post('/community-report/{postId}', [socialEarnController::class, 'reportPost'])->name('community.report');
     Route::get('/feed-post-dashboard', [socialEarnController::class, 'postFeedDashboard'])->name('postFeedDashboard');
     Route::get('/feed-post-list', [socialEarnController::class, 'myPostFeedList'])->name('myPostFeedList');
 
@@ -1997,6 +2003,35 @@ Route::get('/system-add-community-product-fields/{token}', function ($token) {
         $log[] = 'Created community_link_clicks table.';
     } else {
         $log[] = 'community_link_clicks table already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: Phase 4 of the Quora-style Community upgrade -- reactive
+// moderation (Report a post + an admin review queue). Additive only, same
+// pattern as the earlier phases. Safe to run more than once.
+Route::get('/system-add-community-reports/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('community_reports')) {
+        \Illuminate\Support\Facades\Schema::create('community_reports', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('post_id');
+            $table->unsignedBigInteger('user_id');
+            $table->string('reason', 255)->nullable();
+            $table->string('status', 20)->default('pending'); // pending, dismissed, post_hidden
+            $table->timestamps();
+            $table->index('post_id');
+            $table->index('status');
+        });
+        $log[] = 'Created community_reports table.';
+    } else {
+        $log[] = 'community_reports table already exists.';
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);

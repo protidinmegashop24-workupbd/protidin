@@ -92,6 +92,14 @@
                         <p>&nbsp;Admin Account Manage</p>
                     </a>
                 </li>
+                @if(\Illuminate\Support\Facades\Schema::hasTable('community_reports'))
+                <li class="nav-item">
+                    <a href="{{ route('admin.community-reports') }}" class="nav-link {{ Route::is('admin.community-reports') ? 'active' : '' }}">
+                        <i class="fa fa-flag" aria-hidden="true"></i>
+                        <p>&nbsp;Community Reports</p>
+                    </a>
+                </li>
+                @endif
                 <li class="nav-item has-treeview {{ Route::is('admin.about_us') || Route::is('admin.contact_info') || Route::is('admin.header-info') || Route::is('admin.counter-info') || Route::is('admin.contact_msg') || Route::is('admin.google-ad') || Route::is('admin.policy') ? 'menu-open' : '' }}">
                     <a href="#" class="nav-link"> <i class="fa fa-building" aria-hidden="true"></i> 
                         <p> Company <i class="right fas fa-angle-left"></i> </p>

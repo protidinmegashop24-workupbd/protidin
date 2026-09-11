@@ -584,6 +584,17 @@
             .post-side-ad .ad-placeholder { min-height: 100px; }
         }
 
+        .topic-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--feed-pure-white);
+            border: 1px solid var(--feed-border-color);
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+        }
+        .topic-header-icon { font-size: 1.8rem; }
         .topic-chip-row {
             display: flex;
             gap: 8px;
@@ -632,6 +643,16 @@
             background: var(--feed-brand-green-soft);
             color: var(--feed-brand-green);
         }
+        .report-btn {
+            flex-shrink: 0;
+            margin-left: 6px;
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        .report-btn:hover { opacity: 1; }
     </style>
 @endsection
 {{-- Css End Here For Single Page  --}}
@@ -767,6 +788,17 @@
             </form>
         </div>
 
+        @if($activeTopicSlug && $topics->firstWhere('slug', $activeTopicSlug))
+            @php $activeTopic = $topics->firstWhere('slug', $activeTopicSlug); @endphp
+            <div class="topic-header">
+                <span class="topic-header-icon">{{ $activeTopic->icon }}</span>
+                <div>
+                    <strong>{{ $activeTopic->name }}</strong>
+                    <div class="text-muted" style="font-size:0.8rem;">এই বিষয়ের সব পোস্ট</div>
+                </div>
+            </div>
+        @endif
+
         @if($topics->count() || communityBookmarkEnabled())
         <div class="topic-chip-row">
             @if($topics->count())
@@ -816,6 +848,9 @@
                             <button type="button" class="follow-btn {{ in_array($post->userId, $followingIds) ? 'active' : '' }}" data-user-id="{{ $post->userId }}">
                                 {{ in_array($post->userId, $followingIds) ? 'Following' : '+ Follow' }}
                             </button>
+                        @endif
+                        @if(communityReportsEnabled() && Auth::id() != $post->userId)
+                            <button type="button" class="report-btn" data-post-id="{{ $post->id }}" title="Report this post">🚩</button>
                         @endif
                     </div>
 
@@ -1515,6 +1550,32 @@
                         label.text('Save');
                     }
                     toastr.success(response.message);
+                } else {
+                    toastr.error(response.message);
+                }
+            },
+            error: function () {
+                toastr.error('Something went wrong. Try again.');
+            }
+        });
+    });
+
+    $(document).on('click', '.report-btn', function () {
+        let btn = $(this);
+        let postId = btn.data('post-id');
+        let reason = prompt('কেন এই পোস্টটা রিপোর্ট করছেন? (ঐচ্ছিক)');
+        if (reason === null) {
+            return; // cancelled
+        }
+
+        $.ajax({
+            url: '/user/community-report/' + postId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}", reason: reason },
+            success: function (response) {
+                if (response.status === true) {
+                    toastr.success(response.message);
+                    btn.prop('disabled', true).css('opacity', 0.3);
                 } else {
                     toastr.error(response.message);
                 }
