@@ -1808,3 +1808,18 @@ Route::get('/system-add-post-type-column/{token}', function ($token) {
 
     return 'postType column already exists -- nothing to do.';
 });
+
+// Diagnostic: dumps every configured GoogleAd row (id, position, raw code)
+// so we can see exactly what ad script/HTML is running in each ad slot --
+// e.g. to check whether the "In-Feed" Community ad is genuine Google
+// AdSense or some other network's code that might be rendering a
+// notification-style widget.
+Route::get('/system-debug-google-ads/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $ads = \App\Models\GoogleAd::select('id', 'position', 'code', 'created_at', 'updated_at')->get();
+
+    return response()->json($ads);
+});
