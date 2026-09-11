@@ -527,15 +527,24 @@
         }
         .buy-now-btn:hover { background: #ea580c; }
 
-        .post-body-with-ad {
+        /* The ad sits BESIDE the post card, in its own separate box --
+           not inside the post card itself -- so it's visually obvious
+           it's not part of what the user posted (Quora-style side rail). */
+        .post-row {
             display: flex;
             gap: 12px;
             align-items: flex-start;
+            margin-bottom: 25px;
         }
-        .post-body-with-ad .post-main-content { flex: 1; min-width: 0; }
+        .post-row .post-card { flex: 1; min-width: 0; margin-bottom: 0; }
         .post-side-ad {
             width: 160px;
             flex-shrink: 0;
+            background: var(--feed-pure-white);
+            border: 1px solid var(--feed-border-color);
+            border-radius: 16px;
+            box-shadow: var(--feed-card-shadow);
+            padding: 8px;
         }
         .post-side-ad .ad-placeholder {
             width: 100%;
@@ -550,7 +559,7 @@
             text-align: center;
         }
         @media (max-width: 600px) {
-            .post-body-with-ad { flex-direction: column; }
+            .post-row { flex-direction: column; }
             .post-side-ad { width: 100%; }
             .post-side-ad .ad-placeholder { min-height: 100px; }
         }
@@ -673,6 +682,7 @@
         <div id="postFeed">
             <!-- Post Item 1 -->
             @foreach($posts as $post)
+                <div class="post-row">
                 <div class="post-card" id="post-{{$post->id}}">
                     <div class="post-header d-flex align-items-center">
                         <div class="profile-icon me-3">
@@ -695,7 +705,7 @@
                     </div>
                     
                     @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
-                    <div class="post-body post-body-with-ad">
+                    <div class="post-body">
                         <div class="post-main-content">
                             {!! linkify($post->postContent) !!}
                             @if($post->video)
@@ -731,14 +741,6 @@
                                 @endif
                             @endif
                         </div>
-
-                        <div class="post-side-ad">
-                                @if(isset($communitySideAds) && $communitySideAds->count())
-                                    {!! $communitySideAds[$loop->index % $communitySideAds->count()]->code !!}
-                                @else
-                                    <div class="ad-placeholder">Ad</div>
-                                @endif
-                            </div>
                     </div>
 
                     <div class="post-stats">
@@ -765,6 +767,15 @@
                         </a>
                         <button class="action-btn" onclick="copyPostLink('{{$post->id}}')">Share</button>
                     </div>
+                </div>
+
+                <div class="post-side-ad">
+                    @if(isset($communitySideAds) && $communitySideAds->count())
+                        {!! $communitySideAds[$loop->index % $communitySideAds->count()]->code !!}
+                    @else
+                        <div class="ad-placeholder">Ad</div>
+                    @endif
+                </div>
                 </div>
 
                 @if($inFeedAds->count() && $loop->iteration % 4 == 0)

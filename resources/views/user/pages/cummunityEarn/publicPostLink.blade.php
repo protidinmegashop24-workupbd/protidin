@@ -128,15 +128,22 @@
         }
         .buy-now-btn:hover { background: #ea580c; }
 
-        .post-body-with-ad {
+        /* The ad sits BESIDE the post card, in its own separate box --
+           not inside the post card itself -- so it's visually obvious
+           it's not part of what the user posted (Quora-style side rail). */
+        .post-row {
             display: flex;
             gap: 12px;
             align-items: flex-start;
         }
-        .post-body-with-ad .post-main-content { flex: 1; min-width: 0; }
+        .post-row .post-card { flex: 1; min-width: 0; margin-bottom: 0; }
         .post-side-ad {
             width: 160px;
             flex-shrink: 0;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            padding: 8px;
         }
         .post-side-ad .ad-placeholder {
             width: 100%;
@@ -151,7 +158,7 @@
             text-align: center;
         }
         @media (max-width: 600px) {
-            .post-body-with-ad { flex-direction: column; }
+            .post-row { flex-direction: column; }
             .post-side-ad { width: 100%; }
             .post-side-ad .ad-placeholder { min-height: 100px; }
         }
@@ -160,6 +167,7 @@
 <body>
 <div class="container py-4">
 
+    <div class="post-row">
     <!-- Post Card -->
     <div class="post-card" id="post-{{$post->id}}">
         <!-- Post Header -->
@@ -183,7 +191,7 @@
 
         <!-- Post Body -->
         @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
-        <div class="post-body mt-2 post-body-with-ad">
+        <div class="post-body mt-2">
             <div class="post-main-content">
                 {!! linkify($post->postContent) !!}
                 <div class="text-left">
@@ -233,14 +241,6 @@
                         @endif
                     @endif
                 </div>
-            </div>
-
-            <div class="post-side-ad">
-                @if(isset($communitySideAd) && $communitySideAd)
-                    {!! $communitySideAd->code !!}
-                @else
-                    <div class="ad-placeholder">Ad</div>
-                @endif
             </div>
         </div>
 
@@ -322,6 +322,15 @@
             @endguest
 
         </div>
+    </div>
+
+    <div class="post-side-ad">
+        @if(isset($communitySideAd) && $communitySideAd)
+            {!! $communitySideAd->code !!}
+        @else
+            <div class="ad-placeholder">Ad</div>
+        @endif
+    </div>
     </div>
 </div>
 
