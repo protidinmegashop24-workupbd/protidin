@@ -971,20 +971,7 @@
     //         // In production, remove this block and let the form submit naturally
     //     });
     // });
-    function copyPostLink(postId) {
-        const link = "{{route('publicPostLink')}}/" + postId;
-
-        const helper = document.getElementById('copy-helper');
-        helper.value = link;
-        helper.select();
-        helper.setSelectionRange(0, 99999);
-        document.execCommand('copy');
-
-        const alertBox = document.getElementById('copy-alert');
-        alertBox.style.display = 'block';
-        setTimeout(() => { alertBox.style.display = 'none'; }, 2000);
-
-        // Record the share (increments share count, grants earning once per user per post)
+    function grantShareEarn(postId) {
         const postCard = document.getElementById('post-' + postId);
         $.ajax({
             url: "{{Route('user.newShare')}}",
@@ -1004,17 +991,56 @@
                 }
             }
         });
+    }
+
+    function copyLinkFallback(link) {
+        const helper = document.getElementById('copy-helper');
+        helper.value = link;
+        helper.select();
+        helper.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+
+        const alertBox = document.getElementById('copy-alert');
+        alertBox.style.display = 'block';
+        setTimeout(() => { alertBox.style.display = 'none'; }, 2000);
+    }
+
+    // Earning is only granted once the user actually goes through a share
+    // action (the OS share sheet resolving, or the Facebook share popup
+    // being opened and closed) -- clicking the button alone no longer pays
+    // out, since that was earnable with zero actual sharing.
+    function copyPostLink(postId) {
+        const link = "{{route('publicPostLink')}}/" + postId;
 
         if (navigator.share) {
-            navigator.share({
-                title: 'Share Post',
-                url: link
-            }).catch((err) => {
-                console.log("Share cancelled or failed");
-            });
-        } else {
-            console.log("Web Share not supported");
+            // Mobile: real OS share sheet. Only counts if the user picks an
+            // app and the share promise resolves (not on cancel/failure).
+            navigator.share({ title: 'Share Post', url: link })
+                .then(() => grantShareEarn(postId))
+                .catch(() => console.log('Share cancelled or failed'));
+            return;
         }
+
+        // Desktop: open Facebook's real share dialog instead of just
+        // copying the link, and grant the earning once that popup closes
+        // (best-effort signal -- Facebook does not expose any way to
+        // confirm a share actually posted).
+        const fbShareUrl = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link);
+        const popup = window.open(fbShareUrl, 'fb-share', 'width=600,height=500');
+
+        if (!popup) {
+            // Popup blocked -- fall back to copy-link so sharing still works.
+            copyLinkFallback(link);
+            grantShareEarn(postId);
+            return;
+        }
+
+        const timer = setInterval(function () {
+            if (popup.closed) {
+                clearInterval(timer);
+                grantShareEarn(postId);
+            }
+        }, 500);
     }
     document.getElementById('main-post-form').addEventListener('submit', function(e) {
         e.preventDefault();
