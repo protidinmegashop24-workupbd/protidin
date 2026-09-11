@@ -27,7 +27,10 @@ class feedpost extends Model
         'userId',
         'image',
         'video',
-        'postType'
+        'postType',
+        'productPrice',
+        'discountText',
+        'productFeatures',
     ];
     protected $casts = [
         'aiRating'       => 'integer',

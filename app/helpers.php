@@ -1064,6 +1064,30 @@ if (!function_exists('communityBookmarkEnabled')) {
     }
 }
 
+if (!function_exists('communityProductFieldsEnabled')) {
+    // Guards the Phase 3 Affiliate Product fields (price/discount/features)
+    // the same way communityTopicsEnabled() guards Topics -- keeps the
+    // site working before/without the one-off
+    // /system-add-community-product-fields route being run.
+    function communityProductFieldsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'productPrice');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityLinkClickTrackingEnabled')) {
+    function communityLinkClickTrackingEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_link_clicks');
+        }
+        return $enabled;
+    }
+}
+
 if (!function_exists('custom_path')) {
     // Used by the KYC verification pages to resolve a stored document/photo
     // path to a public URL, falling back to a placeholder image. Files are

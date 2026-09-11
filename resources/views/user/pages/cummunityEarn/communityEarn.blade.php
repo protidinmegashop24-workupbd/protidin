@@ -526,6 +526,24 @@
             text-decoration: none;
         }
         .buy-now-btn:hover { background: #ea580c; }
+        .product-price-row { display:flex; align-items:center; gap:8px; margin-top:4px; flex-wrap:wrap; }
+        .product-price { font-size:1.1rem; font-weight:800; color:#0f766e; }
+        .product-discount {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .product-feature-list { margin:6px 0 0; padding-left:18px; font-size:0.85rem; color:#475569; }
+        .product-feature-list li { margin-bottom:2px; }
+        .affiliate-disclosure {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-align: center;
+            padding: 0 12px 10px;
+        }
 
         /* The ad sits BESIDE the post card, in its own separate box --
            not inside the post card itself -- so it's visually obvious
@@ -649,6 +667,14 @@
                             <option value="{{ $topic->id }}">{{ $topic->icon }} {{ $topic->name }}</option>
                         @endforeach
                     </select>
+                </div>
+                @endif
+
+                @if(communityProductFieldsEnabled())
+                <div id="product-fields" style="display:none; padding:10px 12px 0; gap:8px; flex-wrap:wrap;" class="d-flex">
+                    <input type="text" name="product_price" placeholder="দাম (যেমন: $19.99) — ঐচ্ছিক" style="flex:1; min-width:140px; padding:8px; border-radius:8px; border:1px solid #ddd;">
+                    <input type="text" name="discount_text" placeholder="ছাড়/অফার (যেমন: 20% OFF) — ঐচ্ছিক" style="flex:1; min-width:140px; padding:8px; border-radius:8px; border:1px solid #ddd;">
+                    <textarea name="product_features" placeholder="প্রোডাক্ট ফিচার (প্রতি লাইনে একটা) — ঐচ্ছিক" rows="2" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd;"></textarea>
                 </div>
                 @endif
 
@@ -810,9 +836,23 @@
                                         @endif
                                         <div class="product-post-body">
                                             @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
+                                            @if(communityProductFieldsEnabled() && ($post->productPrice || $post->discountText))
+                                                <div class="product-price-row">
+                                                    @if($post->productPrice)<span class="product-price">{{ $post->productPrice }}</span>@endif
+                                                    @if($post->discountText)<span class="product-discount">{{ $post->discountText }}</span>@endif
+                                                </div>
+                                            @endif
                                             @if($post->fetchDescription)<p style="margin:4px 0 0;">{{ Str::limit($post->fetchDescription, 120) }}</p>@endif
+                                            @if(communityProductFieldsEnabled() && $post->productFeatures)
+                                                <ul class="product-feature-list">
+                                                    @foreach(explode("\n", $post->productFeatures) as $feature)
+                                                        @if(trim($feature) !== '')<li>{{ trim($feature) }}</li>@endif
+                                                    @endforeach
+                                                </ul>
+                                            @endif
                                         </div>
-                                        <a href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc" class="buy-now-btn">🛒 Buy Now</a>
+                                        <a href="{{ communityLinkClickTrackingEnabled() ? route('community.go', $post->id) : $post->fetchUrl }}" target="_blank" rel="noopener nofollow ugc" class="buy-now-btn">🛒 Buy Now</a>
+                                        <div class="affiliate-disclosure">Affiliate/Sponsored Link — এই লিঙ্কে কেনাকাটা করলে পোস্টদাতা কমিশন পেতে পারেন</div>
                                     </div>
                                 @else
                                     <div class="url-preview-viewpart">
@@ -1274,6 +1314,11 @@
         btn.classList.add('active');
         btn.style.background = '#0f766e';
         btn.style.color = '#fff';
+
+        let productFields = document.getElementById('product-fields');
+        if (productFields) {
+            productFields.style.display = (type === 'product') ? 'flex' : 'none';
+        }
     }
 
     // Shrinks a photo in the browser before it's ever uploaded, since the

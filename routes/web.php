@@ -111,6 +111,10 @@ Auth::routes(['verify' => true]);
 |--------------------------------------------------------------------------
 */
 Route::get('/public-shared/{id?}', [socialEarnController::class, 'publicPostLink'])->name('publicPostLink');
+// Not behind the 'auth' group -- the "Buy Now" button on Product posts is
+// clicked from the public/guest share page too, and click tracking should
+// still count/redirect for a logged-out visitor instead of forcing a login.
+Route::get('/community-go/{postId}', [socialEarnController::class, 'goToAffiliateLink'])->name('community.go');
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/home', [HomeController::class, 'index']);
 Route::get('/about', [HomeController::class, 'about_us'])->name('about-us');
@@ -1953,6 +1957,46 @@ Route::get('/system-add-community-follow-save/{token}', function ($token) {
         $log[] = 'Created community_bookmarks table.';
     } else {
         $log[] = 'community_bookmarks table already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: Phase 3 of the Quora-style Community upgrade -- richer
+// Affiliate Product cards (price, discount text, feature list) and click
+// tracking on the "Buy Now" button. Adds nullable columns to feedposts
+// (same low-risk pattern as the earlier postType column) plus a new
+// community_link_clicks table. Safe to run more than once.
+Route::get('/system-add-community-product-fields/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'productPrice')) {
+        \Illuminate\Support\Facades\Schema::table('feedposts', function ($table) {
+            $table->string('productPrice', 50)->nullable()->after('postType');
+            $table->string('discountText', 100)->nullable()->after('productPrice');
+            $table->text('productFeatures')->nullable()->after('discountText');
+        });
+        $log[] = 'Added productPrice/discountText/productFeatures columns to feedposts.';
+    } else {
+        $log[] = 'feedposts product columns already exist.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('community_link_clicks')) {
+        \Illuminate\Support\Facades\Schema::create('community_link_clicks', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('post_id');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('ip', 45)->nullable();
+            $table->timestamps();
+            $table->index('post_id');
+        });
+        $log[] = 'Created community_link_clicks table.';
+    } else {
+        $log[] = 'community_link_clicks table already exists.';
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);

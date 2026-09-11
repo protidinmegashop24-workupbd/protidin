@@ -417,6 +417,29 @@ class socialEarnController extends Controller
         ]);
         return response()->json(['status' => true, 'saved' => true, 'message' => 'Saved.']);
     }
+    // "Buy Now" on a Product post goes through here instead of straight to
+    // fetchUrl -- logs a click (when the tracking table exists) then
+    // redirects on. Not behind the 'auth' group so guests on the public
+    // share page can click through too; the affiliate destination doesn't
+    // care whether the click was tracked, only that it lands there.
+    public function goToAffiliateLink($postId){
+        $post = feedpost::where('status', 'approved')->find($postId);
+        if (!$post || !$post->fetchUrl) {
+            return redirect()->route('home')->with('error', 'Link Not Found');
+        }
+
+        if (communityLinkClickTrackingEnabled()) {
+            \Illuminate\Support\Facades\DB::table('community_link_clicks')->insert([
+                'post_id'    => $post->id,
+                'user_id'    => Auth::id(),
+                'ip'         => request()->ip(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return redirect()->away($post->fetchUrl);
+    }
     public function communityPostStore(Request $request) {
         $request->validate([
             'post_content' => 'required|string',
@@ -427,6 +450,9 @@ class socialEarnController extends Controller
             'fatchUrl'     => 'required|url',
             'post_type'    => 'required|in:product,article',
             'topic_id'     => 'nullable|integer',
+            'product_price'    => 'nullable|string|max:50',
+            'discount_text'    => 'nullable|string|max:100',
+            'product_features' => 'nullable|string',
         ], [
             'fatchUrl.required' => 'আপনার পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) দিতে হবে।',
         ]);
@@ -477,7 +503,7 @@ class socialEarnController extends Controller
         }
 
         // Post create with new Fetch fields
-        $postAdded = feedpost::create([
+        $postData = [
             'postContent'      => $request->post_content,
             'fetchUrl'         => $request->fatchUrl,      // New
             'fetchTitle'       => $request->fetchTitle,    // New
@@ -493,7 +519,17 @@ class socialEarnController extends Controller
             'commnets'         => 0,
             'userId'           => Auth::id() ?? 1,
             'postType'         => $request->post_type,
-        ]);
+        ];
+        // Price/discount/features are only relevant to Product posts, and
+        // only stored once the one-off /system-add-community-product-fields
+        // route has added their columns -- guarded the same way postType
+        // itself already was before this feature existed.
+        if (communityProductFieldsEnabled()) {
+            $postData['productPrice']    = $request->product_price;
+            $postData['discountText']    = $request->discount_text;
+            $postData['productFeatures'] = $request->product_features;
+        }
+        $postAdded = feedpost::create($postData);
 
         // Topic tag is optional and only applies once the one-off
         // /system-add-community-topics route has created the tables --
