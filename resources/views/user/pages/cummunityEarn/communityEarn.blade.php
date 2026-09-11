@@ -673,7 +673,7 @@
                 @endif
 
                 @if(communityProductFieldsEnabled())
-                <div id="product-fields" style="display:none; padding:10px 12px 0; gap:8px; flex-wrap:wrap;" class="d-flex">
+                <div id="product-fields" style="display:none; padding:10px 12px 0; gap:8px; flex-wrap:wrap;">
                     <input type="text" name="product_price" placeholder="দাম (যেমন: $19.99) — ঐচ্ছিক" style="flex:1; min-width:140px; padding:8px; border-radius:8px; border:1px solid #ddd;">
                     <input type="text" name="discount_text" placeholder="ছাড়/অফার (যেমন: 20% OFF) — ঐচ্ছিক" style="flex:1; min-width:140px; padding:8px; border-radius:8px; border:1px solid #ddd;">
                     <textarea name="product_features" placeholder="প্রোডাক্ট ফিচার (প্রতি লাইনে একটা) — ঐচ্ছিক" rows="2" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd;"></textarea>
