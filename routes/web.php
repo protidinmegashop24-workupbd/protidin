@@ -116,6 +116,32 @@ Route::get('/public-shared/{id?}', [socialEarnController::class, 'publicPostLink
 // clicked from the public/guest share page too, and click tracking should
 // still count/redirect for a logged-out visitor instead of forcing a login.
 Route::get('/community-go/{postId}', [socialEarnController::class, 'goToAffiliateLink'])->name('community.go');
+
+// Sitemap for Community posts -- the site had no sitemap of any kind for
+// this content before, so search engines had no reliable way to discover
+// every /public-shared/{id} page other than crawling links from the feed.
+// Excludes very short ("thin content") posts, matching the noindex rule on
+// the page itself. Submit this URL in Google Search Console.
+Route::get('/sitemap-community.xml', function () {
+    $posts = \App\Models\feedpost::where('status', 'approved')
+        ->orderByDesc('id')
+        ->get(['id', 'postContent', 'updated_at']);
+
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+    foreach ($posts as $post) {
+        if (strlen(strip_tags($post->postContent)) < 40) {
+            continue; // thin content, kept out of the sitemap same as its noindex tag
+        }
+        $xml .= '  <url>' . "\n";
+        $xml .= '    <loc>' . e(route('publicPostLink', $post->id)) . '</loc>' . "\n";
+        $xml .= '    <lastmod>' . $post->updated_at->toAtomString() . '</lastmod>' . "\n";
+        $xml .= '  </url>' . "\n";
+    }
+    $xml .= '</urlset>';
+
+    return response($xml, 200)->header('Content-Type', 'text/xml');
+});
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/home', [HomeController::class, 'index']);
 Route::get('/about', [HomeController::class, 'about_us'])->name('about-us');
@@ -2036,4 +2062,37 @@ Route::get('/system-add-community-reports/{token}', function ($token) {
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// Phase 5 (performance): feedposts itself never got indexes in the earlier
+// /system-add-performance-indexes pass (that one only covered jobs/job_works/
+// users) -- the Community feature's own hot queries (main feed's
+// status='approved' scan, profile pages' userId+status lookup) now matter
+// more with Topics/Follow/Save/Reports all querying through it too. Same
+// safe-to-rerun pattern as that route.
+Route::get('/system-add-community-performance-indexes/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $statements = [
+        'feedposts_status' => 'ALTER TABLE `feedposts` ADD INDEX `feedposts_status_index` (`status`)',
+        'feedposts_userid' => 'ALTER TABLE `feedposts` ADD INDEX `feedposts_userid_index` (`userId`)',
+        'feedposts_userid_status' => 'ALTER TABLE `feedposts` ADD INDEX `feedposts_userid_status_index` (`userId`, `status`)',
+        'feedposts_posttype' => 'ALTER TABLE `feedposts` ADD INDEX `feedposts_posttype_index` (`postType`)',
+    ];
+
+    $results = [];
+    foreach ($statements as $label => $sql) {
+        try {
+            \Illuminate\Support\Facades\DB::statement($sql);
+            $results[$label] = 'added';
+        } catch (\Throwable $e) {
+            $results[$label] = str_contains($e->getMessage(), 'Duplicate key name')
+                ? 'already exists (skipped)'
+                : 'error: ' . $e->getMessage();
+        }
+    }
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });

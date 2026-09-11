@@ -1,24 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @php
+        // feedposts has no "title" column -- the old {{ $post->title }} here
+        // always fell back to the same generic "Post Detail"/"Community
+        // Post" string on every single shared post, which is a real SEO
+        // problem (duplicate <title>/og:title across thousands of pages).
+        // Use the post's own text as its title instead, since that's what
+        // actually differs post to post.
+        $seoTitle = \Illuminate\Support\Str::limit(strip_tags($post->postContent), 65) ?: ($post->fetchTitle ?? 'Community Post');
+        $seoDescription = \Illuminate\Support\Str::limit(strip_tags($post->postContent), 160);
+        $seoImage = $post->image ? asset($post->image) : ($post->fetchImg ?: asset('default-image.jpg'));
+        // A post with barely any text isn't worth Google indexing as its
+        // own page -- keep it out of search results instead of diluting
+        // the site with thin content.
+        $isThinContent = strlen(strip_tags($post->postContent)) < 40;
+    @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $post->title ?? 'Post Detail' }}</title>
-    <meta name="description" content="{{ Str::limit(strip_tags($post->postContent), 160) }}">
+    <title>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $seoDescription }}">
     <meta name="keywords" content="community, post, comments, feed">
-    
+    <link rel="canonical" href="{{ url()->current() }}">
+    @if($isThinContent)
+        <meta name="robots" content="noindex, follow">
+    @endif
+
     <meta property="og:type" content="article">
-    <meta property="og:title" content="{{ $post->title ?? 'Community Post' }}">
+    <meta property="og:title" content="{{ $seoTitle }}">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:description" content="{{ Str::limit(strip_tags($post->postContent), 160) }}">
-    <meta property="og:image" content="{{ asset($post->image ?? 'default-image.jpg') }}">
-    
+    <meta property="og:description" content="{{ $seoDescription }}">
+    <meta property="og:image" content="{{ $seoImage }}">
+
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="{{ url()->current() }}">
-    <meta property="twitter:title" content="{{ $post->title ?? 'Community Post' }}">
-    <meta property="twitter:description" content="{{ Str::limit(strip_tags($post->postContent), 160) }}">
-    <meta property="twitter:image" content="{{ asset($post->image ?? 'default-image.jpg') }}">
-    
+    <meta property="twitter:title" content="{{ $seoTitle }}">
+    <meta property="twitter:description" content="{{ $seoDescription }}">
+    <meta property="twitter:image" content="{{ $seoImage }}">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
