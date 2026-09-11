@@ -482,6 +482,21 @@
             border-radius: 10px;
             margin-top: 2px;
         }
+        .follow-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1.5px solid var(--feed-brand-green);
+            background: #fff;
+            color: var(--feed-brand-green);
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .follow-btn.active {
+            background: var(--feed-brand-green-soft);
+            color: var(--feed-brand-green);
+        }
     </style>
 @endsection
 
@@ -516,7 +531,11 @@
                             </div>
                         @endif
                     </div>
-                    <i class="bi bi-three-dots text-muted"></i>
+                    @if(communityFollowEnabled() && Auth::id() != $post->userId)
+                        <button type="button" class="follow-btn {{ $isFollowingAuthor ? 'active' : '' }}" data-user-id="{{ $post->userId }}">
+                            {{ $isFollowingAuthor ? 'Following' : '+ Follow' }}
+                        </button>
+                    @endif
                 </div>
 
                 @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
@@ -578,6 +597,11 @@
                     </button>
                     {{-- <a href="{{route('user.viewCommunityPP', $post->id)}}" class="action-btn"><i class="bi bi-chat-text"></i>Comment</a> --}}
                     <button class="action-btn" onclick="copyPostLink('{{$post->id}}')">Share</button>
+                    @if(communityBookmarkEnabled())
+                        <button type="button" class="action-btn save-btn {{ $isPostSaved ? 'active' : '' }}" data-post-id="{{ $post->id }}">
+                            <i class="bi bi-bookmark{{ $isPostSaved ? '-fill' : '' }}"></i> <span class="save-btn-label">{{ $isPostSaved ? 'Saved' : 'Save' }}</span>
+                        </button>
+                    @endif
                 </div>
 
                 <div class="comment-section">
@@ -855,6 +879,63 @@
                     toastr.error(response.message);
                 }
 
+            },
+            error: function () {
+                toastr.error('Something went wrong. Try again.');
+            }
+        });
+    });
+
+    $(document).on('click', '.follow-btn', function () {
+        let btn = $(this);
+        let userId = btn.data('user-id');
+
+        $.ajax({
+            url: '/user/community-follow/' + userId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}" },
+            success: function (response) {
+                if (response.status === true) {
+                    if (response.following) {
+                        btn.addClass('active').text('Following');
+                    } else {
+                        btn.removeClass('active').text('+ Follow');
+                    }
+                } else {
+                    toastr.error(response.message);
+                }
+            },
+            error: function () {
+                toastr.error('Something went wrong. Try again.');
+            }
+        });
+    });
+
+    $(document).on('click', '.save-btn', function () {
+        let btn = $(this);
+        let postId = btn.data('post-id');
+
+        $.ajax({
+            url: '/user/community-save/' + postId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}" },
+            success: function (response) {
+                if (response.status === true) {
+                    let icon = btn.find('i');
+                    let label = btn.find('.save-btn-label');
+                    if (response.saved) {
+                        btn.addClass('active');
+                        icon.removeClass('bi-bookmark').addClass('bi-bookmark-fill');
+                        label.text('Saved');
+                    } else {
+                        btn.removeClass('active');
+                        icon.removeClass('bi-bookmark-fill').addClass('bi-bookmark');
+                        label.text('Save');
+                    }
+                    toastr.success(response.message);
+                } else {
+                    toastr.error(response.message);
+                }
             },
             error: function () {
                 toastr.error('Something went wrong. Try again.');

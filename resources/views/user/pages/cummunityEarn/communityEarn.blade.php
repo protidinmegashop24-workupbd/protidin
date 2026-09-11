@@ -597,6 +597,21 @@
             border-radius: 10px;
             margin-top: 2px;
         }
+        .follow-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1.5px solid var(--feed-brand-green);
+            background: #fff;
+            color: var(--feed-brand-green);
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .follow-btn.active {
+            background: var(--feed-brand-green-soft);
+            color: var(--feed-brand-green);
+        }
     </style>
 @endsection
 {{-- Css End Here For Single Page  --}}
@@ -724,14 +739,19 @@
             </form>
         </div>
 
-        @if($topics->count())
+        @if($topics->count() || communityBookmarkEnabled())
         <div class="topic-chip-row">
-            <a href="{{ route('user.communityEarn') }}" class="topic-chip {{ !$activeTopicSlug ? 'active' : '' }}">সব</a>
-            @foreach($topics as $topic)
-                <a href="{{ route('user.communityEarn', ['topic' => $topic->slug]) }}" class="topic-chip {{ $activeTopicSlug === $topic->slug ? 'active' : '' }}">
-                    {{ $topic->icon }} {{ $topic->name }}
-                </a>
-            @endforeach
+            @if($topics->count())
+                <a href="{{ route('user.communityEarn') }}" class="topic-chip {{ !$activeTopicSlug && !$showSavedOnly ? 'active' : '' }}">সব</a>
+                @foreach($topics as $topic)
+                    <a href="{{ route('user.communityEarn', ['topic' => $topic->slug]) }}" class="topic-chip {{ $activeTopicSlug === $topic->slug ? 'active' : '' }}">
+                        {{ $topic->icon }} {{ $topic->name }}
+                    </a>
+                @endforeach
+            @endif
+            @if(communityBookmarkEnabled())
+                <a href="{{ route('user.communityEarn', ['saved' => 1]) }}" class="topic-chip {{ $showSavedOnly ? 'active' : '' }}">🔖 Saved Posts</a>
+            @endif
         </div>
         @endif
 
@@ -764,7 +784,11 @@
                                 </div>
                             @endif
                         </div>
-                        <i class="bi bi-three-dots text-muted"></i>
+                        @if(communityFollowEnabled() && Auth::id() != $post->userId)
+                            <button type="button" class="follow-btn {{ in_array($post->userId, $followingIds) ? 'active' : '' }}" data-user-id="{{ $post->userId }}">
+                                {{ in_array($post->userId, $followingIds) ? 'Following' : '+ Follow' }}
+                            </button>
+                        @endif
                     </div>
 
                     @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
@@ -829,6 +853,11 @@
                             <i class="bi bi-chat-text"></i> Comment
                         </a>
                         <button class="action-btn" onclick="copyPostLink('{{$post->id}}')">Share</button>
+                        @if(communityBookmarkEnabled())
+                            <button type="button" class="action-btn save-btn {{ in_array($post->id, $savedPostIds) ? 'active' : '' }}" data-post-id="{{ $post->id }}">
+                                <i class="bi bi-bookmark{{ in_array($post->id, $savedPostIds) ? '-fill' : '' }}"></i> <span class="save-btn-label">{{ in_array($post->id, $savedPostIds) ? 'Saved' : 'Save' }}</span>
+                            </button>
+                        @endif
                     </div>
                 </div>
 
@@ -1387,6 +1416,63 @@
                     toastr.error(response.message);
                 }
 
+            },
+            error: function () {
+                toastr.error('Something went wrong. Try again.');
+            }
+        });
+    });
+
+    $(document).on('click', '.follow-btn', function () {
+        let btn = $(this);
+        let userId = btn.data('user-id');
+
+        $.ajax({
+            url: '/user/community-follow/' + userId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}" },
+            success: function (response) {
+                if (response.status === true) {
+                    if (response.following) {
+                        btn.addClass('active').text('Following');
+                    } else {
+                        btn.removeClass('active').text('+ Follow');
+                    }
+                } else {
+                    toastr.error(response.message);
+                }
+            },
+            error: function () {
+                toastr.error('Something went wrong. Try again.');
+            }
+        });
+    });
+
+    $(document).on('click', '.save-btn', function () {
+        let btn = $(this);
+        let postId = btn.data('post-id');
+
+        $.ajax({
+            url: '/user/community-save/' + postId,
+            type: "POST",
+            data: { _token: "{{ csrf_token() }}" },
+            success: function (response) {
+                if (response.status === true) {
+                    let icon = btn.find('i');
+                    let label = btn.find('.save-btn-label');
+                    if (response.saved) {
+                        btn.addClass('active');
+                        icon.removeClass('bi-bookmark').addClass('bi-bookmark-fill');
+                        label.text('Saved');
+                    } else {
+                        btn.removeClass('active');
+                        icon.removeClass('bi-bookmark-fill').addClass('bi-bookmark');
+                        label.text('Save');
+                    }
+                    toastr.success(response.message);
+                } else {
+                    toastr.error(response.message);
+                }
             },
             error: function () {
                 toastr.error('Something went wrong. Try again.');

@@ -15,6 +15,8 @@ use App\Models\feedPostComments;
 use App\Models\feedPostShares;
 use App\Models\GoogleAd;
 use App\Models\CommunityTopic;
+use App\Models\CommunityFollow;
+use App\Models\CommunityBookmark;
 use App\Models\Admin\UserMessage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -330,6 +332,7 @@ class socialEarnController extends Controller
         //     }
         // ])->paginate(15);
         $activeTopicSlug = $request->query('topic');
+        $showSavedOnly = $request->boolean('saved');
         $postsQuery = feedpost::where('status','approved');
         $topicsEnabled = communityTopicsEnabled();
         if ($topicsEnabled) {
@@ -339,6 +342,11 @@ class socialEarnController extends Controller
                 });
             }
             $postsQuery->with('topics');
+        }
+        $bookmarksEnabled = communityBookmarkEnabled();
+        if ($showSavedOnly && $bookmarksEnabled) {
+            $savedIds = CommunityBookmark::where('user_id', Auth::id())->pluck('post_id');
+            $postsQuery->whereIn('id', $savedIds);
         }
         $posts = $postsQuery->latest()->paginate(15)->withQueryString();
 
@@ -351,8 +359,63 @@ class socialEarnController extends Controller
         // one-off /system-add-community-topics route has been run, so this
         // feature degrades gracefully on a site that hasn't set it up yet.
         $topics = $topicsEnabled ? CommunityTopic::orderBy('name')->get() : collect();
+
+        // Which authors the current user already follows and which posts
+        // they've already saved, so the buttons render in the right state
+        // without a per-post query -- same guarded-degrade approach as Topics.
+        $followingIds = communityFollowEnabled()
+            ? CommunityFollow::where('follower_id', Auth::id())->pluck('followed_id')->toArray()
+            : [];
+        $savedPostIds = $bookmarksEnabled
+            ? CommunityBookmark::where('user_id', Auth::id())->pluck('post_id')->toArray()
+            : [];
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds','topics','activeTopicSlug'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds','topics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
+    }
+    public function toggleFollow(Request $request, $userId){
+        if (!communityFollowEnabled()) {
+            return response()->json(['status' => false, 'message' => 'Feature not set up yet.']);
+        }
+        if ((int) $userId === (int) Auth::id()) {
+            return response()->json(['status' => false, 'message' => 'You can not follow yourself.']);
+        }
+        $targetUser = User::find($userId);
+        if (!$targetUser) {
+            return response()->json(['status' => false, 'message' => 'User not found.']);
+        }
+
+        $existing = CommunityFollow::where('follower_id', Auth::id())->where('followed_id', $userId)->first();
+        if ($existing) {
+            $existing->delete();
+            return response()->json(['status' => true, 'following' => false, 'message' => 'Unfollowed.']);
+        }
+
+        CommunityFollow::create([
+            'follower_id' => Auth::id(),
+            'followed_id' => $userId,
+        ]);
+        return response()->json(['status' => true, 'following' => true, 'message' => 'Following now.']);
+    }
+    public function toggleSave(Request $request, $postId){
+        if (!communityBookmarkEnabled()) {
+            return response()->json(['status' => false, 'message' => 'Feature not set up yet.']);
+        }
+        $post = feedpost::find($postId);
+        if (!$post) {
+            return response()->json(['status' => false, 'message' => 'Post not found.']);
+        }
+
+        $existing = CommunityBookmark::where('user_id', Auth::id())->where('post_id', $postId)->first();
+        if ($existing) {
+            $existing->delete();
+            return response()->json(['status' => true, 'saved' => false, 'message' => 'Removed from saved posts.']);
+        }
+
+        CommunityBookmark::create([
+            'user_id' => Auth::id(),
+            'post_id' => $postId,
+        ]);
+        return response()->json(['status' => true, 'saved' => true, 'message' => 'Saved.']);
     }
     public function communityPostStore(Request $request) {
         $request->validate([
@@ -486,8 +549,12 @@ class socialEarnController extends Controller
         }
         $comments = feedPostComments::where('postId',$post->id)->get();
         $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
+        $isFollowingAuthor = communityFollowEnabled()
+            && CommunityFollow::where('follower_id', Auth::id())->where('followed_id', $post->userId)->exists();
+        $isPostSaved = communityBookmarkEnabled()
+            && CommunityBookmark::where('user_id', Auth::id())->where('post_id', $post->id)->exists();
         // dd($post);
-        return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments','communitySideAd'));
+        return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments','communitySideAd','isFollowingAuthor','isPostSaved'));
     }
     public function newComment($id, Request $request){
         if(!$id){

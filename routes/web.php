@@ -647,6 +647,8 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::post('/new-comment/{id}', [socialEarnController::class, 'newComment'])->name('newComment');
     Route::post('/new-like', [socialEarnController::class, 'newLike'])->name('newLike');
     Route::post('/new-share', [socialEarnController::class, 'newShare'])->name('newShare');
+    Route::post('/community-follow/{userId}', [socialEarnController::class, 'toggleFollow'])->name('community.follow');
+    Route::post('/community-save/{postId}', [socialEarnController::class, 'toggleSave'])->name('community.save');
     Route::get('/feed-post-dashboard', [socialEarnController::class, 'postFeedDashboard'])->name('postFeedDashboard');
     Route::get('/feed-post-list', [socialEarnController::class, 'myPostFeedList'])->name('myPostFeedList');
 
@@ -1911,6 +1913,47 @@ Route::get('/system-add-community-topics/{token}', function ($token) {
         }
     }
     $log[] = "Seeded {$seeded} new default topic(s) (skipped ones that already existed).";
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: adds Follow (user-to-user) and Save/Bookmark (post) to the
+// Community feature -- Phase 2 of the Quora-style upgrade. Additive only,
+// no existing table or earning logic touched. Safe to run more than once.
+Route::get('/system-add-community-follow-save/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('community_follows')) {
+        \Illuminate\Support\Facades\Schema::create('community_follows', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('follower_id');
+            $table->unsignedBigInteger('followed_id');
+            $table->timestamps();
+            $table->unique(['follower_id', 'followed_id']);
+            $table->index('followed_id');
+        });
+        $log[] = 'Created community_follows table.';
+    } else {
+        $log[] = 'community_follows table already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('community_bookmarks')) {
+        \Illuminate\Support\Facades\Schema::create('community_bookmarks', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('post_id');
+            $table->timestamps();
+            $table->unique(['user_id', 'post_id']);
+            $table->index('post_id');
+        });
+        $log[] = 'Created community_bookmarks table.';
+    } else {
+        $log[] = 'community_bookmarks table already exists.';
+    }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });

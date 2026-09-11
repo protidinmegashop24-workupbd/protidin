@@ -1038,6 +1038,32 @@ if (!function_exists('communityTopicsEnabled')) {
     }
 }
 
+if (!function_exists('communityFollowEnabled')) {
+    // Guards Follow (user-to-user) the same way communityTopicsEnabled()
+    // guards Topics -- keeps the site working before/without the one-off
+    // /system-add-community-follow-save route being run.
+    function communityFollowEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_follows');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityBookmarkEnabled')) {
+    // Guards Save/Bookmark the same way communityTopicsEnabled() guards
+    // Topics -- keeps the site working before/without the one-off
+    // /system-add-community-follow-save route being run.
+    function communityBookmarkEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_bookmarks');
+        }
+        return $enabled;
+    }
+}
+
 if (!function_exists('custom_path')) {
     // Used by the KYC verification pages to resolve a stored document/photo
     // path to a public URL, falling back to a placeholder image. Files are
