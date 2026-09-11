@@ -162,6 +162,16 @@
             .post-side-ad { width: 100%; }
             .post-side-ad .ad-placeholder { min-height: 100px; }
         }
+        .post-topic-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #16a34a;
+            background: #f0fdf4;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -186,6 +196,13 @@
                     @endif
                 </h6>
                 <small class="text-muted">{{ $post->created_at->diffForHumans() }}</small>
+                @if(communityTopicsEnabled() && $post->topics->count())
+                    <div>
+                        @foreach($post->topics as $topic)
+                            <span class="post-topic-badge">{{ $topic->icon }} {{ $topic->name }}</span>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
 

@@ -472,8 +472,18 @@
             .post-side-ad { width: 100%; }
             .post-side-ad .ad-placeholder { min-height: 100px; }
         }
+        .post-topic-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--feed-brand-green);
+            background: var(--feed-brand-green-soft);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 2px;
+        }
     </style>
-@endsection 
+@endsection
 
 @section('user-content')
 <div id="copy-alert">Link copied to clipboard!</div>
@@ -498,10 +508,17 @@
                         <small class="text-muted" style="font-size: 0.7rem;">
                             {{ $post->created_at->diffForHumans() }}
                         </small>
+                        @if(communityTopicsEnabled() && $post->topics->count())
+                            <div>
+                                @foreach($post->topics as $topic)
+                                    <span class="post-topic-badge">{{ $topic->icon }} {{ $topic->name }}</span>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                     <i class="bi bi-three-dots text-muted"></i>
                 </div>
-                
+
                 @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
                 <div class="post-body">
                     <div class="post-main-content">

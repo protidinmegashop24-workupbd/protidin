@@ -1023,6 +1023,21 @@ if (!function_exists('linkify')) {
     }
 }
 
+if (!function_exists('communityTopicsEnabled')) {
+    // The Community Topics feature (community_topics/community_post_topics
+    // tables) is added via a one-off route rather than a migration, so
+    // views/queries that touch $post->topics guard themselves with this
+    // first -- keeps everything working on a site where that route hasn't
+    // been run yet, instead of a missing-table SQL error.
+    function communityTopicsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_topics');
+        }
+        return $enabled;
+    }
+}
+
 if (!function_exists('custom_path')) {
     // Used by the KYC verification pages to resolve a stored document/photo
     // path to a public URL, falling back to a placeholder image. Files are

@@ -47,5 +47,8 @@ class feedpost extends Model
     }
     public function like_history(){
         return $this->hasMany(feedPostLikes::class,'postId');
-    }    
+    }
+    public function topics(){
+        return $this->belongsToMany(CommunityTopic::class, 'community_post_topics', 'post_id', 'topic_id');
+    }
 }

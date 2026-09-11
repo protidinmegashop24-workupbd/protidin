@@ -14,6 +14,7 @@ use App\Models\feedPostLikes;
 use App\Models\feedPostComments;
 use App\Models\feedPostShares;
 use App\Models\GoogleAd;
+use App\Models\CommunityTopic;
 use App\Models\Admin\UserMessage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -297,7 +298,7 @@ class socialEarnController extends Controller
         return null;
     }
     // Fatch End 
-    public function communityEarn(){
+    public function communityEarn(Request $request){
 
         // Production Version 
         // if (!session()->has('random_seed')) {
@@ -328,15 +329,30 @@ class socialEarnController extends Controller
         //         $q->where('userId', auth()->id());
         //     }
         // ])->paginate(15);
-        $posts = feedpost::where('status','approved')->latest()->paginate(15);
+        $activeTopicSlug = $request->query('topic');
+        $postsQuery = feedpost::where('status','approved');
+        $topicsEnabled = communityTopicsEnabled();
+        if ($topicsEnabled) {
+            if ($activeTopicSlug) {
+                $postsQuery->whereHas('topics', function($q) use ($activeTopicSlug) {
+                    $q->where('slug', $activeTopicSlug);
+                });
+            }
+            $postsQuery->with('topics');
+        }
+        $posts = $postsQuery->latest()->paginate(15)->withQueryString();
 
         $website = Website::latest()->first();
         $inFeedAds = GoogleAd::where('position','In-Feed')->get();
         // A pool of ads, not just one -- each post's side slot cycles
         // through them (Quora-style) instead of repeating the same ad.
         $communitySideAds = GoogleAd::where('position','Community-Sidebar')->get();
+        // Topic filter chips at the top of the feed -- only shown if the
+        // one-off /system-add-community-topics route has been run, so this
+        // feature degrades gracefully on a site that hasn't set it up yet.
+        $topics = $topicsEnabled ? CommunityTopic::orderBy('name')->get() : collect();
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds','topics','activeTopicSlug'));
     }
     public function communityPostStore(Request $request) {
         $request->validate([
@@ -347,6 +363,7 @@ class socialEarnController extends Controller
             // so a post without one defeats the point.
             'fatchUrl'     => 'required|url',
             'post_type'    => 'required|in:product,article',
+            'topic_id'     => 'nullable|integer',
         ], [
             'fatchUrl.required' => 'আপনার পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) দিতে হবে।',
         ]);
@@ -414,6 +431,16 @@ class socialEarnController extends Controller
             'userId'           => Auth::id() ?? 1,
             'postType'         => $request->post_type,
         ]);
+
+        // Topic tag is optional and only applies once the one-off
+        // /system-add-community-topics route has created the tables --
+        // guarded so posting still works fine before/without that setup.
+        if ($request->filled('topic_id') && communityTopicsEnabled()) {
+            $topicExists = CommunityTopic::where('id', $request->topic_id)->exists();
+            if ($topicExists) {
+                $postAdded->topics()->attach($request->topic_id);
+            }
+        }
 
         // Earning & Referral Logic
         $findPrice = $this->findvalueOfKey('newPost');

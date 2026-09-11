@@ -563,6 +563,40 @@
             .post-side-ad { width: 100%; }
             .post-side-ad .ad-placeholder { min-height: 100px; }
         }
+
+        .topic-chip-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px 2px 16px;
+        }
+        .topic-chip {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: var(--feed-pure-white);
+            border: 1px solid var(--feed-border-color);
+            color: var(--feed-text-main);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .topic-chip.active {
+            background: var(--feed-brand-green);
+            border-color: var(--feed-brand-green);
+            color: #fff;
+        }
+        .post-topic-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--feed-brand-green);
+            background: var(--feed-brand-green-soft);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 2px;
+        }
     </style>
 @endsection
 {{-- Css End Here For Single Page  --}}
@@ -591,6 +625,17 @@
                         🛍️ Product (Buy Now)
                     </button>
                 </div>
+
+                @if($topics->count())
+                <div style="padding:10px 12px 0;">
+                    <select name="topic_id" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; color:#334155;">
+                        <option value="">বিষয় বেছে নিন (Topic) — ঐচ্ছিক</option>
+                        @foreach($topics as $topic)
+                            <option value="{{ $topic->id }}">{{ $topic->icon }} {{ $topic->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
 
                 <div id="initial-state" onclick="toggleEditor(true)">
                     <div class="profile-icon">
@@ -679,6 +724,17 @@
             </form>
         </div>
 
+        @if($topics->count())
+        <div class="topic-chip-row">
+            <a href="{{ route('user.communityEarn') }}" class="topic-chip {{ !$activeTopicSlug ? 'active' : '' }}">সব</a>
+            @foreach($topics as $topic)
+                <a href="{{ route('user.communityEarn', ['topic' => $topic->slug]) }}" class="topic-chip {{ $activeTopicSlug === $topic->slug ? 'active' : '' }}">
+                    {{ $topic->icon }} {{ $topic->name }}
+                </a>
+            @endforeach
+        </div>
+        @endif
+
         <div id="postFeed">
             <!-- Post Item 1 -->
             @foreach($posts as $post)
@@ -700,10 +756,17 @@
                             <small class="text-muted" style="font-size: 0.7rem;">
                                 {{ $post->created_at->diffForHumans() }}
                             </small>
+                            @if(communityTopicsEnabled() && $post->topics->count())
+                                <div>
+                                    @foreach($post->topics as $topic)
+                                        <span class="post-topic-badge">{{ $topic->icon }} {{ $topic->name }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                         <i class="bi bi-three-dots text-muted"></i>
                     </div>
-                    
+
                     @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
                     <div class="post-body">
                         <div class="post-main-content">

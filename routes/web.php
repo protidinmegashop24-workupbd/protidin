@@ -1849,3 +1849,68 @@ Route::get('/system-debug-community-post/{token}', function (\Illuminate\Http\Re
 
     return response()->json($posts);
 });
+
+// One-off: adds Topics to the Community feature (Quora-style categories),
+// without touching any existing table/earning logic. Creates
+// community_topics + the community_post_topics pivot, and seeds a starter
+// set of topics. Safe to run more than once -- skips whatever already
+// exists.
+Route::get('/system-add-community-topics/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('community_topics')) {
+        \Illuminate\Support\Facades\Schema::create('community_topics', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->string('icon', 10)->nullable();
+            $table->timestamps();
+        });
+        $log[] = 'Created community_topics table.';
+    } else {
+        $log[] = 'community_topics table already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('community_post_topics')) {
+        \Illuminate\Support\Facades\Schema::create('community_post_topics', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('post_id');
+            $table->unsignedBigInteger('topic_id');
+            $table->timestamps();
+            $table->unique(['post_id', 'topic_id']);
+            $table->index('topic_id');
+        });
+        $log[] = 'Created community_post_topics table.';
+    } else {
+        $log[] = 'community_post_topics table already exists.';
+    }
+
+    $defaults = [
+        ['name' => 'General', 'slug' => 'general', 'icon' => '💬'],
+        ['name' => 'Freelancing', 'slug' => 'freelancing', 'icon' => '💼'],
+        ['name' => 'Digital Marketing', 'slug' => 'digital-marketing', 'icon' => '📈'],
+        ['name' => 'Affiliate Marketing', 'slug' => 'affiliate-marketing', 'icon' => '🔗'],
+        ['name' => 'Online Business', 'slug' => 'online-business', 'icon' => '🏪'],
+        ['name' => 'Technology', 'slug' => 'technology', 'icon' => '💻'],
+        ['name' => 'Reviews', 'slug' => 'reviews', 'icon' => '⭐'],
+        ['name' => 'Help & Questions', 'slug' => 'help-and-questions', 'icon' => '❓'],
+    ];
+    $seeded = 0;
+    foreach ($defaults as $topic) {
+        $exists = \Illuminate\Support\Facades\DB::table('community_topics')->where('slug', $topic['slug'])->exists();
+        if (!$exists) {
+            \Illuminate\Support\Facades\DB::table('community_topics')->insert(array_merge($topic, [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+            $seeded++;
+        }
+    }
+    $log[] = "Seeded {$seeded} new default topic(s) (skipped ones that already existed).";
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
