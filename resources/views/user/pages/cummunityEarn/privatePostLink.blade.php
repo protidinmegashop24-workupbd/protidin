@@ -447,7 +447,7 @@
                     @endif
                     @if($post->fetchUrl)
                     <div class="url-preview-viewpart">
-                        <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener noreferrer">
+                        <a style="display:block;line-height: 1;text-align: center;" href="{{$post->fetchUrl}}" target="_blank" rel="noopener nofollow ugc">
                             @if($post->fetchImg)<img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">@endif
                             <div class="url-preview-content">
                                 @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif

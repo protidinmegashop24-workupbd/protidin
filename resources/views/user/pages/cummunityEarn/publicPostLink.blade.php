@@ -137,7 +137,7 @@
                 @endif
                 @if($post->fetchUrl)
                     <div class="url-preview-card">
-                        <a href="{{ $post->fetchUrl }}" target="_blank" rel="noopener noreferrer" class="preview-link">
+                        <a href="{{ $post->fetchUrl }}" target="_blank" rel="noopener nofollow ugc" class="preview-link">
                             @if($post->fetchImg)
                                 <div class="preview-image-wrapper">
                                     <img src="{{ $post->fetchImg }}" alt="{{ $post->fetchTitle }}" class="preview-img">
