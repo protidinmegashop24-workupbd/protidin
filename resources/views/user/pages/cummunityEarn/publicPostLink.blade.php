@@ -183,7 +183,7 @@
 
         <!-- Post Body -->
         @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
-        <div class="post-body mt-2 {{ $isProductPost ? '' : 'post-body-with-ad' }}">
+        <div class="post-body mt-2 post-body-with-ad">
             <div class="post-main-content">
                 {!! linkify($post->postContent) !!}
                 <div class="text-left">
@@ -235,15 +235,13 @@
                 </div>
             </div>
 
-            @unless($isProductPost)
-                <div class="post-side-ad">
-                    @if(isset($communitySideAd) && $communitySideAd)
-                        {!! $communitySideAd->code !!}
-                    @else
-                        <div class="ad-placeholder">Ad</div>
-                    @endif
-                </div>
-            @endunless
+            <div class="post-side-ad">
+                @if(isset($communitySideAd) && $communitySideAd)
+                    {!! $communitySideAd->code !!}
+                @else
+                    <div class="ad-placeholder">Ad</div>
+                @endif
+            </div>
         </div>
 
         <!-- Stats -->

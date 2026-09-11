@@ -695,7 +695,7 @@
                     </div>
                     
                     @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
-                    <div class="post-body {{ $isProductPost ? '' : 'post-body-with-ad' }}">
+                    <div class="post-body post-body-with-ad">
                         <div class="post-main-content">
                             {!! linkify($post->postContent) !!}
                             @if($post->video)
@@ -732,15 +732,13 @@
                             @endif
                         </div>
 
-                        @unless($isProductPost)
-                            <div class="post-side-ad">
+                        <div class="post-side-ad">
                                 @if(isset($communitySideAds) && $communitySideAds->count())
                                     {!! $communitySideAds[$loop->index % $communitySideAds->count()]->code !!}
                                 @else
                                     <div class="ad-placeholder">Ad</div>
                                 @endif
                             </div>
-                        @endunless
                     </div>
 
                     <div class="post-stats">
