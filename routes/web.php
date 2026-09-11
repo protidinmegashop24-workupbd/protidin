@@ -1823,3 +1823,29 @@ Route::get('/system-debug-google-ads/{token}', function ($token) {
 
     return response()->json($ads);
 });
+
+// Diagnostic: dumps the raw stored fields for the most recent Community
+// posts (or one specific post via ?id=), so we can see exactly what's in
+// postContent/image/fetchUrl/fetchImg/postType instead of guessing from a
+// screenshot -- e.g. to check whether an "extra image" a user sees is a
+// real duplicate in the data or something rendered outside our template.
+Route::get('/system-debug-community-post/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $query = \App\Models\feedpost::query();
+    if ($request->filled('id')) {
+        $query->where('id', $request->query('id'));
+    } else {
+        $query->orderByDesc('id')->limit(5);
+    }
+
+    $posts = $query->get([
+        'id', 'userId', 'postType', 'postContent', 'image', 'video',
+        'fetchUrl', 'fetchTitle', 'fetchDescription', 'fetchImg',
+        'status', 'created_at',
+    ]);
+
+    return response()->json($posts);
+});
