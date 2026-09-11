@@ -538,6 +538,8 @@
         }
         .product-feature-list { margin:6px 0 0; padding-left:18px; font-size:0.85rem; color:#475569; }
         .product-feature-list li { margin-bottom:2px; }
+        .product-post-linkarea { display:block; color:inherit; text-decoration:none; }
+        .product-more-details { display:block; margin-top:6px; color:#0f766e; font-weight:600; }
         .affiliate-disclosure {
             font-size: 0.7rem;
             color: #94a3b8;
@@ -831,26 +833,24 @@
                                 @php $hasOwnMedia = $post->video || $post->image; @endphp
                                 @if($isProductPost)
                                     <div class="product-post-card">
-                                        @if($post->fetchImg && !$hasOwnMedia)
-                                            <img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">
-                                        @endif
-                                        <div class="product-post-body">
-                                            @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
-                                            @if(communityProductFieldsEnabled() && ($post->productPrice || $post->discountText))
-                                                <div class="product-price-row">
-                                                    @if($post->productPrice)<span class="product-price">{{ $post->productPrice }}</span>@endif
-                                                    @if($post->discountText)<span class="product-discount">{{ $post->discountText }}</span>@endif
-                                                </div>
+                                        <a href="{{ route('user.viewCommunityPP', $post->id) }}" class="product-post-linkarea">
+                                            @if($post->fetchImg && !$hasOwnMedia)
+                                                <img src="{{$post->fetchImg}}" alt="{{$post->fetchTitle}}">
                                             @endif
-                                            @if($post->fetchDescription)<p style="margin:4px 0 0;">{{ Str::limit($post->fetchDescription, 120) }}</p>@endif
-                                            @if(communityProductFieldsEnabled() && $post->productFeatures)
-                                                <ul class="product-feature-list">
-                                                    @foreach(explode("\n", $post->productFeatures) as $feature)
-                                                        @if(trim($feature) !== '')<li>{{ trim($feature) }}</li>@endif
-                                                    @endforeach
-                                                </ul>
-                                            @endif
-                                        </div>
+                                            <div class="product-post-body">
+                                                @if($post->fetchTitle)<strong>{{$post->fetchTitle}}</strong>@endif
+                                                @if(communityProductFieldsEnabled() && ($post->productPrice || $post->discountText))
+                                                    <div class="product-price-row">
+                                                        @if($post->productPrice)<span class="product-price">{{ $post->productPrice }}</span>@endif
+                                                        @if($post->discountText)<span class="product-discount">{{ $post->discountText }}</span>@endif
+                                                    </div>
+                                                @endif
+                                                @if($post->fetchDescription)<p style="margin:4px 0 0;">{{ Str::limit($post->fetchDescription, 120) }}</p>@endif
+                                                @if(communityProductFieldsEnabled() && $post->productFeatures)
+                                                    <small class="product-more-details">বিস্তারিত ফিচার দেখতে পোস্টে ক্লিক করুন »</small>
+                                                @endif
+                                            </div>
+                                        </a>
                                         <a href="{{ communityLinkClickTrackingEnabled() ? route('community.go', $post->id) : $post->fetchUrl }}" target="_blank" rel="noopener nofollow ugc" class="buy-now-btn">🛒 Buy Now</a>
                                         <div class="affiliate-disclosure">Affiliate/Sponsored Link — এই লিঙ্কে কেনাকাটা করলে পোস্টদাতা কমিশন পেতে পারেন</div>
                                     </div>
