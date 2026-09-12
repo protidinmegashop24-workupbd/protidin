@@ -353,9 +353,10 @@ class socialEarnController extends Controller
 
         $website = Website::latest()->first();
         $inFeedAds = GoogleAd::where('position','In-Feed')->get();
-        // A pool of ads, not just one -- each post's side slot cycles
-        // through them (Quora-style) instead of repeating the same ad.
-        $communitySideAds = GoogleAd::where('position','Community-Sidebar')->get();
+        // The side-ad rail now shows the site's real Advertise-section
+        // banners (ad_banner() helper, same source as find-job/dashboard's
+        // "Click Now" carousel) instead of the unused GoogleAd
+        // Community-Sidebar position -- fetched directly in the view.
         // Topic filter chips at the top of the feed -- only shown if the
         // one-off /system-add-community-topics route has been run, so this
         // feature degrades gracefully on a site that hasn't set it up yet.
@@ -383,7 +384,7 @@ class socialEarnController extends Controller
             ? CommunityBookmark::where('user_id', Auth::id())->pluck('post_id')->toArray()
             : [];
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds','topics','articleTopics','productTopics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','topics','articleTopics','productTopics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
     }
     public function toggleFollow(Request $request, $userId){
         if (!communityFollowEnabled()) {
@@ -669,13 +670,12 @@ class socialEarnController extends Controller
         }
         $this->recordPostView($post);
         $comments = feedPostComments::where('postId',$post->id)->get();
-        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
         $isFollowingAuthor = communityFollowEnabled()
             && CommunityFollow::where('follower_id', Auth::id())->where('followed_id', $post->userId)->exists();
         $isPostSaved = communityBookmarkEnabled()
             && CommunityBookmark::where('user_id', Auth::id())->where('post_id', $post->id)->exists();
         // dd($post);
-        return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments','communitySideAd','isFollowingAuthor','isPostSaved'));
+        return view('user.pages.cummunityEarn.privatePostLink',compact('post','comments','isFollowingAuthor','isPostSaved'));
     }
     public function newComment($id, Request $request){
         if(!$id){
@@ -859,8 +859,7 @@ class socialEarnController extends Controller
         $post = feedpost::where('id',$id)->first();
         $this->recordPostView($post);
         $comments = feedPostComments::with('user')->where('postId', $post->id)->orderBy('created_at', 'ASC')->get();
-        $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
-        return view('user.pages.cummunityEarn.publicPostLink',compact('post','comments','communitySideAd'));
+        return view('user.pages.cummunityEarn.publicPostLink',compact('post','comments'));
     }
     // One view per visitor per post, deduped via session so refreshing the
     // page or an author re-opening their own post doesn't inflate the

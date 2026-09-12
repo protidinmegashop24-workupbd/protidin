@@ -485,10 +485,12 @@
             font-size: 12px;
             text-align: center;
         }
+        .post-side-ad .ads-img { height: 140px; object-fit: cover; border-radius: 8px; }
         @media (max-width: 600px) {
             .post-row { flex-direction: column; }
             .post-side-ad { width: 100%; }
             .post-side-ad .ad-placeholder { min-height: 100px; }
+            .post-side-ad .ads-img { height: 180px; }
         }
         .post-topic-badge {
             display: inline-block;
@@ -757,8 +759,19 @@
             </div>
 
             <div class="post-side-ad">
-                @if(isset($communitySideAd) && $communitySideAd)
-                    {!! $communitySideAd->code !!}
+                @php $communityAds = ad_banner(); @endphp
+                @if($communityAds->count())
+                    <div id="community-ad-{{ $post->id }}" class="carousel slide" data-bs-ride="carousel" data-bs-interval="8000">
+                        <div class="carousel-inner" role="listbox">
+                            @foreach($communityAds as $adKey => $ad)
+                                <div class="carousel-item @if($adKey==0) active @endif">
+                                    <a href="{{ $ad->link }}" target="_blank" rel="noopener">
+                                        <img class="d-block ads-img" src="{{ URL::to($ad->image) }}" alt="Ad banner">
+                                    </a>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                 @else
                     <div class="ad-placeholder">Ad</div>
                 @endif
