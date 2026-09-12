@@ -1098,6 +1098,16 @@ if (!function_exists('communityReportsEnabled')) {
     }
 }
 
+if (!function_exists('communityViewsEnabled')) {
+    function communityViewsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'views');
+        }
+        return $enabled;
+    }
+}
+
 if (!function_exists('custom_path')) {
     // Used by the KYC verification pages to resolve a stored document/photo
     // path to a public URL, falling back to a placeholder image. Files are

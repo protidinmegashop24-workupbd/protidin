@@ -315,7 +315,10 @@
         <!-- Stats -->
         <div class="d-flex mt-3">
             <div class="me-3"><i class="bi bi-hand-thumbs-up-fill text-success"></i> {{$post->likes}} Likes</div>
-            <div>{{$post->commnets}} Comments</div>
+            <div class="me-3">{{$post->commnets}} Comments</div>
+            @if(communityViewsEnabled())
+                <div>👁 {{ $post->views }} Views</div>
+            @endif
         </div>
 
         <!-- Actions -->

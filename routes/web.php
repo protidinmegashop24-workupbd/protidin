@@ -8,6 +8,7 @@ use App\Http\Controllers\Backend\SpinSettingController;
 use App\Http\Controllers\Backend\ServiceController;
 use App\Http\Controllers\Backend\GoogleAdController;
 use App\Http\Controllers\Backend\CommunityReportController;
+use App\Http\Controllers\Backend\CommunityTopicController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\LotteryController;
@@ -304,6 +305,11 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('community-reports', [CommunityReportController::class, 'index'])->name('community-reports');
     Route::get('community-reports-dismiss/{id}', [CommunityReportController::class, 'dismiss'])->name('community-reports.dismiss');
     Route::get('community-reports-hide-post/{id}', [CommunityReportController::class, 'hidePost'])->name('community-reports.hide-post');
+
+    Route::get('community-topics', [CommunityTopicController::class, 'index'])->name('community-topics');
+    Route::post('community-topics-store', [CommunityTopicController::class, 'store'])->name('community-topics.store');
+    Route::post('community-topics-update-{id}', [CommunityTopicController::class, 'update'])->name('community-topics.update');
+    Route::get('community-topics-delete-{id}', [CommunityTopicController::class, 'destroy'])->name('community-topics.delete');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -2095,4 +2101,21 @@ Route::get('/system-add-community-performance-indexes/{token}', function ($token
     }
 
     return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+});
+
+// One-off: adds a view-count column to feedposts. Nullable-default-0, same
+// low-risk pattern as postType/productPrice. Safe to run more than once.
+Route::get('/system-add-community-views/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'views')) {
+        \Illuminate\Support\Facades\Schema::table('feedposts', function ($table) {
+            $table->unsignedInteger('views')->default(0)->after('shares');
+        });
+        return 'views column added at ' . now();
+    }
+
+    return 'views column already exists -- nothing to do.';
 });

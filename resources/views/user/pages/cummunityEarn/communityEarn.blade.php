@@ -683,9 +683,9 @@
                 </div>
 
                 @if($topics->count())
-                <div style="padding:10px 12px 0;">
-                    <select name="topic_id" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; color:#334155;">
-                        <option value="">বিষয় বেছে নিন (Topic) — ঐচ্ছিক</option>
+                <div id="topic-select-wrap" style="padding:10px 12px 0;">
+                    <select name="topic_id" id="topic_id" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; color:#334155;">
+                        <option id="topic-default-option" value="">বিষয় বেছে নিন (Topic) — ঐচ্ছিক</option>
                         @foreach($topics as $topic)
                             <option value="{{ $topic->id }}">{{ $topic->icon }} {{ $topic->name }}</option>
                         @endforeach
@@ -916,6 +916,10 @@
                             <span>{{$post->commnets}} Comments</span>
                             <span class="mx-1">·</span>
                             <span class="share-count" data-count="{{ $post->shares }}">{{$post->shares}} Shares</span>
+                            @if(communityViewsEnabled())
+                                <span class="mx-1">·</span>
+                                <span>👁 {{ $post->views }} Views</span>
+                            @endif
                         </div>
                     </div>
 
@@ -1353,6 +1357,21 @@
         let productFields = document.getElementById('product-fields');
         if (productFields) {
             productFields.style.display = (type === 'product') ? 'flex' : 'none';
+        }
+
+        // A Product post's Topic doubles as its category (which kind of
+        // affiliate product this is), so relabel it and make it required
+        // only in that case -- stays a plain optional "Topic" for Article/Q&A.
+        let topicSelect = document.getElementById('topic_id');
+        let topicDefaultOption = document.getElementById('topic-default-option');
+        if (topicSelect && topicDefaultOption) {
+            if (type === 'product') {
+                topicDefaultOption.textContent = 'প্রোডাক্ট ক্যাটাগরি (Topic) বেছে নিন — আবশ্যক';
+                topicSelect.required = true;
+            } else {
+                topicDefaultOption.textContent = 'বিষয় বেছে নিন (Topic) — ঐচ্ছিক';
+                topicSelect.required = false;
+            }
         }
     }
 

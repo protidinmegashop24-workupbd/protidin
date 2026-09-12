@@ -630,6 +630,10 @@
                         <span>{{$post->commnets}} Comments</span>
                         <span class="mx-1">·</span>
                         <span class="share-count" data-count="{{ $post->shares }}">{{$post->shares}} Shares</span>
+                        @if(communityViewsEnabled())
+                            <span class="mx-1">·</span>
+                            <span>👁 {{ $post->views }} Views</span>
+                        @endif
                     </div>
                 </div>
 

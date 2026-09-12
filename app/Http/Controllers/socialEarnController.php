@@ -495,6 +495,15 @@ class socialEarnController extends Controller
         ));
     }
     public function communityPostStore(Request $request) {
+        // A Product post's Topic doubles as its category (which kind of
+        // affiliate product this is), so it's required there -- but stays
+        // optional for Article/Q&A. Only enforced once Topics themselves
+        // are set up; a site that hasn't run that route yet just keeps
+        // working topic-less like before.
+        $topicRule = (communityTopicsEnabled() && $request->post_type === 'product')
+            ? 'required|integer'
+            : 'nullable|integer';
+
         $request->validate([
             'post_content' => 'required|string',
             'post_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
@@ -503,12 +512,13 @@ class socialEarnController extends Controller
             // so a post without one defeats the point.
             'fatchUrl'     => 'required|url',
             'post_type'    => 'required|in:product,article',
-            'topic_id'     => 'nullable|integer',
+            'topic_id'     => $topicRule,
             'product_price'    => 'nullable|string|max:50',
             'discount_text'    => 'nullable|string|max:100',
             'product_features' => 'nullable|string',
         ], [
             'fatchUrl.required' => 'আপনার পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) দিতে হবে।',
+            'topic_id.required' => 'প্রোডাক্ট পোস্টের জন্য একটি ক্যাটাগরি (Topic) বেছে নিন।',
         ]);
 
         // Max Post Limit per Day Start 
@@ -637,6 +647,7 @@ class socialEarnController extends Controller
         if(!$post){
             return redirect()->route('home')->with('error','Post Not Found');
         }
+        $this->recordPostView($post);
         $comments = feedPostComments::where('postId',$post->id)->get();
         $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
         $isFollowingAuthor = communityFollowEnabled()
@@ -826,9 +837,25 @@ class socialEarnController extends Controller
         }
         // dd($post);
         $post = feedpost::where('id',$id)->first();
+        $this->recordPostView($post);
         $comments = feedPostComments::with('user')->where('postId', $post->id)->orderBy('created_at', 'ASC')->get();
         $communitySideAd = GoogleAd::where('position','Community-Sidebar')->inRandomOrder()->first();
         return view('user.pages.cummunityEarn.publicPostLink',compact('post','comments','communitySideAd'));
+    }
+    // One view per visitor per post, deduped via session so refreshing the
+    // page or an author re-opening their own post doesn't inflate the
+    // count -- guarded so it's a no-op until /system-add-community-views
+    // has added the column.
+    protected function recordPostView($post){
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'views')) {
+            return;
+        }
+        $sessionKey = 'viewed_post_' . $post->id;
+        if (session()->has($sessionKey)) {
+            return;
+        }
+        session()->put($sessionKey, true);
+        $post->increment('views');
     }
     public function postFeedDashboard(){
        $userId = Auth::id();
