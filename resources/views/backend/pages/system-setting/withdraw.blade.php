@@ -1,0 +1,200 @@
+@extends('backend.layouts.master')
+
+@section('title')
+    {{ $title }}
+@endsection
+
+@section('css')
+    <link rel="stylesheet" href="{{ asset('backend/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('backend/plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
+@endsection
+
+@section('back-content')
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0 text-dark">{{ $title }}</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
+                        <li class="breadcrumb-item active">All {{ $title }}</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12 col-12">
+                    <div class="card card-success">
+                        <div class="card-header">
+                            <h3 class="card-title">All {{ $title }}</h3>
+                        </div>
+                        <div class="card-body">
+                            <table id="example1" class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Charge</th>
+                                        <th>Type</th>
+                                        <th>Account</th>
+                                        <th>Admin Fee</th>
+                                        <th>Date Time</th>
+                                        <th>Status</th>
+                                        <th width="15%">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($datas as $key => $data)
+                                        <tr>
+                                            <td>{{ $key + 1 }}</td>
+                                            <td>{{ user_name($data->user_id) }}</td>
+                                            <td>{{ $data->amount - $data->charge }}$</td>
+                                            <td>{{ $data->charge }} $</td>
+                                            <td>{{ $data->account_type }}</td>
+                                            <td>{{ $data->account_no }}</td>
+                                            <td>{{ $data->admin_fee }}%</td>
+                                            <td>
+                                                {{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y g:i A')}}
+                                            </td>
+                                            <td>
+                                                @if($data->approval == 0)
+                                                    <span class="badge bg-warning">Pending</span>
+                                                @elseif($data->approval == 1)
+                                                    <span class="badge bg-success p-2">Paid</span>
+                                                @else
+                                                    <span class="badge bg-danger p-2">Rejected</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($data->approval == 0)
+                                                    <a href="javascript:;" class="btn btn-success btn-sm" data-toggle="modal" data-target="#edit_{{ $data->id }}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                @endif
+                                                <a href="{{ route('admin.withdraw-request-delete', $data->id) }}" onclick="return confirm(' You want to delete?');" class="btn btn-sm btn-danger">Delete</a>
+                                            </td>
+                                        </tr>
+                                        <div class="modal fade" id="edit_{{ $data->id }}" tabindex="-1" role="dialog" aria-labelledby="divisionEditModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog" role="document">
+                                                <form action="{{ route('admin.withdraw-request-approved', $data->id) }}" method="POST" enctype="multipart/form-data">
+                                                    @csrf
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <span>Update Status</span>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="form-group col-lg-12 col-md-12 col-12">
+                                                                <button type="button" class="btn btn-outline-info btn-sm mb-2"
+                                                                        onclick="checkWithdrawUser({{ $data->user_id }}, 'user-check-{{ $data->id }}')">
+                                                                    🔍 Check This User Before Paying
+                                                                </button>
+                                                                <div id="user-check-{{ $data->id }}"></div>
+                                                            </div>
+                                                            <div class="form-group col-lg-12 col-md-12 col-12">
+                                                                <label for="status">Status</label>
+                                                                <select class="form-control" name="approval" id="approval">
+                                                                    <option value="0" @if($data->approval == 0) selected @endif>Pending</option>
+                                                                    <option value="1" @if($data->approval == 1) selected @endif>Approved</option>
+                                                                    <option value="2" @if($data->approval == 2) selected @endif>Rejected</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="form-group col-lg-12 col-md-12 col-12">
+                                                                <label for="reason">Reason</label>
+                                                                <textarea class="form-control" name="reason" id="reason" cols="30" rows="3">{{ $data->reason }}</textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                            <button type="submit" class="btn btn-primary">Update</button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </section>
+@endsection
+
+@section('js')
+    <script src="{{ asset('backend/plugins/datatables/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ asset('backend/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
+    <script src="{{ asset('backend/plugins/datatables-responsive/js/dataTables.responsive.min.js') }}"></script>
+    <script src="{{ asset('backend/plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
+
+    <script>
+        $(function() {
+            $("#example1").DataTable({
+                "responsive": true,
+                "autoWidth": false,
+            });
+            $('#example2').DataTable({
+                "paging": true,
+                "lengthChange": false,
+                "searching": false,
+                "ordering": true,
+                "info": true,
+                "autoWidth": false,
+                "responsive": true,
+            });
+        });
+
+        function checkWithdrawUser(userId, targetId) {
+            var box = document.getElementById(targetId);
+            box.innerHTML = '<div class="text-muted">চেক করা হচ্ছে...</div>';
+
+            fetch('/admin/withdraw-user-check/' + userId)
+                .then(function(res) { return res.json(); })
+                .then(function(d) {
+                    if (d.error) {
+                        box.innerHTML = '<div class="alert alert-danger">' + d.error + '</div>';
+                        return;
+                    }
+
+                    var flagsHtml = '';
+                    if (d.flags.length > 0) {
+                        flagsHtml = '<div class="alert alert-danger mb-2"><strong>⚠️ সমস্যা পাওয়া গেছে:</strong><ul class="mb-0">';
+                        d.flags.forEach(function(f) { flagsHtml += '<li>' + f + '</li>'; });
+                        flagsHtml += '</ul></div>';
+                    } else {
+                        flagsHtml = '<div class="alert alert-success mb-2">✅ কোনো সমস্যা পাওয়া যায়নি — পেমেন্ট করা যেতে পারে।</div>';
+                    }
+
+                    box.innerHTML = flagsHtml +
+                        '<table class="table table-sm table-bordered mb-0">' +
+                        '<tr><td>নাম</td><td>' + d.name + ' (' + d.code + ')</td></tr>' +
+                        '<tr><td>ইমেইল ভেরিফাইড</td><td>' + (d.email_verified ? 'হ্যাঁ' : 'না') + '</td></tr>' +
+                        '<tr><td>জয়েন</td><td>' + d.joined_at + '</td></tr>' +
+                        '<tr><td>ব্যান / সাসপেন্ড</td><td>' + (d.is_ban ? 'ব্যান' : '') + ' ' + (d.is_suspended ? 'সাসপেন্ড' : (!d.is_ban ? 'না' : '')) + '</td></tr>' +
+                        '<tr><td>Approved / Rejected / Reported জব</td><td>' + d.approved_jobs + ' / ' + d.rejected_jobs + ' / ' + d.reported_jobs + ' = $' + d.job_earned.toFixed(4) + '</td></tr>' +
+                        '<tr><td>PTC ক্লিক</td><td>' + d.ptc_clicks + 'টা = $' + d.ptc_earned.toFixed(4) + '</td></tr>' +
+                        '<tr><td>সার্ভে ভেরিফাইড</td><td>' + d.surveys_verified + 'টা = $' + d.survey_earned.toFixed(4) + '</td></tr>' +
+                        '<tr><td>রেফার কমিশন</td><td>' + d.total_referrals + ' জন রেফার = $' + d.referral_commission.toFixed(4) + '</td></tr>' +
+                        '<tr><td><strong>মোট ট্র্যাক-করা ইনকাম</strong></td><td><strong>$' + d.total_tracked_earned.toFixed(4) + '</strong></td></tr>' +
+                        '<tr><td>বর্তমান ব্যালেন্স</td><td>$' + d.earning_balance.toFixed(4) + '</td></tr>' +
+                        '</table>';
+                })
+                .catch(function() {
+                    box.innerHTML = '<div class="alert alert-danger">চেক করতে ব্যর্থ হয়েছে, আবার চেষ্টা করুন।</div>';
+                });
+        }
+
+        function depositApproved(id) {
+            if (confirm("Are you sure?")) {
+                document.getElementById('deposit-approved-'+id).submit();
+            }
+            return false;
+        }
+    </script>
+@endsection
