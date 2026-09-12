@@ -2119,3 +2119,23 @@ Route::get('/system-add-community-views/{token}', function ($token) {
 
     return 'views column already exists -- nothing to do.';
 });
+
+// One-off: lets each Topic be restricted to Product posts, Article/Q&A
+// posts, or both -- so a Product post's "category" list and an Article's
+// "topic" list can be entirely separate sets, admin-controlled. Existing
+// topics default to 'both' so nothing currently tagged breaks; the admin
+// then reassigns them from the Community Topics page as needed.
+Route::get('/system-add-community-topic-type/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('community_topics', 'applies_to')) {
+        \Illuminate\Support\Facades\Schema::table('community_topics', function ($table) {
+            $table->string('applies_to', 20)->default('both')->after('icon');
+        });
+        return 'applies_to column added to community_topics at ' . now();
+    }
+
+    return 'applies_to column already exists -- nothing to do.';
+});

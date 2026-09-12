@@ -360,6 +360,18 @@ class socialEarnController extends Controller
         // one-off /system-add-community-topics route has been run, so this
         // feature degrades gracefully on a site that hasn't set it up yet.
         $topics = $topicsEnabled ? CommunityTopic::orderBy('name')->get() : collect();
+        // Product's Topic doubles as its category, and admin can restrict a
+        // topic to just one post type (applies_to) -- split into the two
+        // lists the composer's dropdown swaps between. A site that hasn't
+        // run /system-add-community-topic-type yet has no applies_to
+        // column, so every topic just counts as "both" (old behavior).
+        $topicTypeEnabled = $topicsEnabled && \Illuminate\Support\Facades\Schema::hasColumn('community_topics', 'applies_to');
+        $articleTopics = $topicTypeEnabled
+            ? $topics->whereIn('applies_to', ['article', 'both'])->values()
+            : $topics;
+        $productTopics = $topicTypeEnabled
+            ? $topics->whereIn('applies_to', ['product', 'both'])->values()
+            : $topics;
 
         // Which authors the current user already follows and which posts
         // they've already saved, so the buttons render in the right state
@@ -371,7 +383,7 @@ class socialEarnController extends Controller
             ? CommunityBookmark::where('user_id', Auth::id())->pluck('post_id')->toArray()
             : [];
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds','topics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communitySideAds','topics','articleTopics','productTopics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
     }
     public function toggleFollow(Request $request, $userId){
         if (!communityFollowEnabled()) {
@@ -599,9 +611,17 @@ class socialEarnController extends Controller
         // /system-add-community-topics route has created the tables --
         // guarded so posting still works fine before/without that setup.
         if ($request->filled('topic_id') && communityTopicsEnabled()) {
-            $topicExists = CommunityTopic::where('id', $request->topic_id)->exists();
-            if ($topicExists) {
-                $postAdded->topics()->attach($request->topic_id);
+            $topic = CommunityTopic::find($request->topic_id);
+            // Belt-and-braces server-side check that the chosen topic is
+            // actually allowed for this post_type, in case a request
+            // bypasses the composer's own JS (which only ever offers the
+            // matching list).
+            $topicAllowed = $topic && (
+                !\Illuminate\Support\Facades\Schema::hasColumn('community_topics', 'applies_to')
+                || in_array($topic->applies_to, [$request->post_type, 'both'])
+            );
+            if ($topicAllowed) {
+                $postAdded->topics()->attach($topic->id);
             }
         }
 

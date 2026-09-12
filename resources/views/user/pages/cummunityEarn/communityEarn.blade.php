@@ -686,11 +686,18 @@
                 <div id="topic-select-wrap" style="padding:10px 12px 0;">
                     <select name="topic_id" id="topic_id" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; color:#334155;">
                         <option id="topic-default-option" value="">বিষয় বেছে নিন (Topic) — ঐচ্ছিক</option>
-                        @foreach($topics as $topic)
+                        @foreach($articleTopics as $topic)
                             <option value="{{ $topic->id }}">{{ $topic->icon }} {{ $topic->name }}</option>
                         @endforeach
                     </select>
                 </div>
+                <script>
+                    // Product's Topic list is its own set (admin-managed
+                    // "applies_to" per topic) -- swapped in by setPostType()
+                    // below instead of sharing Article's list.
+                    var communityArticleTopics = @json($articleTopics->map(fn($t) => ['id' => $t->id, 'label' => $t->icon . ' ' . $t->name]));
+                    var communityProductTopics = @json($productTopics->map(fn($t) => ['id' => $t->id, 'label' => $t->icon . ' ' . $t->name]));
+                </script>
                 @endif
 
                 @if(communityProductFieldsEnabled())
@@ -1360,18 +1367,36 @@
         }
 
         // A Product post's Topic doubles as its category (which kind of
-        // affiliate product this is), so relabel it and make it required
-        // only in that case -- stays a plain optional "Topic" for Article/Q&A.
+        // affiliate product this is) and admin can set an entirely
+        // separate list of topics for Product vs Article/Q&A -- rebuild
+        // the dropdown's options from the matching list each time the
+        // type toggles, instead of sharing one shared list.
         let topicSelect = document.getElementById('topic_id');
-        let topicDefaultOption = document.getElementById('topic-default-option');
-        if (topicSelect && topicDefaultOption) {
-            if (type === 'product') {
-                topicDefaultOption.textContent = 'প্রোডাক্ট ক্যাটাগরি (Topic) বেছে নিন — আবশ্যক';
-                topicSelect.required = true;
-            } else {
-                topicDefaultOption.textContent = 'বিষয় বেছে নিন (Topic) — ঐচ্ছিক';
-                topicSelect.required = false;
-            }
+        if (topicSelect) {
+            let isProduct = (type === 'product');
+            let list = isProduct
+                ? (typeof communityProductTopics !== 'undefined' ? communityProductTopics : [])
+                : (typeof communityArticleTopics !== 'undefined' ? communityArticleTopics : []);
+
+            let placeholderText = isProduct
+                ? 'প্রোডাক্ট ক্যাটাগরি (Topic) বেছে নিন — আবশ্যক'
+                : 'বিষয় বেছে নিন (Topic) — ঐচ্ছিক';
+
+            topicSelect.innerHTML = '';
+            let placeholderOption = document.createElement('option');
+            placeholderOption.id = 'topic-default-option';
+            placeholderOption.value = '';
+            placeholderOption.textContent = placeholderText;
+            topicSelect.appendChild(placeholderOption);
+
+            list.forEach(function (topic) {
+                let opt = document.createElement('option');
+                opt.value = topic.id;
+                opt.textContent = topic.label;
+                topicSelect.appendChild(opt);
+            });
+
+            topicSelect.required = isProduct;
         }
     }
 

@@ -12,6 +12,7 @@ class CommunityTopic extends Model
         'name',
         'slug',
         'icon',
+        'applies_to',
     ];
 
     public function posts()

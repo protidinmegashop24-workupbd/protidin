@@ -24,6 +24,7 @@ class CommunityTopicController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'icon' => 'nullable|string|max:10',
+            'applies_to' => 'nullable|in:product,article,both',
         ]);
 
         $slug = Str::slug($request->name);
@@ -34,11 +35,15 @@ class CommunityTopicController extends Controller
             $i++;
         }
 
-        CommunityTopic::create([
+        $data = [
             'name' => $request->name,
             'slug' => $slug,
             'icon' => $request->icon ?: '💬',
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('community_topics', 'applies_to')) {
+            $data['applies_to'] = $request->applies_to ?: 'both';
+        }
+        CommunityTopic::create($data);
 
         return redirect()->back()->with('success', 'Topic added.');
     }
@@ -50,12 +55,17 @@ class CommunityTopicController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'icon' => 'nullable|string|max:10',
+            'applies_to' => 'nullable|in:product,article,both',
         ]);
 
-        $topic->update([
+        $data = [
             'name' => $request->name,
             'icon' => $request->icon ?: $topic->icon,
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('community_topics', 'applies_to')) {
+            $data['applies_to'] = $request->applies_to ?: 'both';
+        }
+        $topic->update($data);
 
         return redirect()->back()->with('success', 'Topic updated.');
     }
