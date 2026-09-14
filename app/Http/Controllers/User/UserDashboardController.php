@@ -86,7 +86,12 @@ class UserDashboardController extends Controller
         $categorys = Category::latest()->get();
         $job_found = job_found();
         $jobs = Job::where('status', 1)->where('worker_need', '!=', 'worker_confirmed')->latest()->limit(20)->get();
-        return view('user.pages.home', compact('location_zone', 'countries', 'categorys', 'jobs', 'job_found'));
+
+        $offerWallProviders = \Illuminate\Support\Facades\Schema::hasTable('offer_wall_providers')
+            ? \App\Models\OfferWallProvider::where('enabled', true)->get()
+            : collect();
+
+        return view('user.pages.home', compact('location_zone', 'countries', 'categorys', 'jobs', 'job_found', 'offerWallProviders'));
     }
     
     public function job_details($code)

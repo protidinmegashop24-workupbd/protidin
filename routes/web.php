@@ -10,6 +10,7 @@ use App\Http\Controllers\Backend\GoogleAdController;
 use App\Http\Controllers\Backend\CommunityReportController;
 use App\Http\Controllers\Backend\CommunityTopicController;
 use App\Http\Controllers\Backend\SurveyProviderController as AdminSurveyProviderController;
+use App\Http\Controllers\Backend\OfferWallController as AdminOfferWallController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\LotteryController;
@@ -316,6 +317,10 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('survey-providers', [AdminSurveyProviderController::class, 'index'])->name('survey-providers');
     Route::post('survey-providers-update-{id}', [AdminSurveyProviderController::class, 'update'])->name('survey-providers.update');
     Route::get('survey-providers-conversions', [AdminSurveyProviderController::class, 'conversions'])->name('survey-providers.conversions');
+
+    Route::get('offer-wall-providers', [AdminOfferWallController::class, 'index'])->name('offer-wall-providers');
+    Route::post('offer-wall-providers-update-{id}', [AdminOfferWallController::class, 'update'])->name('offer-wall-providers.update');
+    Route::get('offer-wall-providers-conversions', [AdminOfferWallController::class, 'conversions'])->name('offer-wall-providers.conversions');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -857,12 +862,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/survey-provider/{slug}/start', [\App\Http\Controllers\SurveyProviderController::class, 'start'])->name('survey-provider.start');
     Route::get('/survey-provider/{slug}/list', [\App\Http\Controllers\SurveyProviderController::class, 'list'])->name('survey-provider.list');
+
+    Route::get('/offer-wall/{slug}/start', [\App\Http\Controllers\OfferWallController::class, 'start'])->name('offer-wall.start');
 });
 
 // Survey Provider postback -- not behind 'auth' (the provider's server
 // calls this directly with no logged-in session), protected instead by
 // the per-provider secret/hash check inside the controller.
 Route::match(['get', 'post'], '/postback/survey-provider/{slug}', [\App\Http\Controllers\SurveyProviderController::class, 'postback'])->name('survey-provider.postback');
+
+// Offer Wall postback -- same reasoning as the Survey Provider postback
+// above (provider's server calls this with no logged-in session).
+Route::match(['get', 'post'], '/postback/offer-wall/{slug}', [\App\Http\Controllers\OfferWallController::class, 'postback'])->name('offer-wall.postback');
 
 // /surveys itself is public, like /marketplace -- guests see the marketing
 // landing page (frontend.surveys.index) instead of being redirected to
@@ -2237,6 +2248,83 @@ Route::get('/system-add-survey-providers/{token}', function ($token) {
             'updated_at' => now(),
         ]);
         $log[] = 'Seeded CPX Research provider row (disabled).';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: adds third-party Offer Wall providers (BitLabs, Lootably, AdGate
+// Media) as their own tables, additive and separate from the existing
+// Job/PTC system -- that system keeps working exactly as before. Offer
+// Wall cards show alongside the job list on /find-job. Safe to run more
+// than once.
+//
+// IMPORTANT: unlike CPX Research, none of these 3 providers' widget/entry
+// URLs or postback parameter names have been confirmed yet (their docs
+// domains are unreachable from here). So `start()` uses an admin-editable
+// widget_url_template (with a {user_id} placeholder) instead of a
+// hardcoded URL, and `postback()` only logs the raw request until a real
+// test postback + the provider's own docs page confirm the real field
+// names -- exactly the same process used to get CPX Research working.
+Route::get('/system-add-offerwall-providers/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('offer_wall_providers')) {
+        \Illuminate\Support\Facades\Schema::create('offer_wall_providers', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->boolean('enabled')->default(false);
+            $table->string('app_id')->nullable();
+            $table->string('secret_key')->nullable();
+            $table->text('widget_url_template')->nullable();
+            $table->text('config')->nullable();
+            $table->timestamps();
+        });
+        $log[] = 'Created offer_wall_providers table.';
+    } else {
+        $log[] = 'offer_wall_providers table already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('offer_wall_conversions')) {
+        \Illuminate\Support\Facades\Schema::create('offer_wall_conversions', function ($table) {
+            $table->id();
+            $table->string('provider_slug');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('trans_id')->nullable();
+            $table->string('status', 20)->default('pending'); // pending, approved, reversed, rejected, unverified
+            $table->decimal('amount_usd', 10, 4)->default(0);
+            $table->text('raw_payload')->nullable();
+            $table->timestamp('credited_at')->nullable();
+            $table->timestamps();
+            $table->index(['provider_slug', 'trans_id']);
+            $table->index('user_id');
+        });
+        $log[] = 'Created offer_wall_conversions table.';
+    } else {
+        $log[] = 'offer_wall_conversions table already exists.';
+    }
+
+    $seeds = [
+        ['name' => 'BitLabs', 'slug' => 'bitlabs'],
+        ['name' => 'Lootably', 'slug' => 'lootably'],
+        ['name' => 'AdGate Media', 'slug' => 'adgate-media'],
+    ];
+    foreach ($seeds as $seed) {
+        if (!\Illuminate\Support\Facades\DB::table('offer_wall_providers')->where('slug', $seed['slug'])->exists()) {
+            \Illuminate\Support\Facades\DB::table('offer_wall_providers')->insert([
+                'name' => $seed['name'],
+                'slug' => $seed['slug'],
+                'enabled' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $log[] = 'Seeded ' . $seed['name'] . ' provider row (disabled).';
+        }
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);

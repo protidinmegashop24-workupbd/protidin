@@ -258,6 +258,27 @@
                 <div class="card-body job-list-card-body">
                     <div class="job-list-body" id="job-content-area">
 
+                        @if(isset($offerWallProviders) && $offerWallProviders->count())
+                            @foreach($offerWallProviders as $owProvider)
+                                <a href="{{ route('offer-wall.start', $owProvider->slug) }}" target="_blank" class="job-item-link">
+                                    <div class="job-item-card">
+                                        <div class="job-item-inner">
+                                            <div class="job-title-wrap">
+                                                <div class="job-title">{{ $owProvider->name }}</div>
+                                                <div class="job-subtext">
+                                                    <i class="fa fa-gift"></i>
+                                                    Offer Wall — Sponsored Partner
+                                                </div>
+                                            </div>
+                                            <div class="job-price-box">
+                                                <div class="job-price-note">Reward shown after you open it</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            @endforeach
+                        @endif
+
                         @if(boost_jobs()->count() > 0)
                             @foreach (boost_jobs() as $key => $boost_job)
                                 @php
