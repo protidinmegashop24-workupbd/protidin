@@ -759,13 +759,13 @@
             </div>
 
             <div class="post-side-ad">
-                @php $communityAds = ad_banner(); @endphp
+                @php $communityAds = ad_banner(); recordAdImpressions($communityAds); @endphp
                 @if($communityAds->count())
                     <div id="community-ad-{{ $post->id }}" class="carousel slide" data-bs-ride="carousel" data-bs-interval="8000">
                         <div class="carousel-inner" role="listbox">
                             @foreach($communityAds as $adKey => $ad)
                                 <div class="carousel-item @if($adKey==0) active @endif">
-                                    <a href="{{ $ad->link }}" target="_blank" rel="noopener">
+                                    <a href="{{ route('ad.click', $ad->id) }}" target="_blank" rel="noopener">
                                         <img class="d-block ads-img" src="{{ URL::to($ad->image) }}" alt="Ad banner">
                                     </a>
                                 </div>

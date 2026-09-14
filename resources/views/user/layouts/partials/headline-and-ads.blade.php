@@ -27,11 +27,12 @@
         
                             <h4 class="card-title text-center">Click Now</h4>
         
+                            @php $findJobAds = ad_banner(); recordAdImpressions($findJobAds); @endphp
                             <div id="carouselExampleSlidesOnly" class="carousel slide" data-bs-ride="carousel" data-bs-interval="20000">
                                 <div class="carousel-inner" role="listbox">
-                                    @foreach (ad_banner() as $key=>$ads)
+                                    @foreach ($findJobAds as $key=>$ads)
                                         <div class="carousel-item @if($key==0) active @endif">
-                                            <a href="{{ $ads->link }}">
+                                            <a href="{{ route('ad.click', $ads->id) }}">
                                                 <img class="d-block ads-img" src="{{ URL::to($ads->image) }}" alt="Ad banner">
                                             </a>
                                         </div>

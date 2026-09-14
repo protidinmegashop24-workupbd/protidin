@@ -428,4 +428,21 @@ class HomeController extends Controller
         $data = substr(str_shuffle($original_string), 0, 6);
         return response()->json(['captcha'=>$data]);
     }
+
+    // Every ad_banner() carousel (find-job/dashboard's "Click Now" box, and
+    // Community's side-ad rail) links through here instead of straight to
+    // the advertiser's URL, so a click gets counted before handing off --
+    // not behind 'auth' since guests click these too. Guarded so it's a
+    // no-op until /system-add-advertisement-stats has added the column.
+    public function adClick($id)
+    {
+        $ad = \App\Models\Admin\Advertisement::find($id);
+        if (!$ad) {
+            return redirect()->route('home');
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'clicks')) {
+            $ad->increment('clicks');
+        }
+        return redirect()->away($ad->link);
+    }
 }

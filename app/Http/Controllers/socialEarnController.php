@@ -356,7 +356,12 @@ class socialEarnController extends Controller
         // The side-ad rail now shows the site's real Advertise-section
         // banners (ad_banner() helper, same source as find-job/dashboard's
         // "Click Now" carousel) instead of the unused GoogleAd
-        // Community-Sidebar position -- fetched directly in the view.
+        // Community-Sidebar position. Fetched ONCE here (not per post in
+        // the feed loop) so every post's carousel shares the same batch --
+        // otherwise recordAdImpressions() below would count one "view" per
+        // post shown instead of one per actual pageview.
+        $communityAds = ad_banner();
+        recordAdImpressions($communityAds);
         // Topic filter chips at the top of the feed -- only shown if the
         // one-off /system-add-community-topics route has been run, so this
         // feature degrades gracefully on a site that hasn't set it up yet.
@@ -384,7 +389,7 @@ class socialEarnController extends Controller
             ? CommunityBookmark::where('user_id', Auth::id())->pluck('post_id')->toArray()
             : [];
         // dd($posts);
-        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','topics','articleTopics','productTopics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
+        return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communityAds','topics','articleTopics','productTopics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
     }
     public function toggleFollow(Request $request, $userId){
         if (!communityFollowEnabled()) {

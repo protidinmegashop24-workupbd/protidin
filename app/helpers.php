@@ -808,6 +808,25 @@ function ad_banner(){
     return $ads = Advertisement::where('exp_date', '>=', $today)->where('approval', 1)->inRandomOrder()->get();
 }
 
+if (!function_exists('recordAdImpressions')) {
+    // Counts one "view" for each ad actually shown in a single page-render,
+    // so an advertiser can see impressions on their own Ads History page.
+    // Call this ONCE per page per ad_banner() batch actually displayed --
+    // never inside a loop that calls ad_banner() repeatedly (e.g. once per
+    // Community post), or the same pageview would inflate every ad's count
+    // once per post instead of once per viewer. Guarded so it's a no-op
+    // until /system-add-advertisement-stats has added the column.
+    function recordAdImpressions($ads){
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'views')) {
+            return;
+        }
+        $ids = is_iterable($ads) ? collect($ads)->pluck('id') : [];
+        if (count($ids)) {
+            \App\Models\Admin\Advertisement::whereIn('id', $ids)->increment('views');
+        }
+    }
+}
+
 function system_policy(){
     return Policy::latest()->get();
 }

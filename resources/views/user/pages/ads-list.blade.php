@@ -151,6 +151,13 @@
                                             <h5 class="ad-title">{{ $data->title }}</h5>
                                             <span class="ad-date">{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y g:i A') }}</span>
                                             <span class="ad-cost">{{ number_format($data->cost, 2) }} $</span>
+                                            @if(\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'views'))
+                                                <span class="ad-stats" style="font-size:14px; color:#555;">
+                                                    <i class="fas fa-eye"></i> {{ $data->views }} Views
+                                                    &nbsp;·&nbsp;
+                                                    <i class="fas fa-mouse-pointer"></i> {{ $data->clicks }} Clicks
+                                                </span>
+                                            @endif
                                             @if ($data->approval == 2 && !empty($data->reason))
                                                 <span class="ad-reason text-danger"><i class="fas fa-exclamation-circle"></i> Reason: {{ $data->reason }}</span>
                                             @endif

@@ -117,6 +117,7 @@ Route::get('/public-shared/{id?}', [socialEarnController::class, 'publicPostLink
 // clicked from the public/guest share page too, and click tracking should
 // still count/redirect for a logged-out visitor instead of forcing a login.
 Route::get('/community-go/{postId}', [socialEarnController::class, 'goToAffiliateLink'])->name('community.go');
+Route::get('/ad-click/{id}', [HomeController::class, 'adClick'])->name('ad.click');
 
 // Sitemap for Community posts -- the site had no sitemap of any kind for
 // this content before, so search engines had no reliable way to discover
@@ -2138,4 +2139,29 @@ Route::get('/system-add-community-topic-type/{token}', function ($token) {
     }
 
     return 'applies_to column already exists -- nothing to do.';
+});
+
+// One-off: adds views/clicks counters to the site's existing paid
+// Advertisement banners (advertisements table), so an advertiser can see
+// how their ad is performing on their own "Ads History" page -- these ads
+// now also show in Community's side-ad rail alongside find-job/dashboard's
+// "Click Now" carousel. Nullable-default-0, same low-risk pattern as
+// every other one-off column addition. Safe to run more than once.
+Route::get('/system-add-advertisement-stats/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'views')) {
+        \Illuminate\Support\Facades\Schema::table('advertisements', function ($table) {
+            $table->unsignedInteger('views')->default(0)->after('approval');
+            $table->unsignedInteger('clicks')->default(0)->after('views');
+        });
+        $log[] = 'Added views/clicks columns to advertisements.';
+    } else {
+        $log[] = 'advertisements views/clicks columns already exist.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });
