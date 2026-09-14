@@ -29,9 +29,12 @@
 
   @if(isset($surveyProviders) && $surveyProviders->count())
     @foreach($surveyProviders as $provider)
-      <div class="mb-2" style="font-weight:900;">
+      <div class="mb-1" style="font-weight:900;">
         {{ $provider->name }}
         <span class="badge bg-light text-dark" style="font-weight:800;font-size:11px;">Sponsored Survey Partner</span>
+      </div>
+      <div class="mb-2 text-muted" style="font-size:12px;">
+        প্রতি ২ মিনিটে লিস্ট আপডেট হয় — কোনো সার্ভে "not available" দেখালে লিস্ট থেকে অন্য একটা বা কিছুক্ষণ পর আবার চেষ্টা করুন।
       </div>
       <div class="row g-3 mb-3 provider-survey-list"
            data-slug="{{ $provider->slug }}"
@@ -183,7 +186,7 @@
     });
   }
 
-  document.querySelectorAll('.provider-survey-list').forEach(function (container) {
+  function loadProviderList(container) {
     var startUrl = container.getAttribute('data-start-url');
     var listUrl = container.getAttribute('data-list-url');
 
@@ -193,6 +196,14 @@
       .catch(function () {
         renderProviderFallback(container, startUrl, 'সার্ভে লিস্ট লোড করা যায়নি — নিচের বাটনে ক্লিক করে দেখুন।');
       });
+  }
+
+  // CPX's own docs say this list can go stale within ~120 seconds (survey
+  // slots are shared live across many publishers), so auto-refresh on that
+  // same interval instead of showing one static list for the whole visit.
+  document.querySelectorAll('.provider-survey-list').forEach(function (container) {
+    loadProviderList(container);
+    setInterval(function () { loadProviderList(container); }, 120000);
   });
 </script>
 @endsection
