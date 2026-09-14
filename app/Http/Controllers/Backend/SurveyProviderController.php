@@ -23,11 +23,13 @@ class SurveyProviderController extends Controller
         $provider = SurveyProvider::findOrFail($id);
 
         $request->validate([
+            'name' => 'nullable|string|max:255',
             'app_id' => 'nullable|string|max:255',
             'secret_key' => 'nullable|string|max:255',
         ]);
 
         $provider->update([
+            'name' => $request->filled('name') ? $request->name : $provider->name,
             'app_id' => $request->app_id,
             'secret_key' => $request->secret_key,
             'enabled' => $request->boolean('enabled'),

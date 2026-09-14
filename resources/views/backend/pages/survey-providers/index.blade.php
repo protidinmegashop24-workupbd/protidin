@@ -51,15 +51,19 @@
                     <form action="{{ route('admin.survey-providers.update', $provider->id) }}" method="POST">
                         @csrf
                         <div class="form-row">
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
+                                <label>Display Name (shown on the Surveys page card)</label>
+                                <input type="text" name="name" class="form-control" value="{{ $provider->name }}" placeholder="e.g. Bonus Survey">
+                            </div>
+                            <div class="form-group col-md-3">
                                 <label>App ID / Publisher ID</label>
                                 <input type="text" name="app_id" class="form-control" value="{{ $provider->app_id }}" placeholder="From your {{ $provider->name }} publisher dashboard">
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label>Secret Key</label>
                                 <input type="text" name="secret_key" class="form-control" value="{{ $provider->secret_key }}" placeholder="Postback / Security secret from the dashboard">
                             </div>
-                            <div class="form-group col-md-2">
+                            <div class="form-group col-md-1">
                                 <label>Status</label>
                                 <div class="custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" id="enabled_{{ $provider->id }}" name="enabled" value="1" @if($provider->enabled) checked @endif>
@@ -77,6 +81,9 @@
                         <code>{{ url('/postback/survey-provider/cpx-research') }}?status={status}&trans_id={trans_id}&user_id={user_id}&sub_id={subid}&sub_id_2={subid_2}&amount_local={amount_local}&amount_usd={amount_usd}&offer_id={offer_ID}&hash={secure_hash}&ip_click={ip_click}</code>
                         <p class="text-muted mt-2 mb-0" style="font-size:12px;">
                             Verified end-to-end via CPX Research's own "Test your Postback URL" tool -- the hash formula, parameter names, and widget URL all matched.
+                        </p>
+                        <p class="text-muted mt-2 mb-0" style="font-size:12px;">
+                            Note: "Display Name" only changes the card title on YOUR site. Once a user clicks Start, they leave your site and land on CPX Research's own website (offers.cpx-research.com), which still shows CPX's own branding -- that part cannot be changed from here.
                         </p>
                     @endif
                 </div>
