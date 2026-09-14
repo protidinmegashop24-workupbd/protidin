@@ -74,9 +74,9 @@
                     @if($provider->slug == 'cpx-research')
                         <hr>
                         <p class="mb-1"><strong>Postback URL to set in your CPX Research dashboard (Postback Settings tab):</strong></p>
-                        <code>{{ url('/postback/survey-provider/cpx-research') }}?status={status}&trans_id={trans_id}&user_id={user_id}&amount_usd={amount_usd}&hash={hash}</code>
+                        <code>{{ url('/postback/survey-provider/cpx-research') }}?status={status}&trans_id={trans_id}&user_id={user_id}&sub_id={subid}&sub_id_2={subid_2}&amount_local={amount_local}&amount_usd={amount_usd}&offer_id={offer_ID}&hash={secure_hash}&ip_click={ip_click}</code>
                         <p class="text-muted mt-2 mb-0" style="font-size:12px;">
-                            The exact macro names (status/trans_id/user_id/amount_usd/hash) and the secure_hash formula should be double-checked against your own CPX Research dashboard documentation before going live -- this was set up from CPX Research's publicly documented integration pattern, not a copy of their private dashboard.
+                            Verified end-to-end via CPX Research's own "Test your Postback URL" tool -- the hash formula, parameter names, and widget URL all matched.
                         </p>
                     @endif
                 </div>

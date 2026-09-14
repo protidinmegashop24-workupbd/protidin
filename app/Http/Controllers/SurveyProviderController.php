@@ -26,13 +26,10 @@ class SurveyProviderController extends Controller
         $userId = Auth::id();
 
         if ($slug === 'cpx-research') {
-            // Widget URL + secure_hash pattern reported consistently across
-            // CPX Research's own publisher integrations: secure_hash here
-            // stops someone from tampering with ext_user_id in the URL bar
-            // to open surveys "as" a different user. VERIFY this exact URL
-            // against your own CPX Research dashboard (Publisher ->
-            // Documentation) before relying on it -- this project could not
-            // reach cpx-research.com directly to confirm it byte-for-byte.
+            // Widget URL + secure_hash: confirmed directly against this
+            // site's own CPX Research Postback Settings info panel.
+            // secure_hash here stops someone from tampering with
+            // ext_user_id in the URL bar to open surveys "as" a different user.
             $secureHash = md5($userId . '-' . $provider->secret_key);
             $url = 'https://offers.cpx-research.com/index.php?' . http_build_query([
                 'app_id' => $provider->app_id,
@@ -52,7 +49,12 @@ class SurveyProviderController extends Controller
     // hash check below.
     public function postback($slug, Request $request)
     {
-        $provider = SurveyProvider::where('slug', $slug)->where('enabled', true)->first();
+        // Deliberately NOT filtered by enabled=true here -- "enabled" only
+        // controls whether the survey card/Start link is shown to users
+        // (see start() above). The postback's own hash check is the real
+        // security gate, so a provider can be verified/tested via a real
+        // postback before flipping it on for users to see.
+        $provider = SurveyProvider::where('slug', $slug)->first();
         if (!$provider || !$provider->secret_key) {
             return response('0', 403);
         }
@@ -67,11 +69,9 @@ class SurveyProviderController extends Controller
     }
 
     // Parameter names and the secure_hash formula (md5(trans_id-secret))
-    // are the pattern consistently documented in CPX Research's own
-    // publisher integration guides. VERIFY against your live CPX Research
-    // dashboard's Postback Settings tab once you have API access -- this
-    // project's sandbox could not load cpx-research.com directly to check
-    // it against their current, official copy.
+    // are confirmed directly from this site's own CPX Research Postback
+    // Settings info panel ("secure_hash ... md5({trans_id}-yourappsecurehash)")
+    // and verified end-to-end via CPX's own "Test your Postback URL" tool.
     private function handleCpxResearchPostback(SurveyProvider $provider, Request $request)
     {
         $userId   = $request->query('user_id');
@@ -95,8 +95,7 @@ class SurveyProviderController extends Controller
             return response('0', 404);
         }
 
-        // status=1 approved/completed, status=2 reversed/chargeback -- the
-        // standard two values documented across CPX Research integrations.
+        // Confirmed from CPX Research's own docs: status=1 completed, status=2 canceled.
         $newStatus = ((string) $status === '2') ? 'reversed' : 'approved';
 
         $existing = SurveyProviderConversion::where('provider_slug', $provider->slug)
