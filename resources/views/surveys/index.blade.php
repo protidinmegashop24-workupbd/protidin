@@ -27,6 +27,29 @@
     <div class="alert alert-danger" style="font-weight:900;">{{ session('error') }}</div>
   @endif
 
+  @if(isset($surveyProviders) && $surveyProviders->count())
+    <div class="row g-3 mb-3">
+      @foreach($surveyProviders as $provider)
+        <div class="col-md-6 col-lg-4">
+          <div class="p-3 survey-card h-100 bg-white">
+            <div class="survey-title mb-1">{{ $provider->name }}</div>
+            <div class="text-muted" style="font-weight:800;font-size:13px;">
+              Sponsored Survey Partner
+            </div>
+            <div class="mt-2" style="font-size:13px;opacity:.85;">
+              Reward shown per survey after you open it — varies by survey.
+            </div>
+            <div class="mt-3">
+              <a class="btn btn-success btn-sm w-100" href="{{ route('survey-provider.start', $provider->slug) }}" target="_blank">
+                Start Surveys
+              </a>
+            </div>
+          </div>
+        </div>
+      @endforeach
+    </div>
+  @endif
+
   @if(isset($surveys) && $surveys->count())
     <div class="row g-3" id="svList">
       @foreach($surveys as $s)

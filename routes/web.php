@@ -9,6 +9,7 @@ use App\Http\Controllers\Backend\ServiceController;
 use App\Http\Controllers\Backend\GoogleAdController;
 use App\Http\Controllers\Backend\CommunityReportController;
 use App\Http\Controllers\Backend\CommunityTopicController;
+use App\Http\Controllers\Backend\SurveyProviderController as AdminSurveyProviderController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\LotteryController;
@@ -311,6 +312,10 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::post('community-topics-store', [CommunityTopicController::class, 'store'])->name('community-topics.store');
     Route::post('community-topics-update-{id}', [CommunityTopicController::class, 'update'])->name('community-topics.update');
     Route::get('community-topics-delete-{id}', [CommunityTopicController::class, 'destroy'])->name('community-topics.delete');
+
+    Route::get('survey-providers', [AdminSurveyProviderController::class, 'index'])->name('survey-providers');
+    Route::post('survey-providers-update-{id}', [AdminSurveyProviderController::class, 'update'])->name('survey-providers.update');
+    Route::get('survey-providers-conversions', [AdminSurveyProviderController::class, 'conversions'])->name('survey-providers.conversions');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -849,7 +854,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/surveys/{survey}', [\App\Http\Controllers\SurveyController::class, 'show'])->name('surveys.show');
     Route::post('/surveys/{survey}/save', [\App\Http\Controllers\SurveyController::class, 'saveAnswer'])->name('surveys.saveAnswer');
     Route::post('/surveys/{survey}/submit', [\App\Http\Controllers\SurveyController::class, 'submit'])->name('surveys.submit');
+
+    Route::get('/survey-provider/{slug}/start', [\App\Http\Controllers\SurveyProviderController::class, 'start'])->name('survey-provider.start');
 });
+
+// Survey Provider postback -- not behind 'auth' (the provider's server
+// calls this directly with no logged-in session), protected instead by
+// the per-provider secret/hash check inside the controller.
+Route::match(['get', 'post'], '/postback/survey-provider/{slug}', [\App\Http\Controllers\SurveyProviderController::class, 'postback'])->name('survey-provider.postback');
 
 // /surveys itself is public, like /marketplace -- guests see the marketing
 // landing page (frontend.surveys.index) instead of being redirected to
@@ -2161,6 +2173,69 @@ Route::get('/system-add-advertisement-stats/{token}', function ($token) {
         $log[] = 'Added views/clicks columns to advertisements.';
     } else {
         $log[] = 'advertisements views/clicks columns already exist.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: adds third-party Survey Wall providers (starting with CPX
+// Research) as their own tables, entirely separate from the existing
+// in-house Survey/SurveySubmission quiz system -- that system keeps
+// working exactly as before. A provider's surveys are shown alongside it
+// on the same /surveys page. Safe to run more than once.
+Route::get('/system-add-survey-providers/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('survey_providers')) {
+        \Illuminate\Support\Facades\Schema::create('survey_providers', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->boolean('enabled')->default(false);
+            $table->string('app_id')->nullable();
+            $table->string('secret_key')->nullable();
+            $table->text('config')->nullable();
+            $table->timestamps();
+        });
+        $log[] = 'Created survey_providers table.';
+    } else {
+        $log[] = 'survey_providers table already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('survey_provider_conversions')) {
+        \Illuminate\Support\Facades\Schema::create('survey_provider_conversions', function ($table) {
+            $table->id();
+            $table->string('provider_slug');
+            $table->unsignedBigInteger('user_id');
+            $table->string('trans_id');
+            $table->string('status', 20)->default('pending'); // pending, approved, reversed, rejected
+            $table->decimal('amount_usd', 10, 4)->default(0);
+            $table->text('raw_payload')->nullable();
+            $table->timestamp('credited_at')->nullable();
+            $table->timestamps();
+            $table->unique(['provider_slug', 'trans_id']);
+            $table->index('user_id');
+        });
+        $log[] = 'Created survey_provider_conversions table.';
+    } else {
+        $log[] = 'survey_provider_conversions table already exists.';
+    }
+
+    // Seed CPX Research as a disabled-by-default row so Admin only has to
+    // fill in the App ID / Secret Key and flip it on, not create the row.
+    if (!\Illuminate\Support\Facades\DB::table('survey_providers')->where('slug', 'cpx-research')->exists()) {
+        \Illuminate\Support\Facades\DB::table('survey_providers')->insert([
+            'name' => 'CPX Research',
+            'slug' => 'cpx-research',
+            'enabled' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $log[] = 'Seeded CPX Research provider row (disabled).';
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);

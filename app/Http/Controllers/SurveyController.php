@@ -39,7 +39,14 @@ class SurveyController extends Controller
             ->latest()
             ->paginate(18);
 
-        return view('surveys.index', compact('surveys','usedToday','leftToday'));
+        // Third-party Survey Wall providers (e.g. CPX Research) shown as
+        // extra cards on this same page -- separate table/system entirely,
+        // guarded so the page still works before that route has been run.
+        $surveyProviders = \Illuminate\Support\Facades\Schema::hasTable('survey_providers')
+            ? \App\Models\SurveyProvider::where('enabled', true)->get()
+            : collect();
+
+        return view('surveys.index', compact('surveys','usedToday','leftToday','surveyProviders'));
     }
 
     public function show(Request $request, Survey $survey)
