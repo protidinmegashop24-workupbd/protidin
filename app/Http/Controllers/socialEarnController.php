@@ -526,14 +526,14 @@ class socialEarnController extends Controller
 
         $request->validate([
             'title'        => $titleRule,
-            // Article/Q&A is a real write-up (300 words minimum, checked
+            // Article/Q&A is a real write-up (100 words minimum, checked
             // below); Product's post_content is just an optional short
             // caption since the product's own details live in the
             // dedicated price/discount/features/link fields instead.
             'post_content' => $isProductPost ? 'nullable|string|max:1000' : ['required', 'string', function ($attribute, $value, $fail) {
                 $words = community_word_count($value);
-                if ($words < 300) {
-                    $fail("বিবরণ কমপক্ষে ৩০০ শব্দ হতে হবে (বর্তমানে {$words} শব্দ)।");
+                if ($words < 100) {
+                    $fail("বিবরণ কমপক্ষে ১০০ শব্দ হতে হবে (বর্তমানে {$words} শব্দ)।");
                 }
             }],
             // Product posts need their own uploaded image (it's a real
