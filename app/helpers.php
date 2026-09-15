@@ -1127,6 +1127,42 @@ if (!function_exists('communityViewsEnabled')) {
     }
 }
 
+if (!function_exists('communityPostTitleEnabled')) {
+    function communityPostTitleEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'title');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('community_word_count')) {
+    // str_word_count() only recognizes A-Z/a-z, so it silently returns ~0
+    // for Bengali (or any non-Latin) text -- this splits on whitespace
+    // instead, which works for any script.
+    function community_word_count($text){
+        $text = trim(strip_tags((string) $text));
+        if ($text === '') {
+            return 0;
+        }
+        return count(preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY));
+    }
+}
+
+if (!function_exists('community_teaser')) {
+    // Unicode-safe word-based teaser for the Article/Q&A feed card: full
+    // text is only ever shown on the post's own detail page, both to keep
+    // the feed scannable and so "Read More" has something to link to.
+    function community_teaser($text, $limit = 150){
+        $plain = trim(strip_tags((string) $text));
+        $words = $plain === '' ? [] : preg_split('/\s+/u', $plain, -1, PREG_SPLIT_NO_EMPTY);
+        $truncated = count($words) > $limit;
+        $teaser = $truncated ? implode(' ', array_slice($words, 0, $limit)) : $text;
+        return ['text' => $teaser, 'truncated' => $truncated];
+    }
+}
+
 if (!function_exists('custom_path')) {
     // Used by the KYC verification pages to resolve a stored document/photo
     // path to a public URL, falling back to a placeholder image. Files are

@@ -633,6 +633,16 @@
             border-radius: 10px;
             margin-top: 2px;
         }
+        .read-more-link {
+            display: inline-block;
+            font-weight: 700;
+            color: var(--feed-brand-green);
+            text-decoration: none;
+            margin-left: 2px;
+        }
+        .read-more-link:hover {
+            text-decoration: underline;
+        }
         .follow-btn {
             flex-shrink: 0;
             padding: 6px 14px;
@@ -739,12 +749,17 @@
                         </div>
                     </div>
                     
+                    <!-- Title (required for both post types) -->
+                    <input type="text" name="title" id="post-title" maxlength="191" required
+                        placeholder="টাইটেল লিখুন (আবশ্যক)"
+                        style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; border:1px solid #ddd; font-weight:700;">
+
                     <!-- Main Post Input -->
-                    <textarea 
-                        name="post_content" 
-                        id="post-input" 
-                        class="post-textarea" 
-                        placeholder="Write your post here..."
+                    <textarea
+                        name="post_content"
+                        id="post-input"
+                        class="post-textarea"
+                        placeholder="Write your post here... (আর্টিকেল/Q&amp;A এর জন্য কমপক্ষে ৩০০ শব্দ আবশ্যক)"
                         oninput="handleInput(this)"
                         required></textarea>
 
@@ -759,8 +774,14 @@
                         <button type="button" class="remove-image-btn" onclick="removeSelectedVideo()"><i class="bi bi-x-lg"></i></button>
                         <video id="video-preview" src="" controls></video>
                     </div>
-                    <!--Fatch System: link is auto-detected from the post text itself, Facebook-style -->
-                    <input type="hidden" name="fatchUrl" id="post-url">
+                    <!--Fatch System: for Article/Q&A, the link is auto-detected from
+                         the post text itself, Facebook-style, so this field stays
+                         type="hidden". For Product mode, setPostType() switches it
+                         to a real visible input instead (the product's link is
+                         typed directly, not auto-detected from a caption). -->
+                    <input type="hidden" name="fatchUrl" id="post-url"
+                        placeholder="প্রোডাক্টের লিংক (Affiliate/Buy Now লিংক) — আবশ্যক"
+                        style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; border:1px solid #ddd;">
                     <input type="hidden" name="fetchTitle" id="fetchTitle">
                     <input type="hidden" name="fetchDescription" id="fetchDescription">
                     <input type="hidden" name="fetchImg" id="fetchImg">
@@ -789,7 +810,7 @@
 
                     <div class="editor-footer">
                         <div class="word-counter">
-                            <span id="word-count">0</span> words
+                            <span id="word-count">0</span><span id="word-count-suffix"> words</span>
                         </div>
                         <div class="editor-actions">
                             <button type="button" class="btn btn-light btn-sm me-2" onclick="toggleEditor(false)" style="border-radius: 8px; font-weight: 600;">Discard</button>
@@ -866,10 +887,24 @@
                         @endif
                     </div>
 
-                    @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
+                    @php
+                        $isProductPost = ($post->postType ?? 'article') === 'product';
+                        $postTitle = communityPostTitleEnabled() ? $post->title : null;
+                        $teaser = (!$isProductPost) ? community_teaser($post->postContent, 150) : null;
+                    @endphp
                     <div class="post-body">
                         <div class="post-main-content">
-                            {!! linkify($post->postContent) !!}
+                            @if($postTitle)
+                                <h6 class="post-title-heading" style="font-weight:800; margin-bottom:4px;">{{ $postTitle }}</h6>
+                            @endif
+                            @if($isProductPost)
+                                {!! linkify($post->postContent) !!}
+                            @else
+                                {!! linkify($teaser['text']) !!}
+                                @if($teaser['truncated'])
+                                    <a href="{{ route('user.viewCommunityPP', $post->id) }}" class="read-more-link">... Read More</a>
+                                @endif
+                            @endif
                             @if($post->video)
                                 <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>
                             @elseif($post->image)
@@ -1037,6 +1072,12 @@
     }
 
     document.getElementById('post-input').addEventListener('input', function () {
+        // Product mode has its own explicit Link field (#post-url switched
+        // to a visible input by setPostType()) -- don't let a URL typed
+        // into the caption there get auto-detected and overwrite it.
+        if (typeof currentPostType !== 'undefined' && currentPostType === 'product') {
+            return;
+        }
         const url = extractFirstUrl(this.value);
         const urlField = document.getElementById('post-url');
         const previewContainer = document.getElementById('url-preview');
@@ -1242,6 +1283,8 @@
             editorState.style.display = 'none';
             input.value = '';
             document.getElementById('post-url').value = ''; // Clear URL too
+            const titleInput = document.getElementById('post-title');
+            if (titleInput) titleInput.value = '';
             clearUrlPreview();
             removeSelectedImage();
             removeSelectedVideo();
@@ -1250,11 +1293,22 @@
     }
     
     function handleInput(el) {
+        if (!el) return;
         el.style.height = 'auto';
         el.style.height = el.scrollHeight + 'px';
         const text = el.value.trim();
         const words = text ? text.split(/\s+/).length : 0;
-        document.getElementById('word-count').innerText = words;
+        const counter = document.getElementById('word-count');
+        const suffix = document.getElementById('word-count-suffix');
+        if (typeof currentPostType !== 'undefined' && currentPostType === 'article') {
+            counter.innerText = words + ' / 300';
+            counter.style.color = words >= 300 ? '#198754' : '#dc3545';
+            if (suffix) suffix.innerText = ' শব্দ (কমপক্ষে ৩০০ আবশ্যক)';
+        } else {
+            counter.innerText = words;
+            counter.style.color = '';
+            if (suffix) suffix.innerText = ' words';
+        }
     }
 
 
@@ -1365,7 +1419,12 @@
             }
         }, 500);
     }
+    // Read by the pasted-URL auto-detect handler below, so it only runs in
+    // Article/Q&A mode -- Product mode has its own explicit Link field.
+    var currentPostType = 'article';
+
     function setPostType(type, btn) {
+        currentPostType = type;
         document.getElementById('post_type').value = type;
         document.querySelectorAll('.post-type-btn').forEach(function (b) {
             b.classList.remove('active');
@@ -1376,10 +1435,44 @@
         btn.style.background = '#0f766e';
         btn.style.color = '#fff';
 
+        let isProduct = (type === 'product');
+
         let productFields = document.getElementById('product-fields');
         if (productFields) {
-            productFields.style.display = (type === 'product') ? 'flex' : 'none';
+            productFields.style.display = isProduct ? 'flex' : 'none';
         }
+
+        // Product mode: the link is typed directly into a real field
+        // instead of being auto-detected from pasted text. Reuse the same
+        // #post-url element (its name="fatchUrl" is what the server reads)
+        // rather than adding a second field with that name.
+        let linkInput = document.getElementById('post-url');
+        if (linkInput) {
+            linkInput.type = isProduct ? 'url' : 'hidden';
+            linkInput.required = isProduct;
+            if (!isProduct) {
+                // Leaving Product mode with a manually-typed link still in
+                // the field would otherwise linger and get submitted even
+                // though the user can no longer see or edit it.
+                linkInput.value = '';
+                clearUrlPreview(false);
+            }
+        }
+
+        let postInput = document.getElementById('post-input');
+        if (postInput) {
+            postInput.placeholder = isProduct
+                ? 'প্রোডাক্ট নিয়ে ছোট বিবরণ (ঐচ্ছিক)'
+                : 'Write your post here... (আর্টিকেল/Q&A এর জন্য কমপক্ষে ৩০০ শব্দ আবশ্যক)';
+            postInput.required = !isProduct;
+        }
+
+        let imageLabel = document.querySelector('#upload-trigger span');
+        if (imageLabel) {
+            imageLabel.textContent = isProduct ? 'Add Product Photo (আবশ্যক)' : 'Add a Photo';
+        }
+
+        handleInput(document.getElementById('post-input'));
 
         // A Product post's Topic doubles as its category (which kind of
         // affiliate product this is) and admin can set an entirely
@@ -1459,7 +1552,28 @@
         // their own affiliate/site link for a backlink, so block the
         // submit early instead of round-tripping to the server to find out.
         if (!document.getElementById('post-url').value) {
-            toastr.error('পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) যোগ করুন।');
+            toastr.error(currentPostType === 'product'
+                ? 'প্রোডাক্টের লিংক (Affiliate/Buy Now লিংক) যোগ করুন।'
+                : 'পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) যোগ করুন।');
+            return;
+        }
+
+        if (!document.getElementById('post-title').value.trim()) {
+            toastr.error('পোস্টের একটি টাইটেল দিন।');
+            return;
+        }
+
+        if (currentPostType === 'article') {
+            const text = document.getElementById('post-input').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            if (words < 300) {
+                toastr.error('বিবরণ কমপক্ষে ৩০০ শব্দ হতে হবে (বর্তমানে ' + words + ' শব্দ)।');
+                return;
+            }
+        }
+
+        if (currentPostType === 'product' && !(document.getElementById('post_image').files && document.getElementById('post_image').files[0])) {
+            toastr.error('প্রোডাক্ট পোস্টের জন্য একটি ছবি আপলোড করুন।');
             return;
         }
 

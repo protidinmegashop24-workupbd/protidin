@@ -521,10 +521,24 @@ class socialEarnController extends Controller
         $topicRule = (communityTopicsEnabled() && $request->post_type === 'product')
             ? 'required|integer'
             : 'nullable|integer';
+        $titleRule = communityPostTitleEnabled() ? 'required|string|max:191' : 'nullable|string|max:191';
+        $isProductPost = $request->post_type === 'product';
 
         $request->validate([
-            'post_content' => 'required|string',
-            'post_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'title'        => $titleRule,
+            // Article/Q&A is a real write-up (300 words minimum, checked
+            // below); Product's post_content is just an optional short
+            // caption since the product's own details live in the
+            // dedicated price/discount/features/link fields instead.
+            'post_content' => $isProductPost ? 'nullable|string|max:1000' : ['required', 'string', function ($attribute, $value, $fail) {
+                $words = community_word_count($value);
+                if ($words < 300) {
+                    $fail("বিবরণ কমপক্ষে ৩০০ শব্দ হতে হবে (বর্তমানে {$words} শব্দ)।");
+                }
+            }],
+            // Product posts need their own uploaded image (it's a real
+            // product listing); Article/Q&A keeps its image optional.
+            'post_image'   => $isProductPost ? 'required|image|mimes:jpg,jpeg,png,webp|max:4096' : 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
             // A link is mandatory -- this feature exists specifically so
             // users can post their own affiliate/site link for a backlink,
             // so a post without one defeats the point.
@@ -535,6 +549,8 @@ class socialEarnController extends Controller
             'discount_text'    => 'nullable|string|max:100',
             'product_features' => 'nullable|string',
         ], [
+            'title.required' => 'পোস্টের একটি টাইটেল দিন।',
+            'post_image.required' => 'প্রোডাক্ট পোস্টের জন্য একটি ছবি আপলোড করুন।',
             'fatchUrl.required' => 'আপনার পোস্টে একটি লিংক (এফিলিয়েট বা আপনার সাইটের লিংক) দিতে হবে।',
             'topic_id.required' => 'প্রোডাক্ট পোস্টের জন্য একটি ক্যাটাগরি (Topic) বেছে নিন।',
         ]);
@@ -586,7 +602,10 @@ class socialEarnController extends Controller
 
         // Post create with new Fetch fields
         $postData = [
-            'postContent'      => $request->post_content,
+            // Product's caption is optional -- the column itself has never
+            // allowed null (it was always a required field before), so
+            // fall back to the title rather than storing an empty string.
+            'postContent'      => $request->post_content ?: $request->title,
             'fetchUrl'         => $request->fatchUrl,      // New
             'fetchTitle'       => $request->fetchTitle,    // New
             'fetchDescription' => $request->fetchDescription, // New
@@ -602,6 +621,9 @@ class socialEarnController extends Controller
             'userId'           => Auth::id() ?? 1,
             'postType'         => $request->post_type,
         ];
+        if (communityPostTitleEnabled()) {
+            $postData['title'] = $request->title;
+        }
         // Price/discount/features are only relevant to Product posts, and
         // only stored once the one-off /system-add-community-product-fields
         // route has added their columns -- guarded the same way postType

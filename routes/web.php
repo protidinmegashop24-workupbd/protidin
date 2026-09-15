@@ -2144,6 +2144,25 @@ Route::get('/system-add-community-views/{token}', function ($token) {
     return 'views column already exists -- nothing to do.';
 });
 
+// One-off: adds a real "title" column to feedposts. Both Article/Q&A and
+// Product posts now require one via the composer form -- older posts made
+// before this column existed just keep showing without a title (guarded by
+// communityPostTitleEnabled()), nothing breaks retroactively.
+Route::get('/system-add-community-post-title/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'title')) {
+        \Illuminate\Support\Facades\Schema::table('feedposts', function ($table) {
+            $table->string('title', 191)->nullable()->after('postType');
+        });
+        return 'title column added at ' . now();
+    }
+
+    return 'title column already exists -- nothing to do.';
+});
+
 // One-off: lets each Topic be restricted to Product posts, Article/Q&A
 // posts, or both -- so a Product post's "category" list and an Article's
 // "topic" list can be entirely separate sets, admin-controlled. Existing

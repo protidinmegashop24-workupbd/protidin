@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
     @php
-        // feedposts has no "title" column -- the old {{ $post->title }} here
-        // always fell back to the same generic "Post Detail"/"Community
-        // Post" string on every single shared post, which is a real SEO
-        // problem (duplicate <title>/og:title across thousands of pages).
-        // Use the post's own text as its title instead, since that's what
-        // actually differs post to post.
-        $seoTitle = \Illuminate\Support\Str::limit(strip_tags($post->postContent), 65) ?: ($post->fetchTitle ?? 'Community Post');
+        // Posts now have a real, user-written title (communityPostTitleEnabled()
+        // guards older posts made before that column existed) -- prefer it,
+        // since it's far better for SEO than a truncated content snippet.
+        $seoTitle = (communityPostTitleEnabled() && $post->title)
+            ? $post->title
+            : (\Illuminate\Support\Str::limit(strip_tags($post->postContent), 65) ?: ($post->fetchTitle ?? 'Community Post'));
         $seoDescription = \Illuminate\Support\Str::limit(strip_tags($post->postContent), 160);
         $seoImage = $post->image ? asset($post->image) : ($post->fetchImg ?: asset('default-image.jpg'));
         // A post with barely any text isn't worth Google indexing as its
@@ -248,9 +247,15 @@
         </div>
 
         <!-- Post Body -->
-        @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
+        @php
+            $isProductPost = ($post->postType ?? 'article') === 'product';
+            $postTitle = communityPostTitleEnabled() ? $post->title : null;
+        @endphp
         <div class="post-body mt-2">
             <div class="post-main-content">
+                @if($postTitle)
+                    <h1 style="font-size:1.3rem; font-weight:800; margin-bottom:6px;">{{ $postTitle }}</h1>
+                @endif
                 {!! linkify($post->postContent) !!}
                 <div class="text-left">
                     @if($post->video)

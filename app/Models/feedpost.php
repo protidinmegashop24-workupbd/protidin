@@ -11,6 +11,7 @@ class feedpost extends Model
     protected $table = 'feedposts';
 
     protected $fillable = [
+        'title',
         'postContent',
         'fetchUrl',
         'fetchTitle',

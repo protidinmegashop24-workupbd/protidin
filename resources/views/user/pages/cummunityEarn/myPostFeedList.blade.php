@@ -52,6 +52,9 @@
                         </div>
 
                         {{-- Content --}}
+                        @if(communityPostTitleEnabled() && $post->title)
+                            <strong class="d-block mb-1">{{ $post->title }}</strong>
+                        @endif
                         <p class="card-text mb-3">
                             {!! \Illuminate\Support\Str::words(strip_tags($post->postContent), 22, '...') !!}
                         </p>

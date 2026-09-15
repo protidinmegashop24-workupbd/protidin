@@ -571,9 +571,15 @@
                     @endif
                 </div>
 
-                @php $isProductPost = ($post->postType ?? 'article') === 'product'; @endphp
+                @php
+                    $isProductPost = ($post->postType ?? 'article') === 'product';
+                    $postTitle = communityPostTitleEnabled() ? $post->title : null;
+                @endphp
                 <div class="post-body">
                     <div class="post-main-content">
+                        @if($postTitle)
+                            <h4 class="post-title-heading" style="font-weight:800; margin-bottom:6px;">{{ $postTitle }}</h4>
+                        @endif
                         {!! linkify($post->postContent) !!}
                         @if($post->video)
                             <video src="{{asset($post->video)}}" class="post-video-full" controls preload="metadata"></video>

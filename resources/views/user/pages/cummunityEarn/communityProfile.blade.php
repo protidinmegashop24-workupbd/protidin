@@ -97,6 +97,9 @@
         @forelse($posts as $post)
             <a href="{{ route('user.viewCommunityPP', $post->id) }}" class="profile-post-card">
                 <span class="profile-post-type-badge">{{ ($post->postType ?? 'article') === 'product' ? '🛍️ Product' : '❓ Q&A / Article' }}</span>
+                @if(communityPostTitleEnabled() && $post->title)
+                    <strong style="display:block; margin-top:4px;">{{ $post->title }}</strong>
+                @endif
                 <div class="profile-post-content">{{ \Illuminate\Support\Str::limit(strip_tags($post->postContent), 200) }}</div>
                 @if($post->image)
                     <img src="{{ asset($post->image) }}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:8px;">
