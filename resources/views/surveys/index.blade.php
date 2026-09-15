@@ -27,20 +27,49 @@
     <div class="alert alert-danger" style="font-weight:900;">{{ session('error') }}</div>
   @endif
 
-  @if(isset($surveyProviders) && $surveyProviders->count())
-    @foreach($surveyProviders as $provider)
-      <div class="mb-1" style="font-weight:900;">
+  @php
+    $cpxProvider = isset($surveyProviders) ? $surveyProviders->firstWhere('slug', 'cpx-research') : null;
+    $otherProviders = isset($surveyProviders) ? $surveyProviders->reject(fn($p) => $p->slug === 'cpx-research') : collect();
+  @endphp
+
+  @if($cpxProvider && $cpxProvider->app_id && $cpxProvider->secret_key)
+    <div class="mb-2" style="font-weight:900;">
+      {{ $cpxProvider->name }}
+      <span class="badge bg-light text-dark" style="font-weight:800;font-size:11px;">Sponsored Survey Partner</span>
+    </div>
+    {{-- CPX Research's own "Script Tag" widget (their recommended method for
+         Web) -- it renders the live survey list inside an iframe right on
+         this page, so users never leave the site to browse surveys. This is
+         DISPLAY ONLY: the wallet is still credited exclusively by the
+         server-side postback in SurveyProviderController, never by this
+         widget's client-side callbacks. --}}
+    <div id="cpx-fullscreen" style="max-width:950px;margin:auto;min-height:40px;" class="mb-2"></div>
+    <div class="text-center mb-4">
+      <a href="{{ route('survey-provider.start', $cpxProvider->slug) }}" target="_blank" class="text-muted" style="font-size:12px;">
+        সার্ভে না দেখালে এখানে ক্লিক করুন (নতুন ট্যাবে খুলবে)
+      </a>
+    </div>
+  @endif
+
+  @if($otherProviders->count())
+    @foreach($otherProviders as $provider)
+      <div class="mb-2" style="font-weight:900;">
         {{ $provider->name }}
         <span class="badge bg-light text-dark" style="font-weight:800;font-size:11px;">Sponsored Survey Partner</span>
       </div>
-      <div class="mb-2 text-muted" style="font-size:12px;">
-        প্রতি ২ মিনিটে লিস্ট আপডেট হয় — কোনো সার্ভে "not available" দেখালে লিস্ট থেকে অন্য একটা বা কিছুক্ষণ পর আবার চেষ্টা করুন।
-      </div>
-      <div class="row g-3 mb-3 provider-survey-list"
-           data-slug="{{ $provider->slug }}"
-           data-start-url="{{ route('survey-provider.start', $provider->slug) }}"
-           data-list-url="{{ route('survey-provider.list', $provider->slug) }}">
-        <div class="col-12 text-muted" style="font-weight:800;font-size:13px;">Loading available surveys…</div>
+      <div class="row g-3 mb-3">
+        <div class="col-12">
+          <div class="p-3 survey-card h-100 bg-white">
+            <div class="mt-2" style="font-size:13px;opacity:.85;">
+              Reward shown per survey after you open it — varies by survey.
+            </div>
+            <div class="mt-3">
+              <a class="btn btn-success btn-sm w-100" href="{{ route('survey-provider.start', $provider->slug) }}" target="_blank">
+                Start Surveys
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     @endforeach
   @endif
@@ -94,116 +123,53 @@
     });
   });
 
-  // Load each provider's individually-priced surveys (e.g. CPX Research's
-  // "Get Surveys" API) so the reward + time per survey is visible before
-  // the user clicks, instead of one generic "Start Surveys" button.
-  function isSafeProviderLink(url) {
-    return typeof url === 'string' && /^https:\/\//i.test(url);
-  }
+@if($cpxProvider && $cpxProvider->app_id && $cpxProvider->secret_key)
+  // CPX Research "Script Tag" widget config -- structure, field names, and
+  // recommended settings are copied directly from CPX Research's own
+  // official documentation (cpx-research.com/main/en/doc.php). secure_hash
+  // uses the same md5(user_id-secret) formula already verified end-to-end
+  // via a real postback for this same account.
+  var cpxCommonScript = {
+    div_id: "cpx-fullscreen",
+    theme_style: 1, // 1 = fullscreen / full content widget
+    order_by: 2,    // sort by best money first
+    limit_surveys: 12
+  };
 
-  function renderProviderFallback(container, startUrl, message) {
-    container.innerHTML = '';
-    var col = document.createElement('div');
-    col.className = 'col-12';
-
-    var card = document.createElement('div');
-    card.className = 'p-3 survey-card h-100 bg-white';
-
-    var note = document.createElement('div');
-    note.style.fontSize = '13px';
-    note.style.opacity = '.85';
-    note.textContent = message;
-    card.appendChild(note);
-
-    var btnWrap = document.createElement('div');
-    btnWrap.className = 'mt-3';
-    var a = document.createElement('a');
-    a.className = 'btn btn-success btn-sm w-100';
-    a.href = startUrl;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = 'Browse Surveys';
-    btnWrap.appendChild(a);
-    card.appendChild(btnWrap);
-
-    col.appendChild(card);
-    container.appendChild(col);
-  }
-
-  function renderProviderSurveys(container, data, startUrl) {
-    if (!data || data.status !== 'success' || !data.surveys || !data.surveys.length) {
-      renderProviderFallback(container, startUrl, 'এই মুহূর্তে আপনার প্রোফাইলের জন্য নির্দিষ্ট সার্ভে পাওয়া যায়নি — নিচের বাটনে ক্লিক করে দেখুন।');
-      return;
-    }
-
-    container.innerHTML = '';
-    data.surveys.forEach(function (s) {
-      var payout = parseFloat(s.payout_publisher_usd || s.payout || 0).toFixed(2);
-      var loi = s.loi ? (s.loi + ' min') : '—';
-      var link = isSafeProviderLink(s.href_new) ? s.href_new
-               : (isSafeProviderLink(s.href) ? s.href : startUrl);
-
-      var col = document.createElement('div');
-      col.className = 'col-md-6 col-lg-4';
-
-      var card = document.createElement('div');
-      card.className = 'p-3 survey-card h-100 bg-white';
-
-      var title = document.createElement('div');
-      title.className = 'survey-title mb-1';
-      title.textContent = 'CPX Survey' + (String(s.top) === '1' ? ' ⭐' : '');
-      card.appendChild(title);
-
-      var meta = document.createElement('div');
-      meta.className = 'text-muted';
-      meta.style.fontWeight = '800';
-      meta.style.fontSize = '13px';
-      meta.textContent = 'Reward: $' + payout + ' | Time: ~' + loi;
-      card.appendChild(meta);
-
-      if (s.type === 'need_qualification') {
-        var qnote = document.createElement('div');
-        qnote.className = 'mt-1';
-        qnote.style.fontSize = '12px';
-        qnote.style.opacity = '.75';
-        qnote.textContent = 'শুরুতে কিছু প্রোফাইল প্রশ্ন থাকতে পারে';
-        card.appendChild(qnote);
+  window.config = {
+    general_config: {
+      app_id: {{ (int) $cpxProvider->app_id }},
+      ext_user_id: "{{ Auth::id() }}",
+      secure_hash: "{{ md5(Auth::id() . '-' . $cpxProvider->secret_key) }}"
+    },
+    style_config: {
+      text_color: "#2b2b2b",
+      survey_box: {
+        topbar_background_color: "#198754",
+        box_background_color: "white",
+        rounded_borders: true,
+        stars_filled: "black"
       }
+    },
+    script_config: [cpxCommonScript],
+    debug: false,
+    useIFrame: true,
+    iFramePosition: 1,
+    functions: {
+      no_surveys_available: function () {
+        var el = document.getElementById('cpx-fullscreen');
+        if (el) {
+          el.innerHTML = '<div class="p-3 survey-card bg-white" style="font-size:13px;opacity:.85;">এই মুহূর্তে আপনার প্রোফাইলের জন্য কোনো সার্ভে নেই। কিছুক্ষণ পর আবার চেষ্টা করুন।</div>';
+        }
+      }
+    }
+  };
 
-      var btnWrap = document.createElement('div');
-      btnWrap.className = 'mt-3';
-      var a = document.createElement('a');
-      a.className = 'btn btn-success btn-sm w-100';
-      a.href = link;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = 'Start Survey (New Tab)';
-      btnWrap.appendChild(a);
-      card.appendChild(btnWrap);
-
-      col.appendChild(card);
-      container.appendChild(col);
-    });
-  }
-
-  function loadProviderList(container) {
-    var startUrl = container.getAttribute('data-start-url');
-    var listUrl = container.getAttribute('data-list-url');
-
-    fetch(listUrl, { headers: { 'Accept': 'application/json' } })
-      .then(function (r) { return r.json(); })
-      .then(function (data) { renderProviderSurveys(container, data, startUrl); })
-      .catch(function () {
-        renderProviderFallback(container, startUrl, 'সার্ভে লিস্ট লোড করা যায়নি — নিচের বাটনে ক্লিক করে দেখুন।');
-      });
-  }
-
-  // CPX's own docs say this list can go stale within ~120 seconds (survey
-  // slots are shared live across many publishers), so auto-refresh on that
-  // same interval instead of showing one static list for the whole visit.
-  document.querySelectorAll('.provider-survey-list').forEach(function (container) {
-    loadProviderList(container);
-    setInterval(function () { loadProviderList(container); }, 120000);
-  });
+  (function () {
+    var cpxScript = document.createElement('script');
+    cpxScript.src = 'https://cdn.cpx-research.com/assets/js/script_tag_v2.0.js';
+    document.body.appendChild(cpxScript);
+  })();
+@endif
 </script>
 @endsection

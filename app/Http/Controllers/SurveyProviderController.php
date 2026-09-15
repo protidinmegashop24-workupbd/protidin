@@ -7,9 +7,7 @@ use App\Models\SurveyProviderConversion;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class SurveyProviderController extends Controller
@@ -42,58 +40,6 @@ class SurveyProviderController extends Controller
         }
 
         return redirect()->route('surveys.index')->with('error', 'Unknown survey provider.');
-    }
-
-    // Returns the user's currently available individual surveys (with real
-    // payout + time) as JSON, so the Surveys page can list them one by one
-    // instead of a single generic "Start Surveys" button. Endpoint and
-    // params are CPX Research's own "Get Surveys" API (v1.1) -- confirmed
-    // directly from their official API documentation.
-    public function list($slug, Request $request)
-    {
-        $provider = SurveyProvider::where('slug', $slug)->where('enabled', true)->first();
-        if (!$provider || !$provider->app_id || !$provider->secret_key) {
-            return response()->json(['status' => 'error', 'surveys' => []]);
-        }
-
-        if ($slug === 'cpx-research') {
-            return response()->json($this->fetchCpxSurveyList($provider, $request));
-        }
-
-        return response()->json(['status' => 'error', 'surveys' => []]);
-    }
-
-    // CPX's docs ask publishers not to refresh more than once per 120
-    // seconds and not to cache longer than that, so this caches per user
-    // for exactly 120 seconds.
-    private function fetchCpxSurveyList(SurveyProvider $provider, Request $request)
-    {
-        $userId = Auth::id();
-        $cacheKey = "cpx_surveys_list_{$provider->id}_{$userId}";
-
-        return Cache::remember($cacheKey, 120, function () use ($provider, $userId, $request) {
-            $secureHash = md5($userId . '-' . $provider->secret_key);
-
-            try {
-                $response = Http::timeout(10)->get('https://live-api.cpx-research.com/api/get-surveys.php', [
-                    'app_id' => $provider->app_id,
-                    'ext_user_id' => $userId,
-                    'subid_1' => '',
-                    'subid_2' => '',
-                    'output_method' => 'api',
-                    'ip_user' => $request->ip(),
-                    'user_agent' => (string) $request->userAgent(),
-                    'limit' => 12,
-                    'secure_hash' => $secureHash,
-                ]);
-
-                $data = $response->json();
-                return is_array($data) ? $data : ['status' => 'error', 'surveys' => []];
-            } catch (\Exception $e) {
-                Log::warning('cpx-survey-list-failed', ['error' => $e->getMessage()]);
-                return ['status' => 'error', 'surveys' => []];
-            }
-        });
     }
 
     // Server-to-server postback -- the ONLY place a Survey Provider

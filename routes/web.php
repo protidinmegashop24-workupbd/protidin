@@ -861,7 +861,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/surveys/{survey}/submit', [\App\Http\Controllers\SurveyController::class, 'submit'])->name('surveys.submit');
 
     Route::get('/survey-provider/{slug}/start', [\App\Http\Controllers\SurveyProviderController::class, 'start'])->name('survey-provider.start');
-    Route::get('/survey-provider/{slug}/list', [\App\Http\Controllers\SurveyProviderController::class, 'list'])->name('survey-provider.list');
 
     Route::get('/offer-wall/{slug}/start', [\App\Http\Controllers\OfferWallController::class, 'start'])->name('offer-wall.start');
 });
