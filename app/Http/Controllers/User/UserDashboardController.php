@@ -75,11 +75,6 @@ class UserDashboardController extends Controller
         //     }
         // }
         // For auto user block end-------------------
-        
-        
-        $date = Carbon::now()->subDays(30);
-        JobWork::where('created_at', '<=', $date)->update(['trash' => 1]);
-        // JobWork::where('created_at', '<=', $date)->delete();
 
         $location_zone = LocationZone::latest()->get();
         $countries = Country::latest()->get();

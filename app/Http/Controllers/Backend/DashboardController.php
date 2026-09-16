@@ -24,11 +24,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // delete data more than 30 days
-        $l_date = Carbon::now()->subDays(7);
-        $date = Carbon::parse($l_date)->format('Y-m-d 23:59:59');
-        // $complete_works = JobWork::where('created_at', '<=', $date)->get();
-        $complete_works = JobWork::where('created_at', '<=', $date)->update(['trash' => 1]);
+        // Trashing old job_work rows now runs out-of-band via
+        // JobMaintenanceController (hit hourly by a cPanel cron job)
+        // instead of on every single admin dashboard page load -- this used
+        // to run an UPDATE scanning the whole job_works table here too.
 
         $website = Website::latest()->first();
         $servise = Service::all();
