@@ -291,10 +291,13 @@
                                 <a href="{{ communityLinkClickTrackingEnabled() ? route('community.go', $post->id) : $post->fetchUrl }}" target="_blank" rel="noopener nofollow ugc" class="buy-now-btn">🛒 Buy Now</a>
                                 <div class="affiliate-disclosure">Affiliate/Sponsored Link — এই লিঙ্কে কেনাকাটা করলে পোস্টদাতা কমিশন পেতে পারেন</div>
                             </div>
-                        @else
+                        @elseif(!$hasOwnMedia)
+                            {{-- Fallback only: the link is already clickable inline in the
+                                 post text above (auto-linkified when pasted), so once the
+                                 user has their own photo this card would just repeat it. --}}
                             <div class="url-preview-card">
                                 <a href="{{ $post->fetchUrl }}" target="_blank" rel="noopener nofollow ugc" class="preview-link">
-                                    @if($post->fetchImg && !$hasOwnMedia)
+                                    @if($post->fetchImg)
                                         <div class="preview-image-wrapper">
                                             <img src="{{ $post->fetchImg }}" alt="{{ $post->fetchTitle }}" class="preview-img">
                                         </div>
