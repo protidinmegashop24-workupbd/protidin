@@ -1249,6 +1249,8 @@
     }
 
     // Live Video Preview Logic
+    const MAX_VIDEO_SECONDS = 60;
+
     function previewVideo(input) {
         const previewContainer = document.getElementById('video-preview-container');
         const previewVideoEl = document.getElementById('video-preview');
@@ -1258,6 +1260,17 @@
         if (input.files && input.files[0]) {
             removeSelectedImage();
             const fileUrl = URL.createObjectURL(input.files[0]);
+
+            // Reject anything longer than 1 minute up front, checked from
+            // the file's own metadata -- reels-style videos, not a movie
+            // upload feature.
+            previewVideoEl.onloadedmetadata = function () {
+                if (previewVideoEl.duration > MAX_VIDEO_SECONDS + 1) {
+                    toastr.error('ভিডিও সর্বোচ্চ ' + MAX_VIDEO_SECONDS + ' সেকেন্ড (১ মিনিট) দীর্ঘ হতে পারবে। ছোট করে আবার চেষ্টা করুন।');
+                    removeSelectedVideo();
+                }
+            };
+
             previewVideoEl.src = fileUrl;
             previewContainer.style.display = 'block';
             if (trigger) trigger.style.display = 'none';
@@ -1271,10 +1284,129 @@
         const previewVideoEl = document.getElementById('video-preview');
         const trigger = document.getElementById('video-upload-trigger');
 
+        if (previewVideoEl.src) {
+            try { URL.revokeObjectURL(previewVideoEl.src); } catch (e) {}
+        }
         input.value = "";
         previewVideoEl.src = "";
         previewContainer.style.display = 'none';
         if (trigger) trigger.style.display = 'flex';
+    }
+
+    // Best-effort client-side video compression, same spirit as
+    // compressImageFile() below (this host's PHP upload limits are tight).
+    // Re-encodes by redrawing the video onto a canvas at a lower resolution
+    // and capturing it with MediaRecorder -- native browser APIs only, no
+    // external library. Not supported everywhere (older Safari/iOS in
+    // particular), and canvas.captureStream() alone drops audio, so this
+    // also tries to graft the original audio track on; if any of that
+    // fails at any point, it resolves with the ORIGINAL untouched file
+    // rather than blocking the post.
+    function compressVideoFile(file, maxWidth = 720, targetBitrate = 1200000) {
+        return new Promise((resolve) => {
+            if (!window.MediaRecorder) {
+                resolve(file);
+                return;
+            }
+
+            const video = document.createElement('video');
+            video.muted = true;
+            video.playsInline = true;
+            const objectUrl = URL.createObjectURL(file);
+            video.src = objectUrl;
+
+            const cleanupAndFallback = () => {
+                try { URL.revokeObjectURL(objectUrl); } catch (e) {}
+                resolve(file);
+            };
+
+            video.onerror = cleanupAndFallback;
+
+            video.onloadedmetadata = () => {
+                const scale = Math.min(1, maxWidth / (video.videoWidth || maxWidth));
+                const width = Math.max(2, Math.round((video.videoWidth || maxWidth) * scale));
+                const height = Math.max(2, Math.round((video.videoHeight || maxWidth) * scale));
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx || !canvas.captureStream) {
+                    cleanupAndFallback();
+                    return;
+                }
+
+                const canvasStream = canvas.captureStream(25);
+
+                // Best-effort: graft the original audio track on, since
+                // canvas.captureStream() only carries video. Silent output
+                // is an acceptable fallback, not a blocker.
+                try {
+                    if (typeof video.captureStream === 'function') {
+                        video.captureStream().getAudioTracks().forEach((t) => canvasStream.addTrack(t));
+                    } else if (typeof video.mozCaptureStream === 'function') {
+                        video.mozCaptureStream().getAudioTracks().forEach((t) => canvasStream.addTrack(t));
+                    }
+                } catch (e) {
+                    // proceed video-only
+                }
+
+                let recorder;
+                try {
+                    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+                        ? 'video/webm;codecs=vp8,opus'
+                        : 'video/webm';
+                    recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: targetBitrate });
+                } catch (e) {
+                    cleanupAndFallback();
+                    return;
+                }
+
+                const chunks = [];
+                recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+
+                let drawing = true;
+                function drawFrame() {
+                    if (!drawing) return;
+                    try { ctx.drawImage(video, 0, 0, width, height); } catch (e) { /* ignore a dropped frame */ }
+                    requestAnimationFrame(drawFrame);
+                }
+
+                recorder.onstop = () => {
+                    try { URL.revokeObjectURL(objectUrl); } catch (e) {}
+                    if (!chunks.length) {
+                        resolve(file);
+                        return;
+                    }
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    if (blob.size >= file.size) {
+                        resolve(file);
+                        return;
+                    }
+                    const compressedFile = new File(
+                        [blob],
+                        file.name.replace(/\.[^.]+$/, '') + '.webm',
+                        { type: 'video/webm' }
+                    );
+                    resolve(compressedFile);
+                };
+
+                video.onended = () => {
+                    drawing = false;
+                    if (recorder.state !== 'inactive') recorder.stop();
+                };
+
+                recorder.start();
+                video.currentTime = 0;
+                video.play().then(() => {
+                    drawFrame();
+                }).catch(() => {
+                    drawing = false;
+                    try { if (recorder.state !== 'inactive') recorder.stop(); } catch (e) {}
+                    cleanupAndFallback();
+                });
+            };
+        });
     }
 
     // --- Product Attach Logic ---
@@ -1602,6 +1734,27 @@
                 formData.set('post_image', compressed);
             } catch (err) {
                 console.error('Image compression failed, sending original file', err);
+            }
+        }
+
+        const videoInput = document.getElementById('post_video');
+        if (videoInput.files && videoInput.files[0]) {
+            const submitBtn = form.querySelector('.btn-brand');
+            const originalBtnText = submitBtn ? submitBtn.textContent : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Compressing video...';
+            }
+            try {
+                const compressed = await compressVideoFile(videoInput.files[0]);
+                formData.set('post_video', compressed);
+            } catch (err) {
+                console.error('Video compression failed, sending original file', err);
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText;
+                }
             }
         }
 
