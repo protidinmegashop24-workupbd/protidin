@@ -1251,6 +1251,15 @@
     // Live Video Preview Logic
     const MAX_VIDEO_SECONDS = 60;
 
+    // Auto-trimming a video to 60s only happens via the same canvas +
+    // MediaRecorder re-encode used for compression -- if that isn't
+    // supported (older Safari/iOS in particular) there's no reliable way
+    // to trim it client-side, so a too-long video has to be rejected
+    // there instead of silently uploading the full-length original.
+    function canCompressVideo() {
+        return !!(window.MediaRecorder && document.createElement('canvas').captureStream);
+    }
+
     function previewVideo(input) {
         const previewContainer = document.getElementById('video-preview-container');
         const previewVideoEl = document.getElementById('video-preview');
@@ -1261,13 +1270,14 @@
             removeSelectedImage();
             const fileUrl = URL.createObjectURL(input.files[0]);
 
-            // Reject anything longer than 1 minute up front, checked from
-            // the file's own metadata -- reels-style videos, not a movie
-            // upload feature.
             previewVideoEl.onloadedmetadata = function () {
                 if (previewVideoEl.duration > MAX_VIDEO_SECONDS + 1) {
-                    toastr.error('ভিডিও সর্বোচ্চ ' + MAX_VIDEO_SECONDS + ' সেকেন্ড (১ মিনিট) দীর্ঘ হতে পারবে। ছোট করে আবার চেষ্টা করুন।');
-                    removeSelectedVideo();
+                    if (!canCompressVideo()) {
+                        toastr.error('ভিডিও সর্বোচ্চ ' + MAX_VIDEO_SECONDS + ' সেকেন্ড (১ মিনিট) দীর্ঘ হতে পারবে। এই ব্রাউজারে অটো-ট্রিম সাপোর্ট নেই, তাই ভিডিওটি নিজে ছোট করে (Trim/Cut) আবার আপলোড করুন।');
+                        removeSelectedVideo();
+                        return;
+                    }
+                    toastr.info('ভিডিওটি ' + MAX_VIDEO_SECONDS + ' সেকেন্ডের বেশি — পোস্ট করার সময় শুধু প্রথম ' + MAX_VIDEO_SECONDS + ' সেকেন্ড রেখে বাকিটা কেটে আপলোড হবে।');
                 }
             };
 
@@ -1366,9 +1376,25 @@
                 recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
 
                 let drawing = true;
+                let stopped = false;
+                function stopRecording() {
+                    if (stopped) return;
+                    stopped = true;
+                    drawing = false;
+                    video.pause();
+                    if (recorder.state !== 'inactive') recorder.stop();
+                }
+
                 function drawFrame() {
                     if (!drawing) return;
                     try { ctx.drawImage(video, 0, 0, width, height); } catch (e) { /* ignore a dropped frame */ }
+                    // Reels-style trim: cut the recording off at 60s even
+                    // when the source video is longer, instead of rejecting
+                    // long uploads outright.
+                    if (video.currentTime >= MAX_VIDEO_SECONDS) {
+                        stopRecording();
+                        return;
+                    }
                     requestAnimationFrame(drawFrame);
                 }
 
@@ -1391,16 +1417,14 @@
                     resolve(compressedFile);
                 };
 
-                video.onended = () => {
-                    drawing = false;
-                    if (recorder.state !== 'inactive') recorder.stop();
-                };
+                video.onended = stopRecording;
 
                 recorder.start();
                 video.currentTime = 0;
                 video.play().then(() => {
                     drawFrame();
                 }).catch(() => {
+                    stopped = true;
                     drawing = false;
                     try { if (recorder.state !== 'inactive') recorder.stop(); } catch (e) {}
                     cleanupAndFallback();
