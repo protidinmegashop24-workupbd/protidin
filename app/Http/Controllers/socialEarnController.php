@@ -411,7 +411,13 @@ class socialEarnController extends Controller
             ? CommunityFollow::where('follower_id', Auth::id())->pluck('followed_id')->toArray()
             : [];
 
-        return view('user.pages.cummunityEarn.reels', compact('reels', 'followingIds'));
+        // Same real Advertise-section side-ad rail as the main Community
+        // feed (ad_banner()/recordAdImpressions()) -- fetched ONCE per
+        // pageview here too, not per reel.
+        $communityAds = ad_banner();
+        recordAdImpressions($communityAds);
+
+        return view('user.pages.cummunityEarn.reels', compact('reels', 'followingIds', 'communityAds'));
     }
 
     public function reelStore(Request $request){

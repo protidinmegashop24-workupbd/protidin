@@ -6,40 +6,35 @@
 
 @section('css')
 <style>
-    .reels-page-wrap {
-        background: #000;
-        margin: -1.5rem -0.75rem;
-    }
-    .reels-scroll {
-        height: calc(100vh - 70px);
-        overflow-y: scroll;
-        scroll-snap-type: y mandatory;
-        scrollbar-width: none;
-    }
-    .reels-scroll::-webkit-scrollbar { display: none; }
-
-    .reel-item {
-        position: relative;
-        height: calc(100vh - 70px);
-        scroll-snap-align: start;
+    .reel-row {
         display: flex;
-        align-items: center;
+        gap: 12px;
+        align-items: flex-start;
         justify-content: center;
+        margin-bottom: 25px;
+    }
+    .reel-card {
+        position: relative;
+        width: 100%;
+        max-width: 380px;
+        aspect-ratio: 9 / 16;
+        max-height: 78vh;
+        border-radius: 16px;
+        overflow: hidden;
         background: #000;
+        flex-shrink: 0;
     }
     .reel-video {
-        max-height: 100%;
-        max-width: 100%;
         width: 100%;
         height: 100%;
-        object-fit: contain;
+        object-fit: cover;
         background: #000;
     }
     .reel-overlay-top {
         position: absolute;
-        top: 12px;
-        left: 12px;
-        right: 12px;
+        top: 10px;
+        left: 10px;
+        right: 10px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -47,14 +42,15 @@
         text-shadow: 0 1px 3px rgba(0,0,0,.6);
     }
     .reel-avatar {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         object-fit: cover;
         border: 2px solid #fff;
         background: #444;
         display:flex;align-items:center;justify-content:center;
         font-weight:800;color:#fff;
+        font-size: 13px;
     }
     .reel-follow-btn {
         margin-left: auto;
@@ -63,7 +59,7 @@
         color: #fff;
         border-radius: 16px;
         padding: 3px 12px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
     }
     .reel-follow-btn.active {
@@ -72,28 +68,28 @@
     }
     .reel-overlay-bottom {
         position: absolute;
-        left: 12px;
-        right: 70px;
-        bottom: 20px;
+        left: 10px;
+        right: 60px;
+        bottom: 14px;
         color: #fff;
         text-shadow: 0 1px 3px rgba(0,0,0,.6);
-        font-size: 14px;
+        font-size: 13px;
     }
     .reel-actions {
         position: absolute;
-        right: 10px;
-        bottom: 30px;
+        right: 8px;
+        bottom: 20px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 18px;
+        gap: 14px;
         color: #fff;
     }
     .reel-action-btn {
         background: none;
         border: none;
         color: #fff;
-        font-size: 26px;
+        font-size: 22px;
         text-align: center;
         text-shadow: 0 1px 3px rgba(0,0,0,.6);
         text-decoration: none;
@@ -103,22 +99,22 @@
         gap: 2px;
     }
     .reel-action-btn span {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
     }
     .reel-action-btn.active i { color: #ff4757; }
 
     .reel-mute-btn {
         position: absolute;
-        top: 12px;
-        right: 12px;
+        top: 10px;
+        right: 10px;
         background: rgba(0,0,0,.4);
         border: none;
         color: #fff;
-        width: 34px;
-        height: 34px;
+        width: 30px;
+        height: 30px;
         border-radius: 50%;
-        font-size: 15px;
+        font-size: 13px;
     }
 
     .reel-fab {
@@ -137,9 +133,44 @@
     }
 
     .reel-empty {
-        color: #fff;
         text-align: center;
         padding: 60px 20px;
+        background: var(--feed-pure-white, #fff);
+        border: 1px solid var(--feed-border-color, #eee);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 380px;
+    }
+
+    /* Reused from the Community feed's side-ad rail so ad placement stays
+       consistent across the site (same source: ad_banner()). */
+    .reel-side-ad {
+        width: 220px;
+        flex-shrink: 0;
+        background: var(--feed-pure-white, #fff);
+        border: 1px solid var(--feed-border-color, #eee);
+        border-radius: 16px;
+        box-shadow: var(--feed-card-shadow, 0 1px 4px rgba(0,0,0,.08));
+        padding: 8px;
+        position: sticky;
+        top: 12px;
+    }
+    .reel-side-ad .ad-placeholder {
+        width: 100%;
+        min-height: 250px;
+        border: 1px dashed #bbb;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 12px;
+        text-align: center;
+    }
+    .reel-side-ad .ads-img { width: 100%; height: 300px; object-fit: cover; border-radius: 8px; }
+
+    @media (max-width: 700px) {
+        .reel-side-ad { display: none; }
     }
 
     .reel-upload-modal-backdrop {
@@ -171,10 +202,12 @@
 @endsection
 
 @section('user-content')
-<div class="reels-page-wrap">
-    <div class="reels-scroll" id="reelsScroll">
-        @forelse($reels as $reel)
-            <div class="reel-item" data-post-id="{{ $reel->id }}">
+<div class="container-fluid">
+    <h4 class="mb-3" style="font-weight:900;">🎬 Reels</h4>
+
+    @forelse($reels as $reel)
+        <div class="reel-row">
+            <div class="reel-card" data-post-id="{{ $reel->id }}">
                 <video class="reel-video" src="{{ asset($reel->video) }}" loop playsinline muted></video>
 
                 <button type="button" class="reel-mute-btn" onclick="toggleMute(this)">
@@ -218,76 +251,121 @@
                     </button>
                 </div>
             </div>
-        @empty
-            <div class="reel-item">
-                <div class="reel-empty">
-                    <div style="font-size:40px;">🎬</div>
-                    <div class="mt-2" style="font-weight:800;">এখনো কোনো Reel পোস্ট হয়নি।</div>
-                    <div class="mt-1" style="opacity:.8;">নিচের + বাটনে ক্লিক করে প্রথম Reel পোস্ট করুন।</div>
-                </div>
+
+            <div class="reel-side-ad">
+                @if($communityAds->count())
+                    <div id="reel-ad-{{ $reel->id }}" class="carousel slide" data-bs-ride="carousel" data-bs-interval="8000">
+                        <div class="carousel-inner" role="listbox">
+                            @foreach($communityAds as $adKey => $ad)
+                                <div class="carousel-item @if($adKey==0) active @endif">
+                                    <a href="{{ route('ad.click', $ad->id) }}" target="_blank" rel="noopener">
+                                        <img class="d-block ads-img" src="{{ URL::to($ad->image) }}" alt="Ad banner">
+                                    </a>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @else
+                    <div class="ad-placeholder">Ad</div>
+                @endif
             </div>
-        @endforelse
-
-        @if($reels->hasMorePages())
-            <div class="reel-item">
-                <a href="{{ $reels->nextPageUrl() }}" class="btn btn-success btn-lg">আরও Reel দেখুন</a>
-            </div>
-        @endif
-    </div>
-
-    <button type="button" class="reel-fab" onclick="openReelUpload()">+</button>
-
-    <div class="reel-upload-modal-backdrop" id="reelUploadBackdrop">
-        <div class="reel-upload-modal">
-            <h5>নতুন Reel পোস্ট করুন</h5>
-            <video id="reelPreviewVideo" class="reel-upload-preview" controls muted></video>
-            <form id="reelUploadForm" enctype="multipart/form-data">
-                @csrf
-                <input type="file" name="reel_video" id="reelVideoInput" accept="video/*" class="form-control mb-2" required onchange="onReelVideoSelected(this)">
-                <textarea name="caption" class="form-control mb-2" rows="2" maxlength="500" placeholder="ক্যাপশন (ঐচ্ছিক)"></textarea>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-light flex-fill" onclick="closeReelUpload()">Cancel</button>
-                    <button type="submit" class="btn btn-success flex-fill" id="reelSubmitBtn">Post Reel</button>
-                </div>
-                <div class="text-muted mt-2" style="font-size:12px;">
-                    সর্বোচ্চ ৬০ সেকেন্ড — বেশি লম্বা ভিডিও দিলে প্রথম ৬০ সেকেন্ড রেখে বাকিটা কেটে পোস্ট হবে।
-                </div>
-            </form>
         </div>
+    @empty
+        <div class="reel-row">
+            <div class="reel-empty">
+                <div style="font-size:40px;">🎬</div>
+                <div class="mt-2" style="font-weight:800;">এখনো কোনো Reel পোস্ট হয়নি।</div>
+                <div class="mt-1" style="opacity:.8;">নিচের + বাটনে ক্লিক করে প্রথম Reel পোস্ট করুন।</div>
+            </div>
+        </div>
+    @endforelse
+
+    @if($reels->hasPages())
+        <div class="d-flex justify-content-center mb-4">
+            {{ $reels->links() }}
+        </div>
+    @endif
+</div>
+
+<button type="button" class="reel-fab" onclick="openReelUpload()">+</button>
+
+<div class="reel-upload-modal-backdrop" id="reelUploadBackdrop">
+    <div class="reel-upload-modal">
+        <h5>নতুন Reel পোস্ট করুন</h5>
+        <video id="reelPreviewVideo" class="reel-upload-preview" controls muted></video>
+        <form id="reelUploadForm" enctype="multipart/form-data">
+            @csrf
+            <input type="file" name="reel_video" id="reelVideoInput" accept="video/*" class="form-control mb-2" required onchange="onReelVideoSelected(this)">
+            <textarea name="caption" class="form-control mb-2" rows="2" maxlength="500" placeholder="ক্যাপশন (ঐচ্ছিক)"></textarea>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-light flex-fill" onclick="closeReelUpload()">Cancel</button>
+                <button type="submit" class="btn btn-success flex-fill" id="reelSubmitBtn">Post Reel</button>
+            </div>
+            <div class="text-muted mt-2" style="font-size:12px;">
+                সর্বোচ্চ ৬০ সেকেন্ড — বেশি লম্বা ভিডিও দিলে প্রথম ৬০ সেকেন্ড রেখে বাকিটা কেটে পোস্ট হবে।
+            </div>
+        </form>
     </div>
 </div>
 @endsection
 
 @section('js')
 <script>
+    // ---- Sound ----
+    // Browsers only allow autoplay-with-sound after some user interaction
+    // on the page; a cold page load can't guarantee that. So: try to
+    // autoplay each reel WITH sound first, and only fall back to muted if
+    // the browser actually blocks it. Once the user taps unmute once, that
+    // preference carries to every reel that plays after it (same as
+    // Facebook/Instagram Reels), instead of re-muting every new video.
+    let reelsMuted = false;
+
+    function playWithSoundFallback(video) {
+        video.muted = reelsMuted;
+        const p = video.play();
+        if (p && p.catch) {
+            p.catch(() => {
+                // Autoplay-with-sound blocked by the browser -- fall back to
+                // muted so the video still plays; the speaker icon lets the
+                // user turn sound on with one tap.
+                video.muted = true;
+                video.play().catch(() => {});
+            });
+        }
+    }
+
     // ---- Autoplay the reel currently in view, pause the rest ----
-    const reelItems = document.querySelectorAll('.reel-item[data-post-id]');
+    const reelCards = document.querySelectorAll('.reel-card[data-post-id]');
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
             const video = entry.target.querySelector('.reel-video');
             if (!video) return;
             if (entry.isIntersecting) {
-                video.play().catch(() => {});
+                playWithSoundFallback(video);
             } else {
                 video.pause();
             }
         });
     }, { threshold: 0.6 });
-    reelItems.forEach((item) => observer.observe(item));
+    reelCards.forEach((card) => observer.observe(card));
 
     // Tap a video to play/pause.
     document.querySelectorAll('.reel-video').forEach((video) => {
         video.addEventListener('click', () => {
-            if (video.paused) { video.play().catch(() => {}); } else { video.pause(); }
+            if (video.paused) { playWithSoundFallback(video); } else { video.pause(); }
         });
     });
 
     function toggleMute(btn) {
-        const video = btn.closest('.reel-item').querySelector('.reel-video');
-        video.muted = !video.muted;
-        btn.innerHTML = video.muted
-            ? '<i class="bi bi-volume-mute-fill"></i>'
-            : '<i class="bi bi-volume-up-fill"></i>';
+        reelsMuted = !reelsMuted;
+        // Apply to every reel on the page (not just this one), and keep
+        // every mute-icon in sync, so the preference sticks as you scroll.
+        document.querySelectorAll('.reel-video').forEach((v) => { v.muted = reelsMuted; });
+        document.querySelectorAll('.reel-mute-btn').forEach((b) => {
+            b.innerHTML = reelsMuted
+                ? '<i class="bi bi-volume-mute-fill"></i>'
+                : '<i class="bi bi-volume-up-fill"></i>';
+        });
     }
 
     // ---- Like (reuses the site's existing like endpoint) ----
