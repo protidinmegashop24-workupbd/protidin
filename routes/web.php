@@ -648,6 +648,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('/advertisement', [UserAdvertisementController::class, 'index'])->name('advertisement');
     Route::get('/advertisement-list', [UserAdvertisementController::class, 'advertisement_list'])->name('advertisement-list');
     Route::post('/advertisement-store', [UserAdvertisementController::class, 'store'])->name('advertisement-store');
+    Route::post('/advertisement-video-store', [UserAdvertisementController::class, 'storeVideo'])->name('advertisement-video-store');
 
     Route::get('/boost', [BoostPackageController::class, 'index'])->name('boost');
     Route::get('/boost-create', [BoostPackageController::class, 'create'])->name('boost-create');
@@ -712,6 +713,9 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     // all reuse the routes above unchanged.
     Route::get('/reels', [socialEarnController::class, 'reelsFeed'])->name('reels');
     Route::post('/reels-store', [socialEarnController::class, 'reelStore'])->name('reelStore');
+    // Rate-limited: reward crediting endpoint, so one user/IP spamming
+    // requests can't hammer the DB transaction over and over.
+    Route::post('/reels-ad-view', [socialEarnController::class, 'reelAdView'])->name('reelAdView')->middleware('throttle:30,1');
 
     Route::get('/spin', [UserSpinController::class, 'index'])->name('spin');
     Route::post('claim-share-bonus', [UserProfileController::class, 'claim_share_bonus'])->name('claim-share-bonus');

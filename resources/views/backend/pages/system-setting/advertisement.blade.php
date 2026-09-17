@@ -39,10 +39,10 @@
                                 <tr>
                                     <th width="5%">#</th>
                                     <th width="10%">User</th>
-                                    <th width="15%">Banner</th>
+                                    <th width="15%">Banner/Video</th>
                                     <th>Title</th>
                                     <th width="8%">Post Date</th>
-                                    <th width="8%">Duration</th>
+                                    <th width="10%">Duration / Budget</th>
                                     <th width="8%">Cost</th>
                                     <th width="8%">Status</th>
                                     <th width="10%">Action</th>
@@ -50,16 +50,34 @@
                             </thead>
                             <tbody>
                                 @foreach ($datas as $key => $data)
+                                @php $isVideoAd = ($data->ad_type ?? 'banner') === 'video'; @endphp
                                 <tr>
                                     <td>{{ $key + 1 }}</td>
                                     <td>{{ user_name($data->user_id) }}</td>
-                                    <td><img src="{{ URL::to($data->image) }}" width="120" alt=""></td>
+                                    <td>
+                                        @if($isVideoAd)
+                                            <video src="{{ URL::to($data->video_path) }}" width="120" muted controls></video>
+                                            <span class="badge bg-info">Video Ad</span>
+                                        @else
+                                            <img src="{{ URL::to($data->image) }}" width="120" alt="">
+                                        @endif
+                                    </td>
                                     <td>{{ $data->title }}</td>
                                     <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y g:i A')}}</td>
-                                    <td>{{ $data->duration }} Days</td>
-                                    <td>{{ $data->cost }}$</td>
                                     <td>
-                                        @if ($data->exp_date < date('Y-m-d'))
+                                        @if($isVideoAd)
+                                            Budget: ${{ number_format($data->budget_total, 2) }}<br>
+                                            Spent: ${{ number_format($data->budget_spent, 2) }}<br>
+                                            Reward/View: ${{ number_format($data->reward_per_view, 4) }}
+                                        @else
+                                            {{ $data->duration }} Days
+                                        @endif
+                                    </td>
+                                    <td>{{ $isVideoAd ? number_format($data->budget_total, 2) : $data->cost }}$</td>
+                                    <td>
+                                        @if ($isVideoAd && $data->approval == 1 && $data->budget_spent >= $data->budget_total)
+                                            <span class="badge bg-secondary">Budget Used Up</span>
+                                        @elseif (!$isVideoAd && $data->exp_date < date('Y-m-d'))
                                             <span class="badge bg-success">Completed</span>
                                         @else
                                             @if($data->approval == 1)

@@ -104,6 +104,30 @@
     }
     .reel-action-btn.active i { color: #ff4757; }
 
+    .reel-ad-progress-wrap {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: rgba(255,255,255,.25);
+        z-index: 2;
+    }
+    .reel-ad-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: #ffc107;
+        transition: width .2s linear;
+    }
+    .reel-ad-reward-note {
+        font-weight: 800;
+        font-size: 13px;
+        background: rgba(0,0,0,.4);
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 10px;
+    }
+
     .reel-mute-btn {
         position: absolute;
         top: 10px;
@@ -270,6 +294,58 @@
                 @endif
             </div>
         </div>
+
+        {{-- Sponsored video ad -- injected every 4th organic reel, same
+             "$inFeedAds[...% count]" cycling pattern as in-feed ads
+             elsewhere on the site. Only ads still under budget. --}}
+        @if($videoAds->count() && $loop->iteration % 4 == 0)
+            @php $adToShow = $videoAds[($loop->iteration / 4 - 1) % $videoAds->count()]; @endphp
+            <div class="reel-row">
+                <div class="reel-card reel-ad-card" data-ad-id="{{ $adToShow->id }}" data-min-watch="{{ $adToShow->min_watch_seconds }}">
+                    <video class="reel-video" src="{{ asset($adToShow->video_path) }}" playsinline muted></video>
+
+                    <button type="button" class="reel-mute-btn" onclick="toggleMute(this)">
+                        <i class="bi bi-volume-mute-fill"></i>
+                    </button>
+
+                    <div class="reel-ad-progress-wrap">
+                        <div class="reel-ad-progress-bar" id="adProgress{{ $adToShow->id }}"></div>
+                    </div>
+
+                    <div class="reel-overlay-top">
+                        <span class="badge bg-warning text-dark">Sponsored</span>
+                        <strong>{{ $adToShow->title }}</strong>
+                    </div>
+
+                    <div class="reel-overlay-bottom">
+                        <div class="reel-ad-reward-note" id="adRewardNote{{ $adToShow->id }}">
+                            দেখলে আপনি পাবেন ${{ number_format($adToShow->reward_per_view, 4) }}
+                        </div>
+                        @if($adToShow->link)
+                            <a href="{{ route('ad.click', $adToShow->id) }}" target="_blank" rel="noopener" class="btn btn-sm btn-warning mt-1">বিস্তারিত দেখুন</a>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="reel-side-ad">
+                    @if($communityAds->count())
+                        <div id="reel-side-ad-{{ $adToShow->id }}" class="carousel slide" data-bs-ride="carousel" data-bs-interval="8000">
+                            <div class="carousel-inner" role="listbox">
+                                @foreach($communityAds as $adKey2 => $ad2)
+                                    <div class="carousel-item @if($adKey2==0) active @endif">
+                                        <a href="{{ route('ad.click', $ad2->id) }}" target="_blank" rel="noopener">
+                                            <img class="d-block ads-img" src="{{ URL::to($ad2->image) }}" alt="Ad banner">
+                                        </a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="ad-placeholder">Ad</div>
+                    @endif
+                </div>
+            </div>
+        @endif
     @empty
         <div class="reel-row">
             <div class="reel-empty">
@@ -335,19 +411,84 @@
     }
 
     // ---- Autoplay the reel currently in view, pause the rest ----
-    const reelCards = document.querySelectorAll('.reel-card[data-post-id]');
+    // Covers both organic reels (data-post-id) and sponsored video ads
+    // (data-ad-id) -- the ad ones also start/stop their watch-time timer
+    // here, since "in view AND playing" is exactly what should count as
+    // watching for the reward.
+    const reelCards = document.querySelectorAll('.reel-card');
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
-            const video = entry.target.querySelector('.reel-video');
+            const card = entry.target;
+            const video = card.querySelector('.reel-video');
             if (!video) return;
+            const adId = card.dataset.adId;
             if (entry.isIntersecting) {
                 playWithSoundFallback(video);
+                if (adId) startAdWatchTimer(card, video, adId);
             } else {
                 video.pause();
+                if (adId) stopAdWatchTimer(adId);
             }
         });
     }, { threshold: 0.6 });
     reelCards.forEach((card) => observer.observe(card));
+
+    // ---- Sponsored video ad: server-validated watch-time reward ----
+    // Client only reports how long it watched; the server independently
+    // re-checks the minimum, dedup, and budget before crediting anything
+    // (see reelAdView() in socialEarnController.php) -- this timer is
+    // just what triggers that one request, never the source of truth.
+    const adWatchState = {};
+
+    function startAdWatchTimer(card, video, adId) {
+        if (!adWatchState[adId]) {
+            adWatchState[adId] = { accumulated: 0, rewarded: false, timer: null };
+        }
+        const state = adWatchState[adId];
+        if (state.rewarded || state.timer) return;
+
+        const minWatch = parseFloat(card.dataset.minWatch || '5');
+        const progressBar = document.getElementById('adProgress' + adId);
+
+        state.timer = setInterval(() => {
+            if (video.paused) return;
+            state.accumulated += 0.25;
+            if (progressBar) {
+                progressBar.style.width = Math.min(100, (state.accumulated / minWatch) * 100) + '%';
+            }
+            if (state.accumulated >= minWatch && !state.rewarded) {
+                state.rewarded = true; // stop this from firing twice while the request is in flight
+                clearInterval(state.timer);
+                state.timer = null;
+                submitAdView(adId, Math.ceil(state.accumulated));
+            }
+        }, 250);
+    }
+
+    function stopAdWatchTimer(adId) {
+        const state = adWatchState[adId];
+        if (state && state.timer) {
+            clearInterval(state.timer);
+            state.timer = null;
+        }
+    }
+
+    function submitAdView(adId, watchedSeconds) {
+        $.ajax({
+            url: "{{ route('user.reelAdView') }}",
+            type: "POST",
+            data: { ad_id: adId, watched_seconds: watchedSeconds, _token: "{{ csrf_token() }}" },
+            success: function (response) {
+                const note = document.getElementById('adRewardNote' + adId);
+                if (response.status) {
+                    toastr.success('+$' + parseFloat(response.reward).toFixed(4) + ' আপনার earning balance এ যোগ হলো!');
+                    if (note) note.textContent = '✅ Reward পেয়েছেন!';
+                } else if (note) {
+                    note.textContent = response.message || '';
+                }
+            }
+        });
+    }
 
     // Tap a video to play/pause.
     document.querySelectorAll('.reel-video').forEach((video) => {

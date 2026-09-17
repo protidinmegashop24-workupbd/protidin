@@ -18,6 +18,7 @@ use App\Models\CommunityTopic;
 use App\Models\CommunityFollow;
 use App\Models\CommunityBookmark;
 use App\Models\CommunityReport;
+use App\Models\AdView;
 use App\Models\Admin\UserMessage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -417,7 +418,91 @@ class socialEarnController extends Controller
         $communityAds = ad_banner();
         recordAdImpressions($communityAds);
 
-        return view('user.pages.cummunityEarn.reels', compact('reels', 'followingIds', 'communityAds'));
+        // Sponsored video ads injected into the scroll itself (every 4th
+        // item, see the blade) -- only ones still under budget. Fetched
+        // once per pageview; the blade cycles through them same as
+        // in-feed ads elsewhere on the site.
+        $videoAds = \App\Models\Admin\Advertisement::where('ad_type', 'video')
+            ->where('approval', 1)
+            ->whereColumn('budget_spent', '<', 'budget_total')
+            ->inRandomOrder()
+            ->get();
+
+        return view('user.pages.cummunityEarn.reels', compact('reels', 'followingIds', 'communityAds', 'videoAds'));
+    }
+
+    // Server-to-server-style trust boundary for Reels ad rewards: the
+    // client reports watched_seconds, but every actual decision (does
+    // this meet min_watch_seconds, has this user already been paid for
+    // this ad recently, is there still budget) is re-checked here against
+    // the database, never trusted from the request alone.
+    public function reelAdView(Request $request){
+        $request->validate([
+            'ad_id' => 'required|integer',
+            'watched_seconds' => 'required|integer|min:0',
+        ]);
+
+        $ad = \App\Models\Admin\Advertisement::where('id', $request->ad_id)
+            ->where('ad_type', 'video')
+            ->where('approval', 1)
+            ->first();
+
+        if (!$ad) {
+            return response()->json(['status' => false, 'message' => 'Ad not found or not active.']);
+        }
+
+        if ($request->watched_seconds < $ad->min_watch_seconds) {
+            return response()->json(['status' => false, 'message' => 'Watch time too short.']);
+        }
+
+        // Duplicate/frequency guard: at most one rewarded view per user
+        // per ad per 24 hours, regardless of how many times the client asks.
+        $alreadyRewarded = AdView::where('user_id', Auth::id())
+            ->where('ad_id', $ad->id)
+            ->where('created_at', '>=', now()->subDay())
+            ->exists();
+        if ($alreadyRewarded) {
+            return response()->json(['status' => false, 'message' => 'Already rewarded for this ad today.']);
+        }
+
+        $reward = 0;
+        $credited = false;
+
+        DB::transaction(function () use ($ad, $request, &$reward, &$credited) {
+            // Re-read the ad row under a lock -- budget_spent is about to
+            // be compared and incremented, and concurrent requests from
+            // other viewers must not both pass the budget check before
+            // either one's increment is visible.
+            $lockedAd = \App\Models\Admin\Advertisement::where('id', $ad->id)->lockForUpdate()->first();
+            if (!$lockedAd || (float) $lockedAd->budget_spent + (float) $lockedAd->cost_per_view > (float) $lockedAd->budget_total) {
+                return;
+            }
+
+            $lockedAd->budget_spent = (float) $lockedAd->budget_spent + (float) $lockedAd->cost_per_view;
+            $lockedAd->total_rewarded_views = (int) $lockedAd->total_rewarded_views + 1;
+            $lockedAd->save();
+
+            $user = User::where('id', Auth::id())->lockForUpdate()->first();
+            $user->earning_balance = (float) $user->earning_balance + (float) $lockedAd->reward_per_view;
+            $user->save();
+
+            AdView::create([
+                'user_id' => Auth::id(),
+                'ad_id' => $lockedAd->id,
+                'watched_seconds' => $request->watched_seconds,
+                'reward_amount' => $lockedAd->reward_per_view,
+                'ip_address' => $request->ip(),
+            ]);
+
+            $reward = (float) $lockedAd->reward_per_view;
+            $credited = true;
+        });
+
+        if (!$credited) {
+            return response()->json(['status' => false, 'message' => 'This ad has run out of budget.']);
+        }
+
+        return response()->json(['status' => true, 'message' => 'Reward credited.', 'reward' => $reward]);
     }
 
     public function reelStore(Request $request){

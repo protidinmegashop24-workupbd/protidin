@@ -9,9 +9,10 @@ class Advertisement extends Model
 {
     use HasFactory;
 
-    // The existing banner flow (UserAdvertisementController::store()) sets
-    // properties individually rather than mass-assigning, so this fillable
-    // list only matters for the new video-ad flow that uses ::create().
+    // Both the banner and video-ad creation flows set properties
+    // individually rather than mass-assigning, so nothing here currently
+    // relies on $fillable -- kept anyway as the documented, safe set of
+    // columns any future ::create()/fill() call is allowed to touch.
     protected $fillable = [
         'user_id',
         'ad_type',
@@ -40,17 +41,4 @@ class Advertisement extends Model
         'min_watch_seconds' => 'integer',
         'total_rewarded_views' => 'integer',
     ];
-
-    public function isVideoAd()
-    {
-        return $this->ad_type === 'video';
-    }
-
-    // A video ad still has budget left once it's spent less than its
-    // total -- checked with a fresh DB read (not this in-memory instance)
-    // wherever it gates a reward, since budget_spent changes concurrently.
-    public function hasBudgetRemaining()
-    {
-        return (float) $this->budget_spent < (float) $this->budget_total;
-    }
 }

@@ -148,15 +148,29 @@
                                 <li class="list-group-item">
                                     <div class="ad-details">
                                         <div class="ad-info">
-                                            <h5 class="ad-title">{{ $data->title }}</h5>
+                                            <h5 class="ad-title">
+                                                {{ $data->title }}
+                                                @if(($data->ad_type ?? 'banner') === 'video')
+                                                    <span class="badge bg-info text-dark">Video Ad</span>
+                                                @endif
+                                            </h5>
                                             <span class="ad-date">{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y g:i A') }}</span>
-                                            <span class="ad-cost">{{ number_format($data->cost, 2) }} $</span>
-                                            @if(\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'views'))
+                                            @if(($data->ad_type ?? 'banner') === 'video')
+                                                <span class="ad-cost">Budget: ${{ number_format($data->budget_total, 2) }} &nbsp;·&nbsp; Spent: ${{ number_format($data->budget_spent, 2) }}</span>
                                                 <span class="ad-stats" style="font-size:14px; color:#555;">
-                                                    <i class="fas fa-eye"></i> {{ $data->views }} Views
+                                                    <i class="fas fa-play-circle"></i> {{ $data->total_rewarded_views }} Rewarded Views
                                                     &nbsp;·&nbsp;
                                                     <i class="fas fa-mouse-pointer"></i> {{ $data->clicks }} Clicks
                                                 </span>
+                                            @else
+                                                <span class="ad-cost">{{ number_format($data->cost, 2) }} $</span>
+                                                @if(\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'views'))
+                                                    <span class="ad-stats" style="font-size:14px; color:#555;">
+                                                        <i class="fas fa-eye"></i> {{ $data->views }} Views
+                                                        &nbsp;·&nbsp;
+                                                        <i class="fas fa-mouse-pointer"></i> {{ $data->clicks }} Clicks
+                                                    </span>
+                                                @endif
                                             @endif
                                             @if ($data->approval == 2 && !empty($data->reason))
                                                 <span class="ad-reason text-danger"><i class="fas fa-exclamation-circle"></i> Reason: {{ $data->reason }}</span>

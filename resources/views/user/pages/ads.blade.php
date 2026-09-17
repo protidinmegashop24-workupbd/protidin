@@ -17,9 +17,14 @@
 
 <div class="row justify-content-center mt-2">
     <div class="col-md-6 col-lg-6 col-12">
-        <div class="card">
+        <div class="d-flex mb-2" style="gap:8px;">
+            <button type="button" class="btn btn-success flex-fill" id="adTypeBannerBtn" onclick="showAdType('banner')">🖼️ Banner Ad</button>
+            <button type="button" class="btn btn-outline-success flex-fill" id="adTypeVideoBtn" onclick="showAdType('video')">🎥 Video Ad (Reels)</button>
+        </div>
+
+        <div class="card" id="bannerAdCard">
             <div class="card-header">
-                <h4 class="card-title">New Advertisement</h4>
+                <h4 class="card-title">New Banner Advertisement</h4>
             </div>
             <div class="card-body">
                 <form action="{{ route('user.advertisement-store') }}" method="POST" enctype="multipart/form-data">
@@ -64,13 +69,75 @@
                 </form>
             </div>
         </div>
+
+        <div class="card" id="videoAdCard" style="display:none;">
+            <div class="card-header">
+                <h4 class="card-title">New Video Ad (shows in the Reels feed)</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" style="font-size:13px;">
+                    Users watching your video in Reels earn <strong>Reward/View</strong> from your budget, until
+                    the budget runs out or you're rejected/removed by admin (unspent budget is refunded then).
+                    Admin approval is required before it goes live, same as banner ads.
+                </div>
+                <form action="{{ route('user.advertisement-video-store') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="form-group">
+                        <label class="form-label">Ad Title <span class="text-red">*</span></label>
+                        <input class="form-control" type="text" name="title" placeholder="Title" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Click-through Link (optional)</label>
+                        <input class="form-control" type="url" name="link" placeholder="https://demo.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Video (max 50MB)</label>
+                        <input class="form-control" type="file" name="video" accept="video/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Total Budget ($) <span class="text-red">*</span></label>
+                        <input class="form-control" type="number" step="0.01" min="1" name="budget_total" placeholder="e.g. 20" required>
+                        <small class="text-muted">Deducted from your deposit balance now. Unspent amount refunds if rejected/removed.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Reward per View ($) <span class="text-red">*</span></label>
+                        <input class="form-control" type="number" step="0.0001" min="0.0001" max="1" name="reward_per_view" placeholder="e.g. 0.005" required>
+                        <small class="text-muted">This is exactly what each viewer earns and what your budget is charged per rewarded view.</small>
+                    </div>
+                    <div class="text-right">
+                         <button type="submit" class="btn btn-primary mt-2 mb-0">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
 @endsection
 @section('js')
     <script>
-        
+        function showAdType(type) {
+            const bannerCard = document.getElementById('bannerAdCard');
+            const videoCard = document.getElementById('videoAdCard');
+            const bannerBtn = document.getElementById('adTypeBannerBtn');
+            const videoBtn = document.getElementById('adTypeVideoBtn');
+            if (type === 'video') {
+                bannerCard.style.display = 'none';
+                videoCard.style.display = 'block';
+                videoBtn.classList.remove('btn-outline-success');
+                videoBtn.classList.add('btn-success');
+                bannerBtn.classList.remove('btn-success');
+                bannerBtn.classList.add('btn-outline-success');
+            } else {
+                videoCard.style.display = 'none';
+                bannerCard.style.display = 'block';
+                bannerBtn.classList.remove('btn-outline-success');
+                bannerBtn.classList.add('btn-success');
+                videoBtn.classList.remove('btn-success');
+                videoBtn.classList.add('btn-outline-success');
+            }
+        }
+
         function selectDuration(duration, rate){
             $('#days').val(duration);
             $('#amount').val(rate);

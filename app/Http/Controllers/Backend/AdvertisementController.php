@@ -127,7 +127,13 @@ class AdvertisementController extends Controller
 
         if($request->approval == 2){
             $user = User::find($data->user_id);
-            $user->deposit_balance = $user->deposit_balance + $data->cost;
+            // A video ad's advertiser paid its whole budget up front and
+            // spends it down per-view -- refund whatever's left, not the
+            // (always-0) banner "cost" column.
+            $refund = $data->ad_type === 'video'
+                ? max(0, (float) $data->budget_total - (float) $data->budget_spent)
+                : $data->cost;
+            $user->deposit_balance = $user->deposit_balance + $refund;
             $user->save();
         }
 
