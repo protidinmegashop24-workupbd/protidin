@@ -391,6 +391,84 @@ class socialEarnController extends Controller
         // dd($posts);
         return view('user.pages.cummunityEarn.communityEarn',compact('posts','website','inFeedAds','communityAds','topics','articleTopics','productTopics','activeTopicSlug','showSavedOnly','followingIds','savedPostIds'));
     }
+
+    // Reels -- a separate Facebook-style vertical video feed, backed by
+    // the same feedposts table (postType = 'reel') so likes/comments/
+    // shares/views all reuse the exact same endpoints as regular posts.
+    public function reelsFeed(){
+        $reels = feedpost::withCount([
+                'like_history as has_liked' => function($q){
+                    $q->where('userId', auth()->id());
+                },
+            ])
+            ->where('status', 'approved')
+            ->where('postType', 'reel')
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $followingIds = communityFollowEnabled()
+            ? CommunityFollow::where('follower_id', Auth::id())->pluck('followed_id')->toArray()
+            : [];
+
+        return view('user.pages.cummunityEarn.reels', compact('reels', 'followingIds'));
+    }
+
+    public function reelStore(Request $request){
+        $request->validate([
+            'reel_video' => 'required|mimes:mp4,mov,webm|max:51200',
+            'caption'    => 'nullable|string|max:500',
+        ], [
+            'reel_video.required' => 'একটি ভিডিও দিন।',
+        ]);
+
+        // Max Post Limit per Day -- Reels share the same daily cap as
+        // regular posts so this can't be used to bypass it.
+        $findPostLimit = $this->findvalueOfKey('maxPostPerDay');
+        if ($findPostLimit <= 0) {
+            return response()->json(['status' => false, 'message' => 'You have reached the maximum post limit for today']);
+        }
+        $today = Carbon::today();
+        $todayPostCount = feedpost::where('userId', Auth::id())->whereDate('created_at', $today)->count();
+        if ($todayPostCount >= $findPostLimit) {
+            return response()->json(['status' => false, 'message' => 'You have reached the maximum post limit for today']);
+        }
+
+        $video = $request->file('reel_video');
+        $dateFolder = Carbon::now()->format('Y-m-d');
+        $uploadPath = "uploads/feedposts/{$dateFolder}";
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+        $extension = $video->getClientOriginalExtension();
+        $fileName = 'reel_' . time() . '_' . Str::random(6) . '.' . $extension;
+        $video->move($uploadPath, $fileName);
+        $videoPath = "uploads/feedposts/{$dateFolder}/{$fileName}";
+
+        $postAdded = feedpost::create([
+            'postContent'    => $request->caption ?: 'Reel',
+            'video'          => $videoPath,
+            'summary'        => null,
+            'aiRating'       => 0,
+            'status'         => 'approved',
+            'totalUserEarn'  => 0,
+            'totalOwnerEarn' => 0,
+            'likes'          => 0,
+            'commnets'       => 0,
+            'userId'         => Auth::id(),
+            'postType'       => 'reel',
+        ]);
+
+        // Reuses the same "newPost" earning rate as Articles/Products --
+        // split into its own community_rate key later if Reels should pay
+        // a different amount.
+        $findPrice = $this->findvalueOfKey('newPost');
+        $this->addEarnHistory(Auth::id(), $postAdded->id, 'newPost', $findPrice);
+        Auth::user()->increment('earning_balance', $findPrice);
+        $this->addReffEarn(Auth::id(), $postAdded->id, $findPrice, $this->findvalueOfKey('earnRef'));
+
+        return response()->json(['status' => true, 'message' => 'Reel posted successfully']);
+    }
     public function toggleFollow(Request $request, $userId){
         if (!communityFollowEnabled()) {
             return response()->json(['status' => false, 'message' => 'Feature not set up yet.']);
@@ -539,12 +617,9 @@ class socialEarnController extends Controller
             // Product posts need their own uploaded image (it's a real
             // product listing); Article/Q&A keeps its image optional.
             'post_image'   => $isProductPost ? 'required|image|mimes:jpg,jpeg,png,webp|max:4096' : 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
-            // Article/Q&A only -- Product's own media is its (required)
-            // image, not a video. This host's PHP upload limits are fairly
-            // tight (see the client-side compressImageFile() comment on
-            // photos) -- 50MB is a starting point, lower it if uploads
-            // start failing with a generic connection-reset error.
-            'post_video'   => (!$isProductPost) ? 'nullable|mimes:mp4,mov,webm|max:51200' : 'prohibited',
+            // Video posting lives in the separate Reels system now
+            // (ReelController), not in Article/Product posts.
+            'post_video'   => 'prohibited',
             // A link is mandatory -- this feature exists specifically so
             // users can post their own affiliate/site link for a backlink,
             // so a post without one defeats the point.
@@ -606,26 +681,6 @@ class socialEarnController extends Controller
             $imagePath = "uploads/feedposts/{$dateFolder}/{$fileName}";
         }
 
-        // Video upload: the composer's file input, JS preview, and the
-        // feedposts.video column + display templates already existed --
-        // this was the missing piece that actually saves the file.
-        $videoPath = null;
-        if ($request->hasFile('post_video')) {
-            $video = $request->file('post_video');
-            $dateFolder = Carbon::now()->format('Y-m-d');
-            $uploadPath = "uploads/feedposts/{$dateFolder}";
-
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
-
-            $extension = $video->getClientOriginalExtension();
-            $fileName = 'feed_video_' . time() . '_' . Str::random(6) . '.' . $extension;
-            $video->move($uploadPath, $fileName);
-
-            $videoPath = "uploads/feedposts/{$dateFolder}/{$fileName}";
-        }
-
         // Post create with new Fetch fields
         $postData = [
             // Product's caption is optional -- the column itself has never
@@ -640,7 +695,6 @@ class socialEarnController extends Controller
             'aiRating'         => 0,
             'status'           => 'approved',
             'image'            => $imagePath,
-            'video'            => $videoPath,
             'totalUserEarn'    => 0,
             'totalOwnerEarn'   => 0,
             'likes'            => 0,

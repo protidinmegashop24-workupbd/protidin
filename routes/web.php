@@ -706,6 +706,13 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('/feed-post-dashboard', [socialEarnController::class, 'postFeedDashboard'])->name('postFeedDashboard');
     Route::get('/feed-post-list', [socialEarnController::class, 'myPostFeedList'])->name('myPostFeedList');
 
+    // Reels -- a separate Facebook-style vertical video feed, not part of
+    // the Article/Q&A/Product post composer. Still backed by the same
+    // feedposts table (postType = 'reel'), so likes/comments/shares/views
+    // all reuse the routes above unchanged.
+    Route::get('/reels', [socialEarnController::class, 'reelsFeed'])->name('reels');
+    Route::post('/reels-store', [socialEarnController::class, 'reelStore'])->name('reelStore');
+
     Route::get('/spin', [UserSpinController::class, 'index'])->name('spin');
     Route::post('claim-share-bonus', [UserProfileController::class, 'claim_share_bonus'])->name('claim-share-bonus');
 

@@ -154,22 +154,6 @@
             display: block;
         }
 
-        #video-preview-container {
-            position: relative;
-            display: none;
-            margin-top: 15px;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--feed-border-color);
-            background: #000;
-        }
-
-        #video-preview-container video {
-            width: 100%;
-            max-height: 450px;
-            display: block;
-        }
-
         .post-video-full {
             width: 100%;
             max-height: 500px;
@@ -769,11 +753,6 @@
                         <img id="image-preview" src="" alt="preview">
                     </div>
 
-                    <!-- Video Preview Area -->
-                    <div id="video-preview-container">
-                        <button type="button" class="remove-image-btn" onclick="removeSelectedVideo()"><i class="bi bi-x-lg"></i></button>
-                        <video id="video-preview" src="" controls></video>
-                    </div>
                     <!--Fatch System: for Article/Q&A, the link is auto-detected from
                          the post text itself, Facebook-style, so this field stays
                          type="hidden". For Product mode, setPostType() switches it
@@ -801,15 +780,10 @@
                             <i class="bi bi-image-fill text-success fs-5"></i>
                             <span>Add a Photo</span>
                         </div>
-                        <div class="image-upload-trigger flex-grow-1" id="video-upload-trigger" onclick="document.getElementById('post_video').click()">
-                            <i class="bi bi-camera-video-fill text-success fs-5"></i>
-                            <span>Add a Video</span>
-                        </div>
                     </div>
 
                     <!-- Hidden Real Inputs -->
                     <input type="file" name="post_image" id="post_image" accept="image/*" style="display: none;" onchange="previewImage(this)">
-                    <input type="file" name="post_video" id="post_video" accept="video/*" style="display: none;" onchange="previewVideo(this)">
 
 
                     <div class="editor-footer">
@@ -1225,7 +1199,6 @@
         const trigger = document.getElementById('upload-trigger');
 
         if (input.files && input.files[0]) {
-            removeSelectedVideo();
             const reader = new FileReader();
             reader.onload = function(e) {
                 previewImg.src = e.target.result;
@@ -1248,191 +1221,6 @@
         trigger.style.display = 'flex';
     }
 
-    // Live Video Preview Logic
-    const MAX_VIDEO_SECONDS = 60;
-
-    // Auto-trimming a video to 60s only happens via the same canvas +
-    // MediaRecorder re-encode used for compression -- if that isn't
-    // supported (older Safari/iOS in particular) there's no reliable way
-    // to trim it client-side, so a too-long video has to be rejected
-    // there instead of silently uploading the full-length original.
-    function canCompressVideo() {
-        return !!(window.MediaRecorder && document.createElement('canvas').captureStream);
-    }
-
-    function previewVideo(input) {
-        const previewContainer = document.getElementById('video-preview-container');
-        const previewVideoEl = document.getElementById('video-preview');
-        const trigger = document.getElementById('video-upload-trigger');
-        const urlPreviewDiv = document.getElementById('url-preview');
-
-        if (input.files && input.files[0]) {
-            removeSelectedImage();
-            const fileUrl = URL.createObjectURL(input.files[0]);
-
-            previewVideoEl.onloadedmetadata = function () {
-                if (previewVideoEl.duration > MAX_VIDEO_SECONDS + 1) {
-                    if (!canCompressVideo()) {
-                        toastr.error('ভিডিও সর্বোচ্চ ' + MAX_VIDEO_SECONDS + ' সেকেন্ড (১ মিনিট) দীর্ঘ হতে পারবে। এই ব্রাউজারে অটো-ট্রিম সাপোর্ট নেই, তাই ভিডিওটি নিজে ছোট করে (Trim/Cut) আবার আপলোড করুন।');
-                        removeSelectedVideo();
-                        return;
-                    }
-                    toastr.info('ভিডিওটি ' + MAX_VIDEO_SECONDS + ' সেকেন্ডের বেশি — পোস্ট করার সময় শুধু প্রথম ' + MAX_VIDEO_SECONDS + ' সেকেন্ড রেখে বাকিটা কেটে আপলোড হবে।');
-                }
-            };
-
-            previewVideoEl.src = fileUrl;
-            previewContainer.style.display = 'block';
-            if (trigger) trigger.style.display = 'none';
-            urlPreviewDiv.style.display = 'none';
-        }
-    }
-
-    function removeSelectedVideo() {
-        const input = document.getElementById('post_video');
-        const previewContainer = document.getElementById('video-preview-container');
-        const previewVideoEl = document.getElementById('video-preview');
-        const trigger = document.getElementById('video-upload-trigger');
-
-        if (previewVideoEl.src) {
-            try { URL.revokeObjectURL(previewVideoEl.src); } catch (e) {}
-        }
-        input.value = "";
-        previewVideoEl.src = "";
-        previewContainer.style.display = 'none';
-        if (trigger) trigger.style.display = 'flex';
-    }
-
-    // Best-effort client-side video compression, same spirit as
-    // compressImageFile() below (this host's PHP upload limits are tight).
-    // Re-encodes by redrawing the video onto a canvas at a lower resolution
-    // and capturing it with MediaRecorder -- native browser APIs only, no
-    // external library. Not supported everywhere (older Safari/iOS in
-    // particular), and canvas.captureStream() alone drops audio, so this
-    // also tries to graft the original audio track on; if any of that
-    // fails at any point, it resolves with the ORIGINAL untouched file
-    // rather than blocking the post.
-    function compressVideoFile(file, maxWidth = 720, targetBitrate = 1200000) {
-        return new Promise((resolve) => {
-            if (!window.MediaRecorder) {
-                resolve(file);
-                return;
-            }
-
-            const video = document.createElement('video');
-            video.muted = true;
-            video.playsInline = true;
-            const objectUrl = URL.createObjectURL(file);
-            video.src = objectUrl;
-
-            const cleanupAndFallback = () => {
-                try { URL.revokeObjectURL(objectUrl); } catch (e) {}
-                resolve(file);
-            };
-
-            video.onerror = cleanupAndFallback;
-
-            video.onloadedmetadata = () => {
-                const scale = Math.min(1, maxWidth / (video.videoWidth || maxWidth));
-                const width = Math.max(2, Math.round((video.videoWidth || maxWidth) * scale));
-                const height = Math.max(2, Math.round((video.videoHeight || maxWidth) * scale));
-
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx || !canvas.captureStream) {
-                    cleanupAndFallback();
-                    return;
-                }
-
-                const canvasStream = canvas.captureStream(25);
-
-                // Best-effort: graft the original audio track on, since
-                // canvas.captureStream() only carries video. Silent output
-                // is an acceptable fallback, not a blocker.
-                try {
-                    if (typeof video.captureStream === 'function') {
-                        video.captureStream().getAudioTracks().forEach((t) => canvasStream.addTrack(t));
-                    } else if (typeof video.mozCaptureStream === 'function') {
-                        video.mozCaptureStream().getAudioTracks().forEach((t) => canvasStream.addTrack(t));
-                    }
-                } catch (e) {
-                    // proceed video-only
-                }
-
-                let recorder;
-                try {
-                    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-                        ? 'video/webm;codecs=vp8,opus'
-                        : 'video/webm';
-                    recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: targetBitrate });
-                } catch (e) {
-                    cleanupAndFallback();
-                    return;
-                }
-
-                const chunks = [];
-                recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-
-                let drawing = true;
-                let stopped = false;
-                function stopRecording() {
-                    if (stopped) return;
-                    stopped = true;
-                    drawing = false;
-                    video.pause();
-                    if (recorder.state !== 'inactive') recorder.stop();
-                }
-
-                function drawFrame() {
-                    if (!drawing) return;
-                    try { ctx.drawImage(video, 0, 0, width, height); } catch (e) { /* ignore a dropped frame */ }
-                    // Reels-style trim: cut the recording off at 60s even
-                    // when the source video is longer, instead of rejecting
-                    // long uploads outright.
-                    if (video.currentTime >= MAX_VIDEO_SECONDS) {
-                        stopRecording();
-                        return;
-                    }
-                    requestAnimationFrame(drawFrame);
-                }
-
-                recorder.onstop = () => {
-                    try { URL.revokeObjectURL(objectUrl); } catch (e) {}
-                    if (!chunks.length) {
-                        resolve(file);
-                        return;
-                    }
-                    const blob = new Blob(chunks, { type: 'video/webm' });
-                    if (blob.size >= file.size) {
-                        resolve(file);
-                        return;
-                    }
-                    const compressedFile = new File(
-                        [blob],
-                        file.name.replace(/\.[^.]+$/, '') + '.webm',
-                        { type: 'video/webm' }
-                    );
-                    resolve(compressedFile);
-                };
-
-                video.onended = stopRecording;
-
-                recorder.start();
-                video.currentTime = 0;
-                video.play().then(() => {
-                    drawFrame();
-                }).catch(() => {
-                    stopped = true;
-                    drawing = false;
-                    try { if (recorder.state !== 'inactive') recorder.stop(); } catch (e) {}
-                    cleanupAndFallback();
-                });
-            };
-        });
-    }
-
     // --- Product Attach Logic ---
     // --- Other UI Logic ---
     function toggleEditor(show) {
@@ -1452,7 +1240,6 @@
             if (titleInput) titleInput.value = '';
             clearUrlPreview();
             removeSelectedImage();
-            removeSelectedVideo();
             handleInput(input);
         }
     }
@@ -1637,13 +1424,6 @@
             imageLabel.textContent = isProduct ? 'Add Product Photo (আবশ্যক)' : 'Add a Photo';
         }
 
-        // Product posts are photo + fields, never a video.
-        let videoTrigger = document.getElementById('video-upload-trigger');
-        if (videoTrigger) {
-            videoTrigger.style.display = isProduct ? 'none' : 'flex';
-            if (isProduct) removeSelectedVideo();
-        }
-
         handleInput(document.getElementById('post-input'));
 
         // A Product post's Topic doubles as its category (which kind of
@@ -1761,27 +1541,6 @@
             }
         }
 
-        const videoInput = document.getElementById('post_video');
-        if (videoInput.files && videoInput.files[0]) {
-            const submitBtn = form.querySelector('.btn-brand');
-            const originalBtnText = submitBtn ? submitBtn.textContent : '';
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Compressing video...';
-            }
-            try {
-                const compressed = await compressVideoFile(videoInput.files[0]);
-                formData.set('post_video', compressed);
-            } catch (err) {
-                console.error('Video compression failed, sending original file', err);
-            } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalBtnText;
-                }
-            }
-        }
-
         fetch(form.action, {
             method: "POST",
             headers: {
@@ -1804,7 +1563,6 @@
                 // alert(data.message);
                 form.reset();
                 removeSelectedImage();
-                removeSelectedVideo();
                 toastr.success(data.message);
                 toggleEditor(false);
             } else if (data.errors) {
