@@ -801,6 +801,10 @@
                             <i class="bi bi-image-fill text-success fs-5"></i>
                             <span>Add a Photo</span>
                         </div>
+                        <div class="image-upload-trigger flex-grow-1" id="video-upload-trigger" onclick="document.getElementById('post_video').click()">
+                            <i class="bi bi-camera-video-fill text-success fs-5"></i>
+                            <span>Add a Video</span>
+                        </div>
                     </div>
 
                     <!-- Hidden Real Inputs -->
@@ -1475,6 +1479,13 @@
         let imageLabel = document.querySelector('#upload-trigger span');
         if (imageLabel) {
             imageLabel.textContent = isProduct ? 'Add Product Photo (আবশ্যক)' : 'Add a Photo';
+        }
+
+        // Product posts are photo + fields, never a video.
+        let videoTrigger = document.getElementById('video-upload-trigger');
+        if (videoTrigger) {
+            videoTrigger.style.display = isProduct ? 'none' : 'flex';
+            if (isProduct) removeSelectedVideo();
         }
 
         handleInput(document.getElementById('post-input'));

@@ -2347,3 +2347,66 @@ Route::get('/system-add-offerwall-providers/{token}', function ($token) {
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });
+
+// One-off: Reels/video-ad system, Phase 1 (schema only).
+//
+// Adds a 'video' ad_type to the EXISTING advertisements table (used by the
+// site's real advertiser upload/admin-approval flow) instead of a separate
+// ad_campaigns table -- a video ad is still just an ad, it just gets shown
+// in the Reels feed and pays a per-view reward instead of running for a
+// fixed number of days. Existing banner ads are untouched: every new
+// column is nullable/defaulted and only read when ad_type = 'video'.
+//
+// Reward crediting reuses users.earning_balance (the same wallet every
+// other earning feature on this site already uses) -- no separate
+// wallets/wallet_transactions tables, so there's only ever one place a
+// user's balance lives.
+//
+// ad_views is new (nothing already like it exists): one row per rewarded
+// view, used for the 24h-per-user-per-ad dedup check and as an audit trail.
+Route::get('/system-add-reels-video-ads/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'ad_type')) {
+        \Illuminate\Support\Facades\Schema::table('advertisements', function ($table) {
+            $table->string('ad_type', 20)->default('banner')->after('id');
+            $table->string('video_path')->nullable()->after('image');
+            $table->string('thumbnail_path')->nullable()->after('video_path');
+            // Reward economics -- only meaningful when ad_type = 'video'.
+            // The existing banner system's duration/cost/exp_date fields
+            // are left completely alone.
+            $table->decimal('reward_per_view', 10, 4)->default(0)->after('cost');
+            $table->decimal('cost_per_view', 10, 4)->default(0)->after('reward_per_view');
+            $table->unsignedInteger('min_watch_seconds')->default(5)->after('cost_per_view');
+            $table->decimal('budget_total', 10, 2)->default(0)->after('min_watch_seconds');
+            $table->decimal('budget_spent', 10, 2)->default(0)->after('budget_total');
+            $table->unsignedInteger('total_rewarded_views')->default(0)->after('budget_spent');
+        });
+        $log[] = 'Added ad_type/video/reward/budget columns to advertisements.';
+    } else {
+        $log[] = 'advertisements video-ad columns already exist.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('ad_views')) {
+        \Illuminate\Support\Facades\Schema::create('ad_views', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('ad_id');
+            $table->unsignedInteger('watched_seconds')->default(0);
+            $table->decimal('reward_amount', 10, 4)->default(0);
+            $table->string('ip_address', 45)->nullable();
+            $table->timestamps();
+            $table->index(['user_id', 'ad_id']);
+            $table->index('ad_id');
+        });
+        $log[] = 'Created ad_views table.';
+    } else {
+        $log[] = 'ad_views table already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});

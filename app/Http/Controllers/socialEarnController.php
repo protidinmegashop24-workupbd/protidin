@@ -539,6 +539,12 @@ class socialEarnController extends Controller
             // Product posts need their own uploaded image (it's a real
             // product listing); Article/Q&A keeps its image optional.
             'post_image'   => $isProductPost ? 'required|image|mimes:jpg,jpeg,png,webp|max:4096' : 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            // Article/Q&A only -- Product's own media is its (required)
+            // image, not a video. This host's PHP upload limits are fairly
+            // tight (see the client-side compressImageFile() comment on
+            // photos) -- 50MB is a starting point, lower it if uploads
+            // start failing with a generic connection-reset error.
+            'post_video'   => (!$isProductPost) ? 'nullable|mimes:mp4,mov,webm|max:51200' : 'prohibited',
             // A link is mandatory -- this feature exists specifically so
             // users can post their own affiliate/site link for a backlink,
             // so a post without one defeats the point.
@@ -600,6 +606,26 @@ class socialEarnController extends Controller
             $imagePath = "uploads/feedposts/{$dateFolder}/{$fileName}";
         }
 
+        // Video upload: the composer's file input, JS preview, and the
+        // feedposts.video column + display templates already existed --
+        // this was the missing piece that actually saves the file.
+        $videoPath = null;
+        if ($request->hasFile('post_video')) {
+            $video = $request->file('post_video');
+            $dateFolder = Carbon::now()->format('Y-m-d');
+            $uploadPath = "uploads/feedposts/{$dateFolder}";
+
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+
+            $extension = $video->getClientOriginalExtension();
+            $fileName = 'feed_video_' . time() . '_' . Str::random(6) . '.' . $extension;
+            $video->move($uploadPath, $fileName);
+
+            $videoPath = "uploads/feedposts/{$dateFolder}/{$fileName}";
+        }
+
         // Post create with new Fetch fields
         $postData = [
             // Product's caption is optional -- the column itself has never
@@ -614,6 +640,7 @@ class socialEarnController extends Controller
             'aiRating'         => 0,
             'status'           => 'approved',
             'image'            => $imagePath,
+            'video'            => $videoPath,
             'totalUserEarn'    => 0,
             'totalOwnerEarn'   => 0,
             'likes'            => 0,
