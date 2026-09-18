@@ -1426,6 +1426,64 @@ if (!function_exists('pay_referral_milestones')) {
     }
 }
 
+if (!function_exists('claim_daily_login_bonus')) {
+    // Pays today's daily-login bonus to a user, once, the first time they
+    // load the dashboard on a given calendar day -- but only once their
+    // homepage review has been admin-approved (site_reviews.status =
+    // 'approved'); submitting a review alone does not start the bonus.
+    // The payout amount rises with the admin-editable
+    // daily_login_bonus_tiers schedule (day 1, day 2, ... day 15); day
+    // numbers past the last configured tier keep being paid at that last
+    // tier's amount, so the bonus never silently stops.
+    function claim_daily_login_bonus(\App\Models\User $user)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_claims')) {
+            return;
+        }
+
+        $review = \App\Models\SiteReview::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->first();
+
+        if (!$review) {
+            return;
+        }
+
+        $today = now()->toDateString();
+
+        $alreadyClaimedToday = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+            ->where('claim_date', $today)
+            ->exists();
+
+        if ($alreadyClaimedToday) {
+            return;
+        }
+
+        $claimedDaysCount = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)->count();
+        $dayNumber = $claimedDaysCount + 1;
+
+        $tier = \App\Models\DailyLoginBonusTier::where('day_number', $dayNumber)->first();
+        if (!$tier) {
+            // Past the configured schedule -- keep paying the last tier's
+            // amount instead of stopping the bonus outright.
+            $tier = \App\Models\DailyLoginBonusTier::orderByDesc('day_number')->first();
+        }
+
+        if (!$tier) {
+            return;
+        }
+
+        $user->earning_balance = (float) $user->earning_balance + (float) $tier->amount;
+        $user->save();
+
+        \App\Models\DailyLoginBonusClaim::create([
+            'user_id' => $user->id,
+            'claim_date' => $today,
+            'day_number' => $dayNumber,
+            'amount' => $tier->amount,
+        ]);
+    }
+}
 
 
 

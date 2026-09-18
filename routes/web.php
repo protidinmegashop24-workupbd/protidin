@@ -13,6 +13,7 @@ use App\Http\Controllers\Backend\SurveyProviderController as AdminSurveyProvider
 use App\Http\Controllers\Backend\OfferWallController as AdminOfferWallController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
+use App\Http\Controllers\Backend\SiteReviewController;
 use App\Http\Controllers\Backend\LotteryController;
 use App\Http\Controllers\Backend\ServiceItemController;
 use App\Http\Controllers\Backend\PolicyController;
@@ -79,6 +80,7 @@ use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserJobWorkController;
 use App\Http\Controllers\User\BoostPackageController;
 use App\Http\Controllers\User\UserReferralController;
+use App\Http\Controllers\User\UserReviewController;
 use App\Http\Controllers\User\UserSpinController;
 use App\Http\Controllers\User\UserSupportTicketController;
 use App\Http\Controllers\User\UserInvestmentController;
@@ -426,6 +428,14 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'a
     Route::post('web-script-store', [WebScriptController::class, 'store'])->name('web-script.store');
     Route::post('web-script-update-{id}', [WebScriptController::class, 'update'])->name('web-script.update');
     Route::get('web-script-delete-{id}', [WebScriptController::class, 'destroy'])->name('web-script.delete');
+
+    Route::get('reviews', [SiteReviewController::class, 'index'])->name('reviews');
+    Route::get('reviews-approved', [SiteReviewController::class, 'approvedList'])->name('reviews-approved');
+    Route::get('reviews-rejected', [SiteReviewController::class, 'rejectedList'])->name('reviews-rejected');
+    Route::get('review-approve-{id}', [SiteReviewController::class, 'approve'])->name('review-approve');
+    Route::get('review-reject-{id}', [SiteReviewController::class, 'reject'])->name('review-reject');
+    Route::get('reviews-bonus-tiers', [SiteReviewController::class, 'bonusTiers'])->name('reviews-bonus-tiers');
+    Route::post('reviews-bonus-tiers-update', [SiteReviewController::class, 'updateBonusTiers'])->name('reviews-bonus-tiers.update');
 
     Route::get('lottery', [LotteryController::class, 'index'])->name('lottery');
     Route::post('lottery-store', [LotteryController::class, 'store'])->name('lottery.store');
@@ -780,6 +790,9 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
 
     Route::get('referral', [UserReferralController::class, 'index'])->name('referral');
     Route::get('referral-user', [UserReferralController::class, 'view_list'])->name('referral-user');
+
+    Route::get('review', [UserReviewController::class, 'index'])->name('review');
+    Route::post('review-store', [UserReviewController::class, 'store'])->name('review.store');
 
     /*
     |--------------------------------------------------------------------------
@@ -2536,6 +2549,80 @@ Route::get('/system-add-instant-verify-columns/{token}', function ($token) {
         $log[] = 'Added instant_verify_referral_commission column to websites.';
     } else {
         $log[] = 'websites.instant_verify_referral_commission already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: adds the homepage review/testimonial system plus the daily
+// login bonus it unlocks. Creates:
+//  - site_reviews: one row per user (star rating + comment), starts
+//    'pending', only shown on the homepage once an admin sets it 'approved'.
+//  - daily_login_bonus_tiers: the admin-editable day-1..day-15 payout
+//    schedule (seeded 0.005 rising by 0.001/day to 0.019 on day 15; the
+//    day-15 amount keeps being paid for every day after that).
+//  - daily_login_bonus_claims: one row per user per calendar day they've
+//    actually been paid, so the bonus can never be paid twice for the same
+//    day no matter how many times the dashboard loads.
+Route::get('/system-add-site-reviews/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('site_reviews')) {
+        \Illuminate\Support\Facades\Schema::create('site_reviews', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id')->unique();
+            $table->unsignedTinyInteger('rating');
+            $table->text('comment');
+            $table->string('status', 20)->default('pending'); // pending, approved, rejected
+            $table->timestamp('approved_at')->nullable();
+            $table->timestamps();
+        });
+        $log[] = 'Created site_reviews table.';
+    } else {
+        $log[] = 'site_reviews table already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_tiers')) {
+        \Illuminate\Support\Facades\Schema::create('daily_login_bonus_tiers', function ($table) {
+            $table->id();
+            $table->unsignedInteger('day_number')->unique();
+            $table->decimal('amount', 10, 4);
+            $table->timestamps();
+        });
+        $log[] = 'Created daily_login_bonus_tiers table.';
+    } else {
+        $log[] = 'daily_login_bonus_tiers table already exists.';
+    }
+
+    if (\App\Models\DailyLoginBonusTier::count() === 0) {
+        for ($day = 1; $day <= 15; $day++) {
+            \App\Models\DailyLoginBonusTier::create([
+                'day_number' => $day,
+                'amount' => round(0.004 + ($day * 0.001), 4),
+            ]);
+        }
+        $log[] = 'Seeded default 15-day bonus schedule (0.005 to 0.019).';
+    } else {
+        $log[] = 'Bonus tiers already seeded -- left as-is.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_claims')) {
+        \Illuminate\Support\Facades\Schema::create('daily_login_bonus_claims', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->date('claim_date');
+            $table->unsignedInteger('day_number');
+            $table->decimal('amount', 10, 4);
+            $table->timestamps();
+            $table->unique(['user_id', 'claim_date']);
+        });
+        $log[] = 'Created daily_login_bonus_claims table.';
+    } else {
+        $log[] = 'daily_login_bonus_claims table already exists.';
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);

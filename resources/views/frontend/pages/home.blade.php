@@ -957,6 +957,36 @@ l.parentNode.insertBefore(s, l);
     </div>
 </section>
 
+@if(isset($reviews) && $reviews->count() > 0)
+<section class="wu-section wu-soft-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="wu-badge">Reviews</span>
+            <h2 class="wu-section-title">What Our Users Say</h2>
+            <p class="wu-section-text">
+                Real ratings and comments from real Protidin Mega Earn users.
+            </p>
+        </div>
+
+        <div class="row g-4">
+            @foreach($reviews as $review)
+                <div class="col-lg-4 col-md-6">
+                    <div class="wu-service-card" style="height:100%;">
+                        <div style="color:#f5b301; font-size:18px; margin-bottom:10px;">
+                            @for($i = 1; $i <= 5; $i++)
+                                <i class="fa{{ $i <= $review->rating ? 's' : 'r' }} fa-star"></i>
+                            @endfor
+                        </div>
+                        <p style="color:#475569; line-height:1.7;">{{ $review->comment }}</p>
+                        <h4 style="margin-top:12px; margin-bottom:0;">{{ $review->user->name ?? 'Protidin Mega Earn User' }}</h4>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
+
 <section class="wu-cta">
     <div class="container">
         <div class="wu-cta-box">

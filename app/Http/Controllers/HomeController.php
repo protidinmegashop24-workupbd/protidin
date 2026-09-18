@@ -77,7 +77,17 @@ class HomeController extends Controller
             ->take(8)
             ->get(['withdraws.amount', 'withdraws.charge', 'withdraws.account_type', 'withdraws.account_no', 'withdraws.updated_at', 'users.name']);
 
-        return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs', 'recentPayouts'));
+        // User-submitted, admin-approved star rating + comment -- shown as
+        // testimonials near the bottom of the homepage.
+        $reviews = \Illuminate\Support\Facades\Schema::hasTable('site_reviews')
+            ? \App\Models\SiteReview::with('user')
+                ->where('status', 'approved')
+                ->latest('approved_at')
+                ->take(9)
+                ->get()
+            : collect();
+
+        return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs', 'recentPayouts', 'reviews'));
     }
 
     public function refreshCaptcha()

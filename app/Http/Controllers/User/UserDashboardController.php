@@ -38,8 +38,11 @@ class UserDashboardController extends Controller
     {
         $userId = Auth::user()->id;
         $userInfo = User::find(Auth::user()->id);
+
+        claim_daily_login_bonus($userInfo);
+
         $deposits = Deposit::where(['user_id' => $userId, 'approval' => 0])->get();
-        
+
         foreach($deposits as $deposit) {
             $data = UddoktaPay::verify_payment($deposit->invoice_id);
             if (isset($data['status']) && $data['status'] == 'COMPLETED') {
