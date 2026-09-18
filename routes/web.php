@@ -2502,3 +2502,41 @@ Route::get('/system-add-referral-milestones/{token}', function ($token) {
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });
+
+// One-off: adds the instant_verify_fee and instant_verify_referral_commission
+// columns to websites -- instant_verify_fee was already being READ by
+// instant_verify_my_account() (Instant Verify feature) but never actually
+// existed as a column on the live site, so the fee silently computed to 0
+// and the Website Settings save failed with "Unknown column" the moment we
+// wired the admin form to it.
+Route::get('/system-add-instant-verify-columns/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('websites')) {
+        return response()->json(['error' => 'No websites table found.'], 404, [], JSON_PRETTY_PRINT);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('websites', 'instant_verify_fee')) {
+        \Illuminate\Support\Facades\Schema::table('websites', function ($table) {
+            $table->decimal('instant_verify_fee', 10, 2)->default(0);
+        });
+        $log[] = 'Added instant_verify_fee column to websites.';
+    } else {
+        $log[] = 'websites.instant_verify_fee already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('websites', 'instant_verify_referral_commission')) {
+        \Illuminate\Support\Facades\Schema::table('websites', function ($table) {
+            $table->decimal('instant_verify_referral_commission', 5, 2)->default(0);
+        });
+        $log[] = 'Added instant_verify_referral_commission column to websites.';
+    } else {
+        $log[] = 'websites.instant_verify_referral_commission already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
