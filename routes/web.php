@@ -2631,3 +2631,30 @@ Route::get('/system-add-site-reviews/{token}', function ($token) {
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });
+
+// One-off, READ-ONLY report: lists accounts that are is_verified = 1 but
+// never went through the NID/KYC review path (kyc_status is empty). Every
+// one of these was verified through Instant Verify -- and before the
+// instant_verify_fee column existed, that fee always computed to 0, so
+// every one of these accounts got verified for free by an accident of the
+// missing column, not a deliberate free-verification policy. This makes
+// no changes -- it only lists candidates so a human can decide what (if
+// anything) to do about them.
+Route::get('/system-report-free-instant-verified-users/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $users = \App\Models\User::where('is_verified', 1)
+        ->where(function ($q) {
+            $q->whereNull('kyc_status')->orWhere('kyc_status', '');
+        })
+        ->orderBy('created_at')
+        ->get(['id', 'code', 'name', 'email', 'created_at']);
+
+    return response()->json([
+        'note' => 'These accounts are is_verified = 1 with no KYC/NID submission on file -- verified via Instant Verify while its fee was broken (always $0). No changes have been made.',
+        'total_count' => $users->count(),
+        'users' => $users,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
