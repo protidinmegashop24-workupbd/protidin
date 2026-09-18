@@ -174,24 +174,6 @@
                     </a>
                 </li>
 
-                <li class="@if(Route::is('user.reels')) active @endif">
-                    <a
-                        href="
-                            @if(Auth::user()->status == 0)
-                                javascript:;
-                            @else
-                                {{ route('user.reels') }}
-                            @endif"
-                        @if(Auth::user()->status == 0)
-                            onclick="return alert('Your Account is blocked! {{ Auth::user()->reason }}. Please Contact with authority!')"
-                        @endif
-                        class=" waves-effect">
-
-                        <i class="fas fa-play-circle"></i>
-                        <span>Reels</span>
-                    </a>
-                </li>
-
 <li>
     <a href="javascript: void(0);" class="has-arrow waves-effect">
         <i class="fas fa-briefcase"></i>

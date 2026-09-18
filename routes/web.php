@@ -707,16 +707,6 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('/feed-post-dashboard', [socialEarnController::class, 'postFeedDashboard'])->name('postFeedDashboard');
     Route::get('/feed-post-list', [socialEarnController::class, 'myPostFeedList'])->name('myPostFeedList');
 
-    // Reels -- a separate Facebook-style vertical video feed, not part of
-    // the Article/Q&A/Product post composer. Still backed by the same
-    // feedposts table (postType = 'reel'), so likes/comments/shares/views
-    // all reuse the routes above unchanged.
-    Route::get('/reels', [socialEarnController::class, 'reelsFeed'])->name('reels');
-    Route::post('/reels-store', [socialEarnController::class, 'reelStore'])->name('reelStore');
-    // Rate-limited: reward crediting endpoint, so one user/IP spamming
-    // requests can't hammer the DB transaction over and over.
-    Route::post('/reels-ad-view', [socialEarnController::class, 'reelAdView'])->name('reelAdView')->middleware('throttle:30,1');
-
     Route::get('/spin', [UserSpinController::class, 'index'])->name('spin');
     Route::post('claim-share-bonus', [UserProfileController::class, 'claim_share_bonus'])->name('claim-share-bonus');
 
