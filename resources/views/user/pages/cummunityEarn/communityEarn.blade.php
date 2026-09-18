@@ -743,7 +743,7 @@
                         name="post_content"
                         id="post-input"
                         class="post-textarea"
-                        placeholder="Write your post here... (আর্টিকেল/Q&amp;A এর জন্য কমপক্ষে ১০০ শব্দ আবশ্যক)"
+                        placeholder="Write your post here... (আর্টিকেল/Q&amp;A এর জন্য কমপক্ষে ২০ শব্দ আবশ্যক)"
                         oninput="handleInput(this)"
                         required></textarea>
 
@@ -868,7 +868,7 @@
                     @php
                         $isProductPost = ($post->postType ?? 'article') === 'product';
                         $postTitle = communityPostTitleEnabled() ? $post->title : null;
-                        $teaser = (!$isProductPost) ? community_teaser($post->postContent, 70) : null;
+                        $teaser = (!$isProductPost) ? community_teaser($post->postContent, 15) : null;
                     @endphp
                     <div class="post-body">
                         <div class="post-main-content">
@@ -1253,9 +1253,9 @@
         const counter = document.getElementById('word-count');
         const suffix = document.getElementById('word-count-suffix');
         if (typeof currentPostType !== 'undefined' && currentPostType === 'article') {
-            counter.innerText = words + ' / 100';
-            counter.style.color = words >= 100 ? '#198754' : '#dc3545';
-            if (suffix) suffix.innerText = ' শব্দ (কমপক্ষে ১০০ আবশ্যক)';
+            counter.innerText = words + ' / 20';
+            counter.style.color = words >= 20 ? '#198754' : '#dc3545';
+            if (suffix) suffix.innerText = ' শব্দ (কমপক্ষে ২০ আবশ্যক)';
         } else {
             counter.innerText = words;
             counter.style.color = '';
@@ -1415,7 +1415,7 @@
         if (postInput) {
             postInput.placeholder = isProduct
                 ? 'প্রোডাক্ট নিয়ে ছোট বিবরণ (ঐচ্ছিক)'
-                : 'Write your post here... (আর্টিকেল/Q&A এর জন্য কমপক্ষে ১০০ শব্দ আবশ্যক)';
+                : 'Write your post here... (আর্টিকেল/Q&A এর জন্য কমপক্ষে ২০ শব্দ আবশ্যক)';
             postInput.required = !isProduct;
         }
 
@@ -1518,8 +1518,8 @@
         if (currentPostType === 'article') {
             const text = document.getElementById('post-input').value.trim();
             const words = text ? text.split(/\s+/).length : 0;
-            if (words < 100) {
-                toastr.error('বিবরণ কমপক্ষে ১০০ শব্দ হতে হবে (বর্তমানে ' + words + ' শব্দ)।');
+            if (words < 20) {
+                toastr.error('বিবরণ কমপক্ষে ২০ শব্দ হতে হবে (বর্তমানে ' + words + ' শব্দ)।');
                 return;
             }
         }
