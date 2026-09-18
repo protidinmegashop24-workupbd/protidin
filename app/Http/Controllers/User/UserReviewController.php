@@ -27,7 +27,12 @@ class UserReviewController extends Controller
     {
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'required|string|min:10|max:1000',
+            'comment' => ['required', 'string', 'max:1000', function ($attribute, $value, $fail) {
+                $wordCount = count(array_filter(preg_split('/\s+/u', trim($value))));
+                if ($wordCount < 10) {
+                    $fail('আপনার কমেন্টে কমপক্ষে ১০টি শব্দ থাকতে হবে।');
+                }
+            }],
         ]);
 
         $review = SiteReview::where('user_id', Auth::id())->first();

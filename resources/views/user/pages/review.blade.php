@@ -64,7 +64,11 @@
     @endif
 
     @if(!$review || $review->status != 'approved')
-        <form action="{{ route('user.review.store') }}" method="POST">
+        @error('comment')
+            <div class="alert alert-danger">{{ $message }}</div>
+        @enderror
+
+        <form action="{{ route('user.review.store') }}" method="POST" id="rv-review-form">
             @csrf
             <div class="form-group">
                 <label>Rating</label><br>
@@ -77,11 +81,12 @@
             </div>
 
             <div class="form-group">
-                <label>Your Comment</label>
-                <textarea name="comment" class="form-control" rows="4" minlength="10" maxlength="1000" required>{{ old('comment', $review->comment ?? '') }}</textarea>
+                <label>Your Comment (কমপক্ষে ১০ শব্দ লিখতে হবে)</label>
+                <textarea name="comment" class="form-control" rows="4" maxlength="1000" id="rv-comment-input" required>{{ old('comment', $review->comment ?? '') }}</textarea>
+                <small id="rv-word-count" class="form-text text-muted">0 / 10 শব্দ লেখা হয়েছে</small>
             </div>
 
-            <button type="submit" class="btn btn-success">Submit Review</button>
+            <button type="submit" class="btn btn-success" id="rv-submit-btn" disabled>Submit Review</button>
         </form>
     @else
         <p><strong>Rating:</strong>
@@ -112,6 +117,28 @@
 <script>
     var stars = document.querySelectorAll('#rv-star-input i');
     var ratingInput = document.getElementById('rv-rating-value');
+    var commentInput = document.getElementById('rv-comment-input');
+    var wordCountLabel = document.getElementById('rv-word-count');
+    var submitBtn = document.getElementById('rv-submit-btn');
+
+    function countWords(text) {
+        var words = text.trim().split(/\s+/).filter(function (w) { return w.length > 0; });
+        return words.length;
+    }
+
+    function updateSubmitState() {
+        if (!submitBtn) return;
+        var wordCount = commentInput ? countWords(commentInput.value) : 0;
+        var hasRating = ratingInput && parseInt(ratingInput.value, 10) > 0;
+
+        if (wordCountLabel) {
+            wordCountLabel.textContent = wordCount + ' / 10 শব্দ লেখা হয়েছে';
+            wordCountLabel.style.color = wordCount >= 10 ? '#166534' : '#94a3b8';
+        }
+
+        submitBtn.disabled = !(wordCount >= 10 && hasRating);
+    }
+
     if (stars.length) {
         stars.forEach(function (star) {
             star.addEventListener('click', function () {
@@ -127,8 +154,15 @@
                         s.classList.add('far');
                     }
                 });
+                updateSubmitState();
             });
         });
     }
+
+    if (commentInput) {
+        commentInput.addEventListener('input', updateSubmitState);
+    }
+
+    updateSubmitState();
 </script>
 @endsection
