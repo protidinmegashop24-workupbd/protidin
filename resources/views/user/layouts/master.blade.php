@@ -63,6 +63,18 @@
 </head>
 
 <body data-sidebar="dark">
+    @auth
+    <script>
+        // Lets any widget pasted into Website Settings -> "Inside Body Tag
+        // Code" (e.g. the WhatsApp chat button) identify who is logged in,
+        // without that widget needing its own auth/session logic.
+        window.PROTIDIN_CURRENT_USER = {
+            id: {{ Auth::user()->id }},
+            name: @json(Auth::user()->name),
+            email: @json(Auth::user()->email)
+        };
+    </script>
+    @endauth
     {!! site_info()->after_start_body_tag !!}
     <div id="layout-wrapper">
         @include('user.layouts.partials.header')
