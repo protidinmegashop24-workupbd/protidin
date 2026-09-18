@@ -1254,28 +1254,28 @@ if (!function_exists('credit_referral_deposit_commission')) {
             return;
         }
 
-        $website = \App\Models\Admin\Website::latest()->first();
-        if (!$website || $website->referral_deposit_commission <= 0) {
-            return;
-        }
-
         $referrer = \App\Models\User::find($depositor->rfered_by);
         if (!$referrer) {
             return;
         }
 
-        $commission = ($website->referral_deposit_commission * $depositAmount) / 100;
+        $website = \App\Models\Admin\Website::latest()->first();
+        if ($website && $website->referral_deposit_commission > 0) {
+            $commission = ($website->referral_deposit_commission * $depositAmount) / 100;
 
-        $referrer->deposit_balance = $referrer->deposit_balance + $commission;
-        $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
-        $referrer->save();
+            $referrer->deposit_balance = $referrer->deposit_balance + $commission;
+            $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
+            $referrer->save();
 
-        \App\Models\ReferralCommissionLog::create([
-            'referrer_id' => $referrer->id,
-            'source_user_id' => $depositor->id,
-            'type' => 'deposit',
-            'amount' => $commission,
-        ]);
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $depositor->id,
+                'type' => 'deposit',
+                'amount' => $commission,
+            ]);
+        }
+
+        pay_referral_milestones($referrer);
     }
 }
 
@@ -1291,28 +1291,28 @@ if (!function_exists('credit_referral_earning_commission')) {
             return;
         }
 
-        $website = \App\Models\Admin\Website::latest()->first();
-        if (!$website || $website->referral_earning_commission <= 0) {
-            return;
-        }
-
         $referrer = \App\Models\User::find($earner->rfered_by);
         if (!$referrer) {
             return;
         }
 
-        $commission = ($website->referral_earning_commission * $earnedAmount) / 100;
+        $website = \App\Models\Admin\Website::latest()->first();
+        if ($website && $website->referral_earning_commission > 0) {
+            $commission = ($website->referral_earning_commission * $earnedAmount) / 100;
 
-        $referrer->earning_balance = $referrer->earning_balance + $commission;
-        $referrer->earning_commision_from_refer = $referrer->earning_commision_from_refer + $commission;
-        $referrer->save();
+            $referrer->earning_balance = $referrer->earning_balance + $commission;
+            $referrer->earning_commision_from_refer = $referrer->earning_commision_from_refer + $commission;
+            $referrer->save();
 
-        \App\Models\ReferralCommissionLog::create([
-            'referrer_id' => $referrer->id,
-            'source_user_id' => $earner->id,
-            'type' => 'earning',
-            'amount' => $commission,
-        ]);
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $earner->id,
+                'type' => 'earning',
+                'amount' => $commission,
+            ]);
+        }
+
+        pay_referral_milestones($referrer);
     }
 }
 
@@ -1352,7 +1352,79 @@ if (!function_exists('reverse_referral_earning_commission')) {
     }
 }
 
+if (!function_exists('credit_referral_instant_verify_commission')) {
+    // Pays the referrer a commission when their referred user pays the
+    // Instant Verify fee to skip NID/KYC review. The
+    // instant_verify_referral_commission % field has existed on Website
+    // Settings for a while, but nothing ever read it -- the fee was taken
+    // from the user with no referral commission paid at all.
+    function credit_referral_instant_verify_commission(\App\Models\User $verifiedUser, float $fee)
+    {
+        if (!$verifiedUser->rfered_by) {
+            return;
+        }
 
+        $referrer = \App\Models\User::find($verifiedUser->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if ($website && $website->instant_verify_referral_commission > 0 && $fee > 0) {
+            $commission = ($website->instant_verify_referral_commission * $fee) / 100;
+
+            $referrer->deposit_balance = $referrer->deposit_balance + $commission;
+            $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
+            $referrer->save();
+
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $verifiedUser->id,
+                'type' => 'deposit',
+                'amount' => $commission,
+            ]);
+        }
+
+        pay_referral_milestones($referrer);
+    }
+}
+
+if (!function_exists('pay_referral_milestones')) {
+    // Pays a one-time bonus to a referrer the first time their number of
+    // ACTIVE referrals (referral_activated = 1) reaches a configured
+    // milestone target (see referral_milestones, admin-editable, defaults
+    // 5/10/25/50). Payouts are recorded in referral_milestone_payouts so
+    // each milestone is only ever paid once per referrer no matter how
+    // many times this runs.
+    function pay_referral_milestones(\App\Models\User $referrer)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('referral_milestones')) {
+            return;
+        }
+
+        $activeCount = \App\Models\User::where('rfered_by', $referrer->id)
+            ->where('referral_activated', 1)
+            ->count();
+
+        $alreadyPaidMilestoneIds = \App\Models\ReferralMilestonePayout::where('user_id', $referrer->id)
+            ->pluck('milestone_id');
+
+        $qualifying = \App\Models\ReferralMilestone::where('referral_count', '<=', $activeCount)
+            ->whereNotIn('id', $alreadyPaidMilestoneIds)
+            ->get();
+
+        foreach ($qualifying as $milestone) {
+            $referrer->earning_balance = (float) $referrer->earning_balance + (float) $milestone->reward_amount;
+            $referrer->save();
+
+            \App\Models\ReferralMilestonePayout::create([
+                'user_id' => $referrer->id,
+                'milestone_id' => $milestone->id,
+                'amount' => $milestone->reward_amount,
+            ]);
+        }
+    }
+}
 
 
 

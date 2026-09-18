@@ -79,6 +79,8 @@ class VerifyController extends Controller
             $u->referral_activated = 1;
             $u->save();
 
+            credit_referral_earning_commission($u, $earned);
+
             // ✅ mark submission used
             $sub->code_status    = 'used';
             $sub->verify_status  = 'verified';

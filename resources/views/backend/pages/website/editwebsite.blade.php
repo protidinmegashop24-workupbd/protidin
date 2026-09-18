@@ -79,8 +79,8 @@
                     </div>
 
                     <div class="form-group col-lg-3 col-md-3 col-12">
-                        <label for="instant_verify_cost">Instant Verify Cost</label>
-                        <input name="instant_verify_cost" type="text" class="form-control" id="instant_verify_cost" placeholder="Cost"  value="{{$website->instant_verify_cost}}" >
+                        <label for="instant_verify_fee">Instant Verify Cost</label>
+                        <input name="instant_verify_fee" type="text" class="form-control" id="instant_verify_fee" placeholder="Cost"  value="{{$website->instant_verify_fee}}" >
                     </div>
 
                     <div class="form-group col-lg-3 col-md-3 col-12">

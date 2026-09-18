@@ -322,7 +322,10 @@ class UserDashboardController extends Controller
         }
 
         $user->is_verified = 1;
+        $user->referral_activated = 1;
         $user->save();
+
+        credit_referral_instant_verify_commission($user, $fee);
 
         return redirect()->back()->with('success', 'Your account has been verified successfully!');
     }

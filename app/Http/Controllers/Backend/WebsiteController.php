@@ -183,6 +183,8 @@ class WebsiteController extends Controller
         }
         $data['referral_deposit_commission'] = $request->referral_deposit_commission;
         $data['referral_earning_commission'] = $request->referral_earning_commission;
+        $data['instant_verify_fee'] = $request->instant_verify_fee;
+        $data['instant_verify_referral_commission'] = $request->instant_verify_referral_commission;
         $data['referral_notice'] = $request->referral_notice;
         $data['marketplace_commission_percent'] = $request->marketplace_commission_percent;
         $data['marketplace_referral_bonus_percent'] = $request->marketplace_referral_bonus_percent;

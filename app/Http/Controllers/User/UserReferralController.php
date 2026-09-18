@@ -5,8 +5,11 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ReferralCommissionLog;
+use App\Models\ReferralMilestone;
+use App\Models\ReferralMilestonePayout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class UserReferralController extends Controller
 {
@@ -33,22 +36,91 @@ class UserReferralController extends Controller
         $depositCommission = (float) $user->deposit_commision_from_refer;
         $earningCommission = (float) $user->earning_commision_from_refer;
 
-        // Activation bonus, marketplace bonus, and milestone rewards aren't
-        // built yet -- show honest zeros/empty state instead of crashing or
-        // making up numbers.
-        $activationBonus = 0;
-        $milestoneBonus = 0;
-        $totalReferralIncome = $depositCommission + $earningCommission + $activationBonus + $milestoneBonus;
+        $marketplaceBonus = Schema::hasTable('referral_commission_logs')
+            ? (float) ReferralCommissionLog::where('referrer_id', $user->id)
+                ->where('type', 'marketplace')
+                ->sum('amount')
+            : 0;
+
+        $milestoneBonus = Schema::hasTable('referral_milestone_payouts')
+            ? (float) ReferralMilestonePayout::where('user_id', $user->id)->sum('amount')
+            : 0;
+
+        $totalReferralIncome = $depositCommission + $earningCommission + $marketplaceBonus + $milestoneBonus;
 
         $nextMilestoneTarget = null;
         $nextMilestoneReward = 0;
         $progressPercent = 0;
 
+        if (Schema::hasTable('referral_milestones')) {
+            $paidMilestoneIds = ReferralMilestonePayout::where('user_id', $user->id)->pluck('milestone_id');
+            $nextMilestone = ReferralMilestone::whereNotIn('id', $paidMilestoneIds)
+                ->orderBy('referral_count')
+                ->first();
+
+            if ($nextMilestone) {
+                $nextMilestoneTarget = $nextMilestone->referral_count;
+                $nextMilestoneReward = (float) $nextMilestone->reward_amount;
+                $progressPercent = $nextMilestoneTarget > 0
+                    ? min(100, (int) round(($activeReferrals / $nextMilestoneTarget) * 100))
+                    : 0;
+            }
+        }
+
         $recentRewards = collect();
+
+        if (Schema::hasTable('referral_commission_logs')) {
+            $commissionLogs = ReferralCommissionLog::where('referrer_id', $user->id)
+                ->where('amount', '>', 0)
+                ->latest()
+                ->take(10)
+                ->get();
+
+            $sourceNames = User::whereIn('id', $commissionLogs->pluck('source_user_id')->unique())
+                ->pluck('name', 'id');
+
+            $labelByType = [
+                'deposit' => 'deposit',
+                'earning' => 'earning',
+                'marketplace' => 'marketplace order',
+            ];
+
+            $recentRewards = $recentRewards->concat($commissionLogs->map(function ($log) use ($sourceNames, $labelByType) {
+                $name = $sourceNames[$log->source_user_id] ?? 'a referred user';
+                $label = $labelByType[$log->type] ?? $log->type;
+                return (object) [
+                    'amount' => $log->amount,
+                    'type' => $log->type,
+                    'note' => "From {$name}'s {$label}",
+                    'created_at' => $log->created_at,
+                ];
+            }));
+        }
+
+        if (Schema::hasTable('referral_milestone_payouts')) {
+            $milestonePayouts = ReferralMilestonePayout::where('user_id', $user->id)
+                ->with('milestone')
+                ->latest()
+                ->take(10)
+                ->get();
+
+            $recentRewards = $recentRewards->concat($milestonePayouts->map(function ($payout) {
+                return (object) [
+                    'amount' => $payout->amount,
+                    'type' => 'milestone',
+                    'note' => $payout->milestone
+                        ? "{$payout->milestone->referral_count} active referrals milestone reached"
+                        : 'Milestone reward',
+                    'created_at' => $payout->created_at,
+                ];
+            }));
+        }
+
+        $recentRewards = $recentRewards->sortByDesc('created_at')->take(10)->values();
 
         return view('user.pages.referral', compact(
             'title', 'referralLink', 'totalReferrals', 'activeReferrals',
-            'depositCommission', 'earningCommission', 'activationBonus', 'milestoneBonus',
+            'depositCommission', 'earningCommission', 'marketplaceBonus', 'milestoneBonus',
             'totalReferralIncome', 'nextMilestoneTarget', 'nextMilestoneReward', 'progressPercent',
             'recentRewards'
         ));

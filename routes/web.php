@@ -2433,7 +2433,7 @@ Route::get('/system-add-referral-commission-log/{token}', function ($token) {
             $table->id();
             $table->unsignedBigInteger('referrer_id');
             $table->unsignedBigInteger('source_user_id');
-            $table->string('type', 20); // 'deposit' or 'earning'
+            $table->string('type', 20); // 'deposit', 'earning', or 'marketplace'
             $table->decimal('amount', 14, 6);
             $table->timestamps();
             $table->index(['referrer_id', 'source_user_id']);
@@ -2441,6 +2441,63 @@ Route::get('/system-add-referral-commission-log/{token}', function ($token) {
         $log[] = 'Created referral_commission_logs table.';
     } else {
         $log[] = 'referral_commission_logs table already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: adds the Referral Milestone Bonus feature -- a one-time bonus
+// paid to a referrer the first time their number of ACTIVE referrals
+// reaches a configured target (5/10/25/50 by default). Creates
+// referral_milestones (the admin-editable target/reward pairs, seeded with
+// defaults) and referral_milestone_payouts (records which milestones have
+// already been paid to which referrer, so each is only ever paid once).
+Route::get('/system-add-referral-milestones/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('referral_milestones')) {
+        \Illuminate\Support\Facades\Schema::create('referral_milestones', function ($table) {
+            $table->id();
+            $table->unsignedInteger('referral_count')->unique();
+            $table->decimal('reward_amount', 10, 2);
+            $table->timestamps();
+        });
+        $log[] = 'Created referral_milestones table.';
+    } else {
+        $log[] = 'referral_milestones table already exists.';
+    }
+
+    if (\App\Models\ReferralMilestone::count() === 0) {
+        $defaults = [
+            ['referral_count' => 5, 'reward_amount' => 0.50],
+            ['referral_count' => 10, 'reward_amount' => 1.50],
+            ['referral_count' => 25, 'reward_amount' => 5.00],
+            ['referral_count' => 50, 'reward_amount' => 12.00],
+        ];
+        foreach ($defaults as $row) {
+            \App\Models\ReferralMilestone::create($row);
+        }
+        $log[] = 'Seeded default milestones (5/10/25/50 referrals).';
+    } else {
+        $log[] = 'Milestones already seeded -- left as-is.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('referral_milestone_payouts')) {
+        \Illuminate\Support\Facades\Schema::create('referral_milestone_payouts', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('milestone_id');
+            $table->decimal('amount', 10, 2);
+            $table->timestamps();
+            $table->unique(['user_id', 'milestone_id']);
+        });
+        $log[] = 'Created referral_milestone_payouts table.';
+    } else {
+        $log[] = 'referral_milestone_payouts table already exists.';
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);

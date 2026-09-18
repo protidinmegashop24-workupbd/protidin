@@ -1033,6 +1033,8 @@ class socialEarnController extends Controller
                 'amount' => $earnAmount,
             ]);
 
+            pay_referral_milestones($checkParent);
+
             return true;
         }
         return false;

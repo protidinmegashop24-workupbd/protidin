@@ -778,6 +778,8 @@ class UserJobController extends Controller
         $user->referral_activated = 1;
         $user->save();
 
+        credit_referral_earning_commission($user, (float) $job->ptc_each_earn);
+
         return 'Yes, you got the balance: $' . number_format($job->ptc_each_earn, 5);
     }
 }

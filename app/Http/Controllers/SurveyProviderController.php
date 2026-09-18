@@ -138,6 +138,8 @@ class SurveyProviderController extends Controller
                 $u->referral_activated = 1;
                 $u->save();
 
+                credit_referral_earning_commission($u, $amount);
+
                 $conversion->credited_at = now();
                 $conversion->save();
             });

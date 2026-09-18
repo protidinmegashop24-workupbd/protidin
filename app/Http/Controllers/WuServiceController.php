@@ -1411,6 +1411,13 @@ public function downloadProduct($orderId)
                 'referral_bonus',
                 'Marketplace referral bonus paid to user #' . $referrer->id
             );
+
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $order->buyer_id,
+                'type' => 'marketplace',
+                'amount' => $referralBonus,
+            ]);
         }
 
         // Admin commission was only ever logged in wu_escrow_logs, never

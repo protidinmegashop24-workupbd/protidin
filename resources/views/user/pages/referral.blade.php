@@ -115,7 +115,7 @@
     <div class="rf-hero">
         <div class="rf-title">{{ $title }}</div>
         <div class="rf-sub">
-            {{ referral_notice() }} Share your referral link and earn from deposits, earnings, activation bonuses, marketplace bonuses, and milestone rewards.
+            {{ referral_notice() }} Share your referral link and earn from deposits, earnings, marketplace bonuses, and milestone rewards.
         </div>
 
         <input type="hidden" value="{{ $referralLink }}" id="refer_link">
@@ -171,8 +171,8 @@
 
         <div class="col-md-6 col-xl-4 mb-4">
             <div class="rf-card">
-                <div class="rf-card-title">Activation + Marketplace Bonus</div>
-                <div class="rf-card-value">${{ number_format($activationBonus, 2) }}</div>
+                <div class="rf-card-title">Marketplace Bonus</div>
+                <div class="rf-card-value">${{ number_format($marketplaceBonus, 2) }}</div>
             </div>
         </div>
 
