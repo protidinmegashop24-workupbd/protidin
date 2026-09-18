@@ -191,6 +191,7 @@ class WebsiteController extends Controller
         $data['ad_one_code'] = $request->ad_one_code;
         $data['ad_two_code'] = $request->ad_two_code;
         $data['ad_blog_code'] = $request->ad_blog_code;
+        $data['after_start_body_tag'] = $request->after_start_body_tag;
         $data['meta_keyword'] = $request->meta_keyword;
         $data['meta_tag'] = $request->meta_tag;
         $data['email'] = $request->email;
