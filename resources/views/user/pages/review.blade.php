@@ -96,14 +96,14 @@
 @if($review && $review->status == 'approved')
 <div class="rv-bonus-box">
     <h4 style="font-weight:800; margin-bottom:10px;">Daily Login Bonus</h4>
-    <p style="margin-bottom:6px;">প্রতিদিন সাইটে লগইন করলে ছোট একটা বোনাস পাবেন, দিন দিন বাড়তে থাকবে (১৫ দিন পর্যন্ত)।</p>
-    <p style="margin-bottom:6px;">আজ পর্যন্ত ক্লেইম করা দিন: <strong>{{ $claimedDays }}</strong></p>
+    <p style="margin-bottom:6px;">প্রতিদিন সাইটে লগইন করে (বাম পাশের হলুদ "🎁 ডেইলি বোনাস নিন" বাটনে ক্লিক করে) বোনাস নিতে পারবেন, দিন দিন বাড়তে থাকবে (১৫ দিন পর্যন্ত)।</p>
+    <p style="margin-bottom:6px;">বর্তমান স্ট্রিক: <strong>{{ $claimedDays }}</strong> দিন</p>
     @if($todayClaimed)
-        <p style="color:#166534; font-weight:700;">আজকের বোনাস ইতিমধ্যে যোগ হয়ে গেছে। ✅</p>
+        <p style="color:#166534; font-weight:700;">আজকের বোনাস ইতিমধ্যে নেওয়া হয়ে গেছে। ✅</p>
+    @elseif($nextBonusAmount)
+        <p style="margin-bottom:0;">আজকের বোনাস এখনো নেননি: <strong>${{ number_format($nextBonusAmount, 4) }}</strong> -- বাম পাশের বাটনে ক্লিক করুন।</p>
     @endif
-    @if($nextBonusAmount)
-        <p style="margin-bottom:0;">পরের বোনাস (আগামীকাল লগইন করলে): <strong>${{ number_format($nextBonusAmount, 4) }}</strong></p>
-    @endif
+    <p style="margin-top:10px; margin-bottom:0; color:#94a3b8; font-size:12px;">খেয়াল রাখবেন: একদিন লগইন করে বোনাস না নিলে স্ট্রিক ভেঙে আবার Day 1 থেকে শুরু হবে।</p>
 </div>
 @endif
 @endsection

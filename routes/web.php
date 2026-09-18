@@ -81,6 +81,7 @@ use App\Http\Controllers\User\UserJobWorkController;
 use App\Http\Controllers\User\BoostPackageController;
 use App\Http\Controllers\User\UserReferralController;
 use App\Http\Controllers\User\UserReviewController;
+use App\Http\Controllers\User\DailyBonusController;
 use App\Http\Controllers\User\UserSpinController;
 use App\Http\Controllers\User\UserSupportTicketController;
 use App\Http\Controllers\User\UserInvestmentController;
@@ -793,6 +794,9 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
 
     Route::get('review', [UserReviewController::class, 'index'])->name('review');
     Route::post('review-store', [UserReviewController::class, 'store'])->name('review.store');
+
+    Route::get('daily-bonus-status', [DailyBonusController::class, 'status'])->name('daily-bonus.status');
+    Route::post('daily-bonus-claim', [DailyBonusController::class, 'claim'])->name('daily-bonus.claim');
 
     /*
     |--------------------------------------------------------------------------

@@ -75,6 +75,9 @@
         };
     </script>
     @endauth
+    @auth
+        @include('user.layouts.partials.daily-bonus-widget')
+    @endauth
     {!! site_info()->after_start_body_tag !!}
     <div id="layout-wrapper">
         @include('user.layouts.partials.header')

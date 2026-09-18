@@ -1426,51 +1426,116 @@ if (!function_exists('pay_referral_milestones')) {
     }
 }
 
-if (!function_exists('claim_daily_login_bonus')) {
-    // Pays today's daily-login bonus to a user, once, the first time they
-    // load the dashboard on a given calendar day -- but only once their
-    // homepage review has been admin-approved (site_reviews.status =
-    // 'approved'); submitting a review alone does not start the bonus.
-    // The payout amount rises with the admin-editable
-    // daily_login_bonus_tiers schedule (day 1, day 2, ... day 15); day
-    // numbers past the last configured tier keep being paid at that last
-    // tier's amount, so the bonus never silently stops.
-    function claim_daily_login_bonus(\App\Models\User $user)
+if (!function_exists('daily_login_bonus_status')) {
+    // Read-only: what the daily-bonus popup should show for this user.
+    // Never credits anything -- see claim_daily_login_bonus_now() for that.
+    //
+    // Streak rule: claiming on the calendar day right after your last claim
+    // advances you to the next day (1 -> 2 -> 3 ...); any gap (you skip a
+    // day) resets you back to day 1 the next time you claim. Eligibility
+    // itself requires an admin-approved review (site_reviews.status =
+    // 'approved') -- submitting alone does not start the bonus.
+    function daily_login_bonus_status(\App\Models\User $user)
     {
+        $status = [
+            'eligible' => false,
+            'claimed_today' => false,
+            'current_streak_day' => 0,
+            'next_day_number' => 1,
+            'next_amount' => null,
+            'max_day' => 0,
+        ];
+
         if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_claims')) {
-            return;
+            return $status;
         }
 
-        $review = \App\Models\SiteReview::where('user_id', $user->id)
+        $reviewApproved = \App\Models\SiteReview::where('user_id', $user->id)
             ->where('status', 'approved')
+            ->exists();
+
+        if (!$reviewApproved) {
+            return $status;
+        }
+
+        $status['eligible'] = true;
+
+        $tiers = \App\Models\DailyLoginBonusTier::orderBy('day_number')->get();
+        $status['max_day'] = (int) ($tiers->max('day_number') ?? 0);
+
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        $lastClaim = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+            ->orderByDesc('claim_date')
             ->first();
 
-        if (!$review) {
-            return;
+        if (!$lastClaim) {
+            $status['next_day_number'] = 1;
+        } elseif ($lastClaim->claim_date->toDateString() === $today) {
+            $status['claimed_today'] = true;
+            $status['current_streak_day'] = $lastClaim->day_number;
+            $status['next_day_number'] = $lastClaim->day_number;
+        } elseif ($lastClaim->claim_date->toDateString() === $yesterday) {
+            $status['current_streak_day'] = $lastClaim->day_number;
+            $status['next_day_number'] = $lastClaim->day_number + 1;
+        } else {
+            // A day was missed -- streak resets to day 1.
+            $status['next_day_number'] = 1;
+        }
+
+        $tierDay = min($status['next_day_number'], max($status['max_day'], 1));
+        $tier = $tiers->firstWhere('day_number', $tierDay) ?? $tiers->last();
+        $status['next_amount'] = $tier ? (float) $tier->amount : null;
+
+        return $status;
+    }
+}
+
+if (!function_exists('claim_daily_login_bonus_now')) {
+    // The write path -- actually credits today's bonus. Called only from
+    // the user's explicit "claim" click, never automatically on page load.
+    function claim_daily_login_bonus_now(\App\Models\User $user)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_claims')) {
+            return ['success' => false, 'message' => 'Bonus system is not set up yet.'];
+        }
+
+        $reviewApproved = \App\Models\SiteReview::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (!$reviewApproved) {
+            return ['success' => false, 'message' => 'আপনার রিভিউ এখনো অ্যাডমিন অনুমোদন করেনি।'];
         }
 
         $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
 
-        $alreadyClaimedToday = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+        $alreadyToday = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
             ->where('claim_date', $today)
             ->exists();
 
-        if ($alreadyClaimedToday) {
-            return;
+        if ($alreadyToday) {
+            return ['success' => false, 'message' => 'আজকের বোনাস ইতিমধ্যে নেওয়া হয়ে গেছে।'];
         }
 
-        $claimedDaysCount = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)->count();
-        $dayNumber = $claimedDaysCount + 1;
+        $lastClaim = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+            ->orderByDesc('claim_date')
+            ->first();
 
-        $tier = \App\Models\DailyLoginBonusTier::where('day_number', $dayNumber)->first();
-        if (!$tier) {
-            // Past the configured schedule -- keep paying the last tier's
-            // amount instead of stopping the bonus outright.
-            $tier = \App\Models\DailyLoginBonusTier::orderByDesc('day_number')->first();
+        if ($lastClaim && $lastClaim->claim_date->toDateString() === $yesterday) {
+            $dayNumber = $lastClaim->day_number + 1;
+        } else {
+            // No claim yet, or a day was skipped -- (re)start at day 1.
+            $dayNumber = 1;
         }
 
+        $tier = \App\Models\DailyLoginBonusTier::where('day_number', $dayNumber)->first()
+            ?? \App\Models\DailyLoginBonusTier::orderByDesc('day_number')->first();
+
         if (!$tier) {
-            return;
+            return ['success' => false, 'message' => 'Bonus schedule not configured yet.'];
         }
 
         $user->earning_balance = (float) $user->earning_balance + (float) $tier->amount;
@@ -1482,6 +1547,13 @@ if (!function_exists('claim_daily_login_bonus')) {
             'day_number' => $dayNumber,
             'amount' => $tier->amount,
         ]);
+
+        return [
+            'success' => true,
+            'day_number' => $dayNumber,
+            'amount' => (float) $tier->amount,
+            'new_balance' => (float) $user->earning_balance,
+        ];
     }
 }
 
