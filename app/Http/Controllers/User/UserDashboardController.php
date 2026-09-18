@@ -43,9 +43,13 @@ class UserDashboardController extends Controller
         foreach($deposits as $deposit) {
             $data = UddoktaPay::verify_payment($deposit->invoice_id);
             if (isset($data['status']) && $data['status'] == 'COMPLETED') {
-                $userInfo->deposit_balance = $userInfo->deposit_balance + ($data['amount'] / 100);
+                $depositAmount = $data['amount'] / 100;
+                $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
+                $userInfo->referral_activated = 1;
                 $userInfo->save();
-                
+
+                credit_referral_deposit_commission($userInfo, (float) $depositAmount);
+
                 $deposit_update = Deposit::find($deposit->id);
                 $deposit_update->approval = 1;
                 $deposit_update->save();

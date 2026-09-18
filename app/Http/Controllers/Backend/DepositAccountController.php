@@ -53,21 +53,9 @@ class DepositAccountController extends Controller
             $user = User::find($deposit->user_id);
             $user->deposit_balance = $user->deposit_balance + $deposit->amount;
             $user->referral_activated = 1;
-
-            $website = Website::latest()->first();
-            if($website->referral_deposit_commission > 0){
-                $deposit_commission = ($website->referral_deposit_commission * $deposit->amount) / 100;
-
-                $refered_by = User::find($user->rfered_by);
-                if($refered_by){
-                    $refered_by->deposit_balance = $refered_by->deposit_balance + $deposit_commission;
-                    $refered_by->save();
-    
-                    $user->deposit_commision_from_refer = $user->deposit_commision_from_refer + $deposit_commission;
-                }
-            }
-
             $user->save();
+
+            credit_referral_deposit_commission($user, (float) $deposit->amount);
         
             $data = new UserMessage();
             $data->user_id = $msg_user_id;

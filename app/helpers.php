@@ -1237,6 +1237,100 @@ if (!function_exists('wu_marketplace_unread_order_messages')) {
     }
 }
 
+if (!function_exists('credit_referral_deposit_commission')) {
+    // The one correct place referral deposit commission gets credited.
+    // Every deposit-approval code path on this site had its own copy-pasted
+    // version of this logic, and EVERY copy had the same bug: the real cash
+    // (deposit_balance) was credited to the referrer correctly, but the
+    // "commission from referral" stat field was mistakenly saved onto the
+    // DEPOSITOR (whoever just deposited) instead of onto the REFERRER who
+    // actually earned it -- so a referrer's own referral dashboard showed
+    // $0 commission even after being paid, while the depositor's dashboard
+    // falsely showed commission they never earned. Fixed here once so it
+    // can't drift out of sync between call sites again.
+    function credit_referral_deposit_commission(\App\Models\User $depositor, float $depositAmount)
+    {
+        if (!$depositor->rfered_by) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if (!$website || $website->referral_deposit_commission <= 0) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($depositor->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $commission = ($website->referral_deposit_commission * $depositAmount) / 100;
+
+        $referrer->deposit_balance = $referrer->deposit_balance + $commission;
+        $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
+        $referrer->save();
+    }
+}
+
+if (!function_exists('credit_referral_earning_commission')) {
+    // Same bug, same fix, for earning-side referral commission (job work,
+    // Community post earnings, etc.) -- referrer's earning_balance was
+    // already credited correctly at every call site, but the
+    // earning_commision_from_refer stat was saved onto the earner instead
+    // of the referrer.
+    function credit_referral_earning_commission(\App\Models\User $earner, float $earnedAmount)
+    {
+        if (!$earner->rfered_by) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if (!$website || $website->referral_earning_commission <= 0) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($earner->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $commission = ($website->referral_earning_commission * $earnedAmount) / 100;
+
+        $referrer->earning_balance = $referrer->earning_balance + $commission;
+        $referrer->earning_commision_from_refer = $referrer->earning_commision_from_refer + $commission;
+        $referrer->save();
+    }
+}
+
+if (!function_exists('reverse_referral_earning_commission')) {
+    // Undoes credit_referral_earning_commission()'s effect -- used when a
+    // previously-approved job work gets rejected after the fact, so the
+    // referrer doesn't keep commission on earnings that were themselves
+    // reversed.
+    function reverse_referral_earning_commission(\App\Models\User $earner, float $earnedAmount)
+    {
+        if (!$earner->rfered_by) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if (!$website || $website->referral_earning_commission <= 0) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($earner->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $commission = ($website->referral_earning_commission * $earnedAmount) / 100;
+
+        $referrer->earning_balance = max(0, (float) $referrer->earning_balance - $commission);
+        $referrer->earning_commision_from_refer = max(0, (float) $referrer->earning_commision_from_refer - $commission);
+        $referrer->save();
+    }
+}
+
 
 
 

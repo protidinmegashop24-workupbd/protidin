@@ -63,22 +63,10 @@ class UserJobWorkController extends Controller
                     $user = User::find($job_work->user_id);
                     $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
                     $user->referral_activated = 1;
-
-                    $website = Website::latest()->first();
-                    if($website->referral_earning_commission > 0){
-                        $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-            
-                        $refered_by = User::find($user->rfered_by);
-                        if($refered_by){
-                            $refered_by->earning_balance = $refered_by->earning_balance + $earning_commission;
-                            $refered_by->save();
-                
-                            $user->earning_commision_from_refer = $user->earning_commision_from_refer + $earning_commission;
-                        }
-                    }
-            
                     $user->save();
-            
+
+                    credit_referral_earning_commission($user, (float) $job->each_worker_earn);
+
                     $job->worker_confirmed = $job->worker_confirmed + 1;
             
                     $job_work->status = 1;
@@ -113,30 +101,24 @@ class UserJobWorkController extends Controller
                     $user = User::find($job_work->user_id);
                     $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
                     $user->referral_activated = 1;
+                    $user->save();
 
+                    $refered_by = $user->rfered_by ? User::find($user->rfered_by) : null;
                     $website = Website::latest()->first();
 
-                    if ($website->referral_earning_commission > 0) {
+                    credit_referral_earning_commission($user, (float) $job->each_worker_earn);
+
+                    if ($refered_by && $website && $website->referral_earning_commission > 0) {
                         $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-    
-                        $refered_by = User::find($user->rfered_by);
-    
-                        if ($refered_by) {
-                            $refered_by->earning_balance = $refered_by->earning_balance + $earning_commission;
-                            $refered_by->save();
-    
-                            $user->earning_commision_from_refer = $user->earning_commision_from_refer + $earning_commission;
-    
-                            // Message for referral commission
-                            $commissionMessage = new UserMessage();
-                            $commissionMessage->user_id = $refered_by->id;
-                            $commissionMessage->message_title = 'TASK_COMMISSION';
-                            $commissionMessage->message = 'Congrats! You got $' . number_format($earning_commission, 4) . ' For Refer Commission.';
-                            $commissionMessage->save();
-                        }
+
+                        // Message for referral commission
+                        $commissionMessage = new UserMessage();
+                        $commissionMessage->user_id = $refered_by->id;
+                        $commissionMessage->message_title = 'TASK_COMMISSION';
+                        $commissionMessage->message = 'Congrats! You got $' . number_format($earning_commission, 4) . ' For Refer Commission.';
+                        $commissionMessage->save();
                     }
-    
-                    $user->save();
+
                     $job->worker_confirmed = $job->worker_confirmed + 1;
                     $job_work->status = 1;
                     $job_work->save();
@@ -178,21 +160,9 @@ class UserJobWorkController extends Controller
         $user = User::find($job_work->user_id);
         $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
         $user->referral_activated = 1;
-
-        $website = Website::latest()->first();
-        if($website->referral_earning_commission > 0){
-            $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-
-            $refered_by = User::find($user->rfered_by);
-            if($refered_by){
-                $refered_by->earning_balance = $refered_by->earning_balance + $earning_commission;
-                $refered_by->save();
-
-                $user->earning_commision_from_refer = $user->earning_commision_from_refer + $earning_commission;
-            }
-        }
-
         $user->save();
+
+        credit_referral_earning_commission($user, (float) $job->each_worker_earn);
 
         $job->worker_confirmed = $job->worker_confirmed + 1;
 
@@ -225,21 +195,9 @@ class UserJobWorkController extends Controller
         if ($job_work->status == 1) {
             $worker = User::find($job_work->user_id);
             $worker->earning_balance = $worker->earning_balance - $job->each_worker_earn;
-
-            $website = Website::latest()->first();
-            if ($website->referral_earning_commission > 0 && $worker->rfered_by) {
-                $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-
-                $refered_by = User::find($worker->rfered_by);
-                if ($refered_by) {
-                    $refered_by->earning_balance = $refered_by->earning_balance - $earning_commission;
-                    $refered_by->save();
-                }
-
-                $worker->earning_commision_from_refer = $worker->earning_commision_from_refer - $earning_commission;
-            }
-
             $worker->save();
+
+            reverse_referral_earning_commission($worker, (float) $job->each_worker_earn);
 
             $job->worker_confirmed = max(0, $job->worker_confirmed - 1);
         }

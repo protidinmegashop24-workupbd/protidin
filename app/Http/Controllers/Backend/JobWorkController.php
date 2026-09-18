@@ -44,21 +44,9 @@ class JobWorkController extends Controller
         $user = User::find($job_work->user_id);
         $user->earning_balance = $user->earning_balance + $job->each_worker_earn;
         $user->referral_activated = 1;
-
-        $website = Website::latest()->first();
-        if($website->referral_earning_commission > 0 && $user->rfered_by){
-            $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-
-            $refered_by = User::find($user->rfered_by);
-            if($refered_by){
-                $refered_by->earning_balance = $refered_by->earning_balance + $earning_commission;
-                $refered_by->save();
-
-                $user->earning_commision_from_refer = $user->earning_commision_from_refer + $earning_commission;
-            }
-        }
-
         $user->save();
+
+        credit_referral_earning_commission($user, (float) $job->each_worker_earn);
 
         $job->worker_confirmed = $job->worker_confirmed + 1;
 
@@ -110,21 +98,9 @@ class JobWorkController extends Controller
         if ($job_work->status == 1 && $job) {
             $user = User::find($job_work->user_id);
             $user->earning_balance = $user->earning_balance - $job->each_worker_earn;
-
-            $website = Website::latest()->first();
-            if ($website->referral_earning_commission > 0 && $user->rfered_by) {
-                $earning_commission = ($website->referral_earning_commission * $job->each_worker_earn) / 100;
-
-                $refered_by = User::find($user->rfered_by);
-                if ($refered_by) {
-                    $refered_by->earning_balance = $refered_by->earning_balance - $earning_commission;
-                    $refered_by->save();
-                }
-
-                $user->earning_commision_from_refer = $user->earning_commision_from_refer - $earning_commission;
-            }
-
             $user->save();
+
+            reverse_referral_earning_commission($user, (float) $job->each_worker_earn);
 
             $job->worker_confirmed = max(0, $job->worker_confirmed - 1);
             $job->save();

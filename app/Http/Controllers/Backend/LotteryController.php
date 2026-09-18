@@ -50,27 +50,15 @@ class LotteryController extends Controller
         if($request->approval == 1){
             $user = User::find($deposit->user_id);
             $user->referral_activated = 1;
+            $user->save();
 
             // Unlike a deposit, the buyer's balance was already deducted
             // when they bought this lottery ticket -- so we do NOT credit
             // deposit_balance again here, only pay the referrer's
             // commission on the ticket price.
-            $website = Website::latest()->first();
-            if($website->referral_deposit_commission > 0){
-                $lottery = Lottery::find($deposit->lottery_id);
-                $ticketPrice = $lottery ? $lottery->price : 0;
-                $deposit_commission = ($website->referral_deposit_commission * $ticketPrice) / 100;
-
-                $refered_by = User::find($user->rfered_by);
-                if($refered_by){
-                    $refered_by->deposit_balance = $refered_by->deposit_balance + $deposit_commission;
-                    $refered_by->save();
-
-                    $user->deposit_commision_from_refer = $user->deposit_commision_from_refer + $deposit_commission;
-                }
-            }
-
-            $user->save();
+            $lottery = Lottery::find($deposit->lottery_id);
+            $ticketPrice = $lottery ? $lottery->price : 0;
+            credit_referral_deposit_commission($user, (float) $ticketPrice);
         }elseif($request->approval == 2){
             $deposit->reason = $request->reason;
         

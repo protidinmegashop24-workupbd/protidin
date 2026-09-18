@@ -31,15 +31,19 @@ class UddoktapayController extends Controller
         foreach($deposits as $deposit) {
             $data = UddoktaPay::verify_payment($deposit->invoice_id);
             if (isset($data['status']) && $data['status'] == 'COMPLETED') {
-                $userInfo->deposit_balance = $userInfo->deposit_balance + ($data['amount'] / 100);
+                $depositAmount = $data['amount'] / 100;
+                $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
+                $userInfo->referral_activated = 1;
                 $userInfo->save();
-                
+
+                credit_referral_deposit_commission($userInfo, (float) $depositAmount);
+
                 $deposit_update = Deposit::find($deposit->id);
                 $deposit_update->approval = 1;
                 $deposit_update->save();
             }
         }
-        
+
         $headlines = DepositHeadline::all();
         return view( 'user.pages.uddoktapay.pay', compact('headlines') );
     }
@@ -141,38 +145,46 @@ class UddoktapayController extends Controller
             $deposit->user_id = Auth::user()->id;
             
             if (isset($data['status']) && $data['status'] == 'COMPLETED') {
+                $depositAmount = $data['amount'] / 100;
                 $user = User::find(Auth::user()->id);
-                $user->deposit_balance = $user->deposit_balance + ($data['amount'] / 100);
+                $user->deposit_balance = $user->deposit_balance + $depositAmount;
+                $user->referral_activated = 1;
                 $user->save();
-                
+
+                credit_referral_deposit_commission($user, (float) $depositAmount);
+
                 $message = 'Deposit success.';
-                
+
                 $deposit->approval = 1;
             } else {
                 $message = 'Deposit pending.';
-                
+
                 $deposit->approval = 0;
             }
-            
+
             $deposit->save();
         } else {
-            
+
             $userId = Auth::user()->id;
             $userInfo = User::find(Auth::user()->id);
             $deposits = Deposit::where(['user_id' => $userId, 'approval' => 0])->get();
-            
+
             foreach($deposits as $deposit) {
                 $data = UddoktaPay::verify_payment($deposit->invoice_id);
                 if (isset($data['status']) && $data['status'] == 'COMPLETED') {
-                    $userInfo->deposit_balance = $userInfo->deposit_balance + ($data['amount'] / 100);
+                    $depositAmount = $data['amount'] / 100;
+                    $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
+                    $userInfo->referral_activated = 1;
                     $userInfo->save();
-                    
+
+                    credit_referral_deposit_commission($userInfo, (float) $depositAmount);
+
                     $deposit_update = Deposit::find($deposit->id);
                     $deposit_update->approval = 1;
                     $deposit_update->save();
                 }
             }
-            
+
             $message = 'Deposit already exists.';
         }
         
@@ -209,16 +221,25 @@ class UddoktapayController extends Controller
             $deposit->user_id = Auth::user()->id;
             
             if (isset($data['status']) && $data['status'] == 'COMPLETED') {
+                // NOTE: this divides by 50 while every other deposit path in
+                // this file divides by 100 (both convert the same
+                // cents-based $data['amount']) -- looks like a pre-existing
+                // bug, but that's a separate issue from the referral
+                // commission fix here, so left as-is for now.
+                $depositAmount = $data['amount'] / 50;
                 $user = User::find(Auth::user()->id);
-                $user->deposit_balance = $user->deposit_balance + ($data['amount'] / 50);
+                $user->deposit_balance = $user->deposit_balance + $depositAmount;
+                $user->referral_activated = 1;
                 $user->save();
-                
+
+                credit_referral_deposit_commission($user, (float) $depositAmount);
+
                 $message = 'Deposit success.';
-                
+
                 $deposit->approval = 1;
             } else {
                 $message = 'Deposit pending.';
-                
+
                 $deposit->approval = 0;
             }
             

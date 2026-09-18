@@ -1002,7 +1002,10 @@ class socialEarnController extends Controller
         if(!$findUser){
             return false;
         }
-        $findparent = User::where('code',$findUser->rfered_by)->first();
+        // rfered_by stores the referrer's id (see HomeController registration),
+        // not their `code` -- looking it up by `code` here almost never found
+        // the real referrer.
+        $findparent = User::where('id',$findUser->rfered_by)->first();
         if(!$findparent){
             return false;
         }elseif($findparent == '10001'){
@@ -1012,15 +1015,16 @@ class socialEarnController extends Controller
 
     }
     protected function addReffEarn($userId,$postId,$baseAmount,$percent){ // current logged-in main id, post Id and net earn amount
-        $earnAmount = number_format(($baseAmount * $percent) / 100, 6, '.', '');  
+        $earnAmount = number_format(($baseAmount * $percent) / 100, 6, '.', '');
 
         $checkParent = $this->findReff($userId);
         if($checkParent){
             $this->addEarnHistory($checkParent->id,$postId,'earnRef',$earnAmount);
             $this->addNotify($checkParent->id,'You Got the ' .$earnAmount .'$ From The Referral <br><a href="/public-shared/' . $postId . '">View post</a>','Referral Earn');
             $checkParent->increment('earning_balance',$earnAmount);
-            $user = User::where('id',$userId)->first();
-            $user->increment('earning_commision_from_refer',$earnAmount);
+            // The commission stat belongs to the referrer who earned it, not
+            // to the person whose activity generated it.
+            $checkParent->increment('earning_commision_from_refer',$earnAmount);
             return true;
         }
         return false;
