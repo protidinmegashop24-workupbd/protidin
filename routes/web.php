@@ -2749,7 +2749,7 @@ Route::get('/system-configure-cpagrip/{token}', function ($token) {
 
     $provider->app_id = '321669';
     $provider->secret_key = $password;
-    $provider->widget_url_template = 'https://www.cpagrip.com/show_wall.php?u=321669&tracking_id={user_id}';
+    $provider->widget_url_template = 'https://installyourfiles.com/script_include.php?id=1914744&tracking_id={user_id}';
     $provider->enabled = true;
     $provider->save();
 

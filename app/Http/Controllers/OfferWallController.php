@@ -25,6 +25,20 @@ class OfferWallController extends Controller
         }
 
         $userId = Auth::id();
+
+        if ($slug === 'cpagrip') {
+            // CPAGrip's Offer Wall isn't a page we redirect to -- their
+            // Code Generator gives a JS "Wall Locker" <script> tag that
+            // renders the offer list once embedded on an actual page
+            // (confirmed from their own Code Generator dialog). So we
+            // render our own minimal host page and embed it there, with
+            // tracking_id appended to the script src the same way
+            // CPAGrip's own docs describe appending it to a monetization
+            // tool's src URL.
+            $scriptSrc = str_replace('{user_id}', (string) $userId, $provider->widget_url_template);
+            return view('user.pages.offerwall-embed', compact('scriptSrc'));
+        }
+
         $url = $provider->widget_url_template;
 
         if (strpos($url, '{hash}') !== false) {
