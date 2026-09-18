@@ -2699,3 +2699,31 @@ Route::get('/system-unverify-free-instant-verified-users/{token}', function ($to
         'affected_count' => $count,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-off: adds CPAGrip as a 4th Offer Wall provider row (disabled by
+// default), same generic table used by BitLabs/Lootably/AdGate Media --
+// see /system-add-offerwall-providers above. Configure it from
+// Admin -> Offer Wall Providers once its widget URL is confirmed.
+Route::get('/system-add-cpagrip-provider/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('offer_wall_providers')) {
+        return response()->json(['error' => 'offer_wall_providers table does not exist yet -- run /system-add-offerwall-providers first.'], 404);
+    }
+
+    if (\Illuminate\Support\Facades\DB::table('offer_wall_providers')->where('slug', 'cpagrip')->exists()) {
+        return response()->json(['message' => 'cpagrip provider row already exists.']);
+    }
+
+    \Illuminate\Support\Facades\DB::table('offer_wall_providers')->insert([
+        'name' => 'CPAGrip',
+        'slug' => 'cpagrip',
+        'enabled' => false,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return response()->json(['message' => 'Seeded cpagrip provider row (disabled). Configure it from Admin -> Offer Wall Providers.']);
+});
