@@ -2658,3 +2658,44 @@ Route::get('/system-report-free-instant-verified-users/{token}', function ($toke
         'users' => $users,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-off: reverses the free Instant Verify bug -- sets is_verified back
+// to 0 for exactly the accounts the report above lists (is_verified = 1,
+// no KYC/NID submission on file), and sends each one an in-app notice
+// explaining why. Touches ONLY the is_verified flag and sends a
+// notification -- deposit_balance, earning_balance, withdrawal history,
+// referral commission, and every other field are left completely alone,
+// so nothing these users already earned or withdrew is affected.
+Route::get('/system-unverify-free-instant-verified-users/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $users = \App\Models\User::where('is_verified', 1)
+        ->where(function ($q) {
+            $q->whereNull('kyc_status')->orWhere('kyc_status', '');
+        })
+        ->get();
+
+    $noticeText = 'আপনার অ্যাকাউন্টটি "Instant Verify" এর মাধ্যমে ডলার দিয়ে ভেরিফাই করা হয়েছিল বলে দেখানো হয়েছিল, কিন্তু সাইটের একটি টেকনিক্যাল সমস্যার কারণে সেই সময় আসলে কোনো ডলার কাটা হয়নি -- আপনার অ্যাকাউন্ট ভুলবশত ফ্রি-তে ভেরিফাই হয়ে গিয়েছিল। এই সমস্যাটি এখন ঠিক করা হয়েছে, তাই আপনার অ্যাকাউন্টটি আবার আনভেরিফাইড অবস্থায় ফিরিয়ে দেওয়া হয়েছে। দয়া করে আবার Instant Verify করুন (এবার সঠিকভাবে ফি কেটে ভেরিফাই হবে), অথবা NID দিয়ে ভেরিফাই করতে পারেন। আপনার আগের কোনো ডিপোজিট, আর্নিং, উইথড্র, রেফারেল কমিশন বা অন্য কোনো তথ্যে কোনো প্রভাব পড়েনি -- শুধুমাত্র ভেরিফিকেশন স্ট্যাটাসটি পুনরায় সেট করা হয়েছে।';
+
+    $count = 0;
+    foreach ($users as $user) {
+        $user->is_verified = 0;
+        $user->save();
+
+        $notify = new \App\Models\Admin\UserMessage();
+        $notify->user_id = $user->id;
+        $notify->message_title = 'Account Verification';
+        $notify->message = $noticeText;
+        $notify->seen = 0;
+        $notify->save();
+
+        $count++;
+    }
+
+    return response()->json([
+        'message' => 'Un-verified and notified every free-instant-verified account. Balances, deposits, withdrawals, and referral history were not touched.',
+        'affected_count' => $count,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
