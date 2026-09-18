@@ -40,6 +40,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </head>
 
     <body>
+        @auth
+        <script>
+            // Same PROTIDIN_CURRENT_USER identity block as
+            // user/layouts/master.blade.php, so widgets in "Inside Body
+            // Tag Code" work the same way for logged-in visitors here too.
+            window.PROTIDIN_CURRENT_USER = {
+                id: {{ Auth::user()->id }},
+                name: @json(Auth::user()->name),
+                email: @json(Auth::user()->email)
+            };
+        </script>
+        @endauth
+        {!! site_info()->after_start_body_tag !!}
 
         @include('frontend.layouts.partials.header')
 
