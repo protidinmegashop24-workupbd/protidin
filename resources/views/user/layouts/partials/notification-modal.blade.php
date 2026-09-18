@@ -23,7 +23,7 @@
                 
             </div>
             <div class="modal-footer text-center">
-                <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('user.message-list') }} @endif" class="text-primary">Read All</button>
+                <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('user.message-list') }} @endif" class="text-primary">Read All</a>
             </div>
         </div>
     </div>

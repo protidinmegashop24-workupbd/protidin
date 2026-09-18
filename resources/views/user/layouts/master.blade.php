@@ -129,6 +129,33 @@
     </div>
 
     @include('user.layouts.partials.scripts')
+
+    <script>
+        // The site's CSS/JS was upgraded to Bootstrap 5, which dropped the
+        // old jQuery `.modal('show'/'hide')` plugin -- but dozens of
+        // existing onclick handlers across this site (job work proof
+        // upload, report/rate/resume job, boost job, the notification
+        // bell, etc.) still call it the Bootstrap 4 way. Without this,
+        // every one of those buttons silently does nothing when clicked.
+        // Restoring just that one method, backed by Bootstrap 5's native
+        // bootstrap.Modal, fixes all of them at once instead of rewriting
+        // every call site.
+        if (typeof $ !== 'undefined' && typeof bootstrap !== 'undefined' && !$.fn.modal) {
+            $.fn.modal = function (action) {
+                return this.each(function () {
+                    var instance = bootstrap.Modal.getOrCreateInstance(this);
+                    if (action === 'show') {
+                        instance.show();
+                    } else if (action === 'hide') {
+                        instance.hide();
+                    } else if (action === 'toggle') {
+                        instance.toggle();
+                    }
+                });
+            };
+        }
+    </script>
+
     @yield('js')
 
 
