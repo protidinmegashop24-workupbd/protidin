@@ -260,7 +260,7 @@
 
                         @if(isset($offerWallProviders) && $offerWallProviders->count())
                             @foreach($offerWallProviders as $owProvider)
-                                <a href="{{ route('offer-wall.start', $owProvider->slug) }}" target="_blank" class="job-item-link">
+                                <a href="javascript:;" onclick="openOfferWallInline('{{ route('offer-wall.start', $owProvider->slug) }}'); return false;" class="job-item-link">
                                     <div class="job-item-card">
                                         <div class="job-item-inner">
                                             <div class="job-title-wrap">
@@ -277,6 +277,14 @@
                                     </div>
                                 </a>
                             @endforeach
+
+                            <div id="offerwall-inline-panel" style="display:none; margin-top:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                    <strong>Offer Wall</strong>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="closeOfferWallInline()">Close</button>
+                                </div>
+                                <iframe id="offerwall-inline-frame" src="" style="width:100%; min-height:650px; border:1px solid #e2e8f0; border-radius:8px;"></iframe>
+                            </div>
                         @endif
 
                         @if(boost_jobs()->count() > 0)
@@ -449,6 +457,21 @@
     <script src="{{ asset('frontend/user/assets/js/my_custom.js') }}"></script>
 
     <script>
+        function openOfferWallInline(url) {
+            var panel = document.getElementById('offerwall-inline-panel');
+            var frame = document.getElementById('offerwall-inline-frame');
+            frame.src = url;
+            panel.style.display = 'block';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function closeOfferWallInline() {
+            var panel = document.getElementById('offerwall-inline-panel');
+            var frame = document.getElementById('offerwall-inline-frame');
+            frame.src = '';
+            panel.style.display = 'none';
+        }
+
         function setCategoryForSort(id){
             $('#sort_category_id').val(id);
             $('.btn-category').removeClass('btn-success');
