@@ -264,10 +264,10 @@
                                     <div class="job-item-card">
                                         <div class="job-item-inner">
                                             <div class="job-title-wrap">
-                                                <div class="job-title">{{ $owProvider->name }}</div>
+                                                <div class="job-title">জব অফার</div>
                                                 <div class="job-subtext">
                                                     <i class="fa fa-gift"></i>
-                                                    Offer Wall — Sponsored Partner
+                                                    নিউ অফার জব
                                                 </div>
                                             </div>
                                             <div class="job-price-box">
@@ -280,7 +280,7 @@
 
                             <div id="offerwall-inline-panel" style="display:none; margin-top:16px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                    <strong>Offer Wall</strong>
+                                    <strong>নিউ অফার জব</strong>
                                     <button type="button" class="btn btn-sm btn-secondary" onclick="closeOfferWallInline()">Close</button>
                                 </div>
                                 <iframe id="offerwall-inline-frame" src="" style="width:100%; min-height:650px; border:1px solid #e2e8f0; border-radius:8px;"></iframe>
