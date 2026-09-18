@@ -90,14 +90,9 @@ class TelegramController extends Controller
             return;
         }
 
+        // Deleted silently -- posting a "your message was removed" notice
+        // for every deletion was disturbing other members in the group.
         $this->deleteMessage($chatId, $messageId);
-
-        $name = trim(($message['from']['first_name'] ?? '') . ' ' . ($message['from']['last_name'] ?? ''));
-        $this->sendMessage(
-            $chatId,
-            '🚫 এই গ্রুপে লিংক শেয়ার করা নিষেধ, তাই ' . ($name ?: 'একটি') . '-এর মেসেজ মুছে ফেলা হয়েছে।',
-            []
-        );
     }
 
     private function containsLink(array $message)
