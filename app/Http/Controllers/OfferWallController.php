@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OfferWallConversion;
 use App\Models\OfferWallProvider;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -71,6 +72,10 @@ class OfferWallController extends Controller
             return response('0', 404);
         }
 
+        if ($slug === 'cpagrip') {
+            return $this->cpagripPostback($provider, $request);
+        }
+
         $all = array_merge($request->query(), $request->post());
 
         Log::info('offer-wall-postback-unverified', ['provider' => $slug, 'params' => $all]);
@@ -91,6 +96,72 @@ class OfferWallController extends Controller
         // Acknowledge receipt so the provider's own test tool shows
         // success -- this is intentionally separate from crediting, which
         // is not happening yet (see docblock above).
+        return response('1');
+    }
+
+    // CPAGrip's Global Postback confirmed straight from their own
+    // dashboard (Postback Tools -> Global Postback): [POST] password,
+    // payout, offer_id, tracking_id. tracking_id is whatever we appended
+    // to the offer/offerwall link -- here, our own user id (see start()'s
+    // widget_url_template, which appends &tracking_id={user_id}).
+    //
+    // CPAGrip sends no unique conversion/lead id, so trans_id is
+    // synthesized as "user{id}-offer{offer_id}": a retried postback for
+    // the same conversion is recognized and not double-credited, at the
+    // cost of not crediting the same user for the same offer a second
+    // time even if that were legitimate (rare enough to accept).
+    private function cpagripPostback(OfferWallProvider $provider, Request $request)
+    {
+        $all = array_merge($request->query(), $request->post());
+
+        if (!$provider->secret_key || ($all['password'] ?? null) !== $provider->secret_key) {
+            Log::warning('offer-wall-postback-bad-password', ['provider' => 'cpagrip', 'params' => $all]);
+            return response('0', 403);
+        }
+
+        $userId = $all['tracking_id'] ?? null;
+        $offerId = $all['offer_id'] ?? null;
+        $payout = $all['payout'] ?? null;
+
+        if (!is_numeric($userId) || !is_numeric($payout)) {
+            Log::warning('offer-wall-postback-bad-params', ['provider' => 'cpagrip', 'params' => $all]);
+            return response('0', 400);
+        }
+
+        $transId = 'user' . $userId . '-offer' . $offerId;
+
+        if (OfferWallConversion::where('provider_slug', 'cpagrip')->where('trans_id', $transId)->exists()) {
+            // Already recorded (and credited) -- ack without double crediting.
+            return response('1');
+        }
+
+        $amount = round((float) $payout, 4);
+
+        $conversion = OfferWallConversion::create([
+            'provider_slug' => 'cpagrip',
+            'user_id' => (int) $userId,
+            'trans_id' => $transId,
+            'status' => 'approved',
+            'amount_usd' => $amount,
+            'raw_payload' => json_encode($all),
+            'credited_at' => now(),
+        ]);
+
+        $user = User::find($userId);
+        if ($user) {
+            $user->earning_balance = (float) $user->earning_balance + $amount;
+            $user->referral_activated = 1;
+            $user->save();
+
+            credit_referral_earning_commission($user, $amount);
+        } else {
+            // Postback for a user id that doesn't exist on this site --
+            // keep the record (for audit) but don't pretend it was credited.
+            $conversion->status = 'unverified';
+            $conversion->credited_at = null;
+            $conversion->save();
+        }
+
         return response('1');
     }
 }

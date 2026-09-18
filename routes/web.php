@@ -2727,3 +2727,36 @@ Route::get('/system-add-cpagrip-provider/{token}', function ($token) {
 
     return response()->json(['message' => 'Seeded cpagrip provider row (disabled). Configure it from Admin -> Offer Wall Providers.']);
 });
+
+// One-off: fills in and enables the cpagrip provider row with the values
+// confirmed from CPAGrip's own dashboard (Postback Tools -> Global
+// Postback): AffID 321669, and a generated postback password. Also sets
+// the SAME password on CPAGrip's Global Postback settings page -- run
+// this FIRST, then paste postback_password (from the JSON response) into
+// CPAGrip's "Password (Optional)" field and Postback URL into their
+// "Postback URL" field, then click Save Settings there.
+Route::get('/system-configure-cpagrip/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $provider = \App\Models\OfferWallProvider::where('slug', 'cpagrip')->first();
+    if (!$provider) {
+        return response()->json(['error' => 'cpagrip provider row not found -- run /system-add-cpagrip-provider first.'], 404);
+    }
+
+    $password = $provider->secret_key ?: bin2hex(random_bytes(16));
+
+    $provider->app_id = '321669';
+    $provider->secret_key = $password;
+    $provider->widget_url_template = 'https://www.cpagrip.com/show_wall.php?u=321669&tracking_id={user_id}';
+    $provider->enabled = true;
+    $provider->save();
+
+    return response()->json([
+        'message' => 'cpagrip provider configured and enabled.',
+        'postback_url_to_paste_into_cpagrip' => url('/postback/offer-wall/cpagrip'),
+        'postback_password_to_paste_into_cpagrip' => $password,
+        'note' => 'Paste both values into CPAGrip Postback Tools -> Global Postback, then click Save Settings there. Re-running this route keeps the same password if one is already set.',
+    ], 200, [], JSON_PRETTY_PRINT);
+});
