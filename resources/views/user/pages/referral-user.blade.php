@@ -48,8 +48,8 @@
                                     <span class="badge bg-warning text-dark">Pending</span>
                                 @endif
                             </td>
-                            <td>${{ number_format((float)$data->deposit_commision_from_refer, 2) }}</td>
-                            <td>${{ number_format((float)$data->earning_commision_from_refer, 2) }}</td>
+                            <td>${{ number_format((float)$data->deposit_commission_from_this_user, 2) }}</td>
+                            <td>${{ number_format((float)$data->earning_commission_from_this_user, 2) }}</td>
                         </tr>
                     @empty
                         <tr>

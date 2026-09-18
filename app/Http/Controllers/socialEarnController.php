@@ -1025,6 +1025,14 @@ class socialEarnController extends Controller
             // The commission stat belongs to the referrer who earned it, not
             // to the person whose activity generated it.
             $checkParent->increment('earning_commision_from_refer',$earnAmount);
+
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $checkParent->id,
+                'source_user_id' => $userId,
+                'type' => 'earning',
+                'amount' => $earnAmount,
+            ]);
+
             return true;
         }
         return false;

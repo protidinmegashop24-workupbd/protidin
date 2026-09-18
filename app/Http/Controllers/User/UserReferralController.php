@@ -4,7 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\JobWork;
+use App\Models\ReferralCommissionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,8 +22,12 @@ class UserReferralController extends Controller
         $referralLink = route('register.with.code', $user->code);
 
         $totalReferrals = User::where('rfered_by', $user->id)->count();
+        // "Active" means this referred user did something that counts as
+        // activation (deposit, job work, service/lottery/investment/web
+        // script purchase, etc.) -- referral_activated is set on all of
+        // those paths, not just approved job work.
         $activeReferrals = User::where('rfered_by', $user->id)
-            ->whereIn('id', JobWork::where('status', 1)->pluck('user_id')->unique())
+            ->where('referral_activated', 1)
             ->count();
 
         $depositCommission = (float) $user->deposit_commision_from_refer;
@@ -59,6 +63,29 @@ class UserReferralController extends Controller
     {
         $title = "Referral Users";
         $datas = User::where('rfered_by', Auth::user()->id)->latest()->paginate(25);
+
+        // The commission each referred user's row shows is how much I (the
+        // logged-in referrer) earned FROM that specific person -- not their
+        // own deposit_commision_from_refer/earning_commision_from_refer,
+        // which is a different number (what THEY earned from people THEY
+        // referred, almost always $0 for someone who hasn't referred anyone).
+        $commissionTotals = ReferralCommissionLog::where('referrer_id', Auth::id())
+            ->whereIn('source_user_id', $datas->pluck('id'))
+            ->selectRaw('source_user_id, type, SUM(amount) as total')
+            ->groupBy('source_user_id', 'type')
+            ->get();
+
+        $lookup = [];
+        foreach ($commissionTotals as $row) {
+            $lookup[$row->source_user_id][$row->type] = (float) $row->total;
+        }
+
+        $datas->getCollection()->transform(function ($referredUser) use ($lookup) {
+            $referredUser->deposit_commission_from_this_user = $lookup[$referredUser->id]['deposit'] ?? 0;
+            $referredUser->earning_commission_from_this_user = $lookup[$referredUser->id]['earning'] ?? 0;
+            return $referredUser;
+        });
+
         return view('user.pages.referral-user', compact('title', 'datas'));
     }
 

@@ -2411,3 +2411,37 @@ Route::get('/system-add-reels-video-ads/{token}', function ($token) {
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });
+
+// One-off: adds a per-referral commission ledger so the "Referral Users"
+// list can show exactly how much commission a referrer earned FROM EACH
+// referred user, instead of (bug) reading that referred user's own
+// deposit_commision_from_refer/earning_commision_from_refer -- a stat that
+// belongs to what THEY earned from people THEY referred, and is almost
+// always 0 for someone who hasn't referred anyone themselves. The helpers
+// in app/helpers.php write one row here every time they credit commission;
+// reversals write a negative-amount row so historical sums stay correct
+// without needing to find and delete the original row.
+Route::get('/system-add-referral-commission-log/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('referral_commission_logs')) {
+        \Illuminate\Support\Facades\Schema::create('referral_commission_logs', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('referrer_id');
+            $table->unsignedBigInteger('source_user_id');
+            $table->string('type', 20); // 'deposit' or 'earning'
+            $table->decimal('amount', 14, 6);
+            $table->timestamps();
+            $table->index(['referrer_id', 'source_user_id']);
+        });
+        $log[] = 'Created referral_commission_logs table.';
+    } else {
+        $log[] = 'referral_commission_logs table already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});

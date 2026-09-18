@@ -1269,6 +1269,13 @@ if (!function_exists('credit_referral_deposit_commission')) {
         $referrer->deposit_balance = $referrer->deposit_balance + $commission;
         $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
         $referrer->save();
+
+        \App\Models\ReferralCommissionLog::create([
+            'referrer_id' => $referrer->id,
+            'source_user_id' => $depositor->id,
+            'type' => 'deposit',
+            'amount' => $commission,
+        ]);
     }
 }
 
@@ -1299,6 +1306,13 @@ if (!function_exists('credit_referral_earning_commission')) {
         $referrer->earning_balance = $referrer->earning_balance + $commission;
         $referrer->earning_commision_from_refer = $referrer->earning_commision_from_refer + $commission;
         $referrer->save();
+
+        \App\Models\ReferralCommissionLog::create([
+            'referrer_id' => $referrer->id,
+            'source_user_id' => $earner->id,
+            'type' => 'earning',
+            'amount' => $commission,
+        ]);
     }
 }
 
@@ -1328,6 +1342,13 @@ if (!function_exists('reverse_referral_earning_commission')) {
         $referrer->earning_balance = max(0, (float) $referrer->earning_balance - $commission);
         $referrer->earning_commision_from_refer = max(0, (float) $referrer->earning_commision_from_refer - $commission);
         $referrer->save();
+
+        \App\Models\ReferralCommissionLog::create([
+            'referrer_id' => $referrer->id,
+            'source_user_id' => $earner->id,
+            'type' => 'earning',
+            'amount' => -$commission,
+        ]);
     }
 }
 
