@@ -2760,3 +2760,91 @@ Route::get('/system-configure-cpagrip/{token}', function ($token) {
         'note' => 'Paste both values into CPAGrip Postback Tools -> Global Postback, then click Save Settings there. Re-running this route keeps the same password if one is already set.',
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-off, READ-ONLY: a money-trail reconciliation report for exactly the
+// users the /system-unverify-free-instant-verified-users route touched
+// (found via the "Account Verification" notice it sent each of them --
+// that title isn't used anywhere else). It does NOT re-check anything
+// against a hard rule; it's decision support for a human to look at
+// case-by-case, because there is no per-transaction log of deposit_balance
+// changes on this site.
+//
+// For each user it reconciles: (approved manual/gateway deposits) minus
+// (what we can see them spending deposit_balance on: service items,
+// lottery tickets, investment packages, web scripts) versus their CURRENT
+// deposit_balance. If current balance is meaningfully HIGHER than that
+// leftover, the gap is money that arrived in deposit_balance some other
+// way -- most likely an Earning -> Deposit transfer (a real, existing
+// feature: UserDepositCOntroller::earningToDeposit()), which is itself
+// unlogged so this is the closest available evidence, not proof.
+//
+// IMPORTANT CAVEAT: Instant Verify's fee can be deducted from EITHER
+// deposit_balance OR earning_balance (the user picks which, on the
+// verify form). This report only surfaces evidence for the
+// deposit_balance path. A user who paid straight from earning_balance
+// will show no gap here even if they genuinely paid -- there is no way
+// to see that path after the fact with the data this site keeps.
+Route::get('/system-report-instant-verify-money-trail/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $userIds = \App\Models\Admin\UserMessage::where('message_title', 'Account Verification')
+        ->pluck('user_id')
+        ->unique()
+        ->values();
+
+    $rows = [];
+
+    foreach ($userIds as $userId) {
+        $user = \App\Models\User::find($userId);
+        if (!$user) {
+            continue;
+        }
+
+        $totalDeposited = (float) \App\Models\Admin\Deposit::where('user_id', $userId)
+            ->where('approval', 1)
+            ->sum('amount');
+
+        $spentServices = (float) \App\Models\Admin\ServiceItemBook::where('user_id', $userId)
+            ->where('status', 1)
+            ->sum('price');
+
+        $spentLottery = (float) \App\Models\LotteryTicketBook::where('lottery_ticket_books.user_id', $userId)
+            ->where('lottery_ticket_books.status', 1)
+            ->join('lotteries', 'lotteries.id', '=', 'lottery_ticket_books.lottery_id')
+            ->sum('lotteries.price');
+
+        $spentInvestment = (float) \App\Models\InvestmentPackageBook::where('user_id', $userId)
+            ->where('status', 1)
+            ->sum('invest_amount');
+
+        $spentWebScript = (float) \App\Models\WebScriptBook::where('user_id', $userId)
+            ->where('status', 1)
+            ->sum('price');
+
+        $totalSpent = $spentServices + $spentLottery + $spentInvestment + $spentWebScript;
+        $expectedRemaining = $totalDeposited - $totalSpent;
+        $actualDepositBalance = (float) $user->deposit_balance;
+        $unexplainedGap = round($actualDepositBalance - $expectedRemaining, 4);
+
+        $rows[] = [
+            'id' => $user->id,
+            'code' => $user->code,
+            'name' => $user->name,
+            'email' => $user->email,
+            'total_manual_or_gateway_deposits' => round($totalDeposited, 4),
+            'total_spent_on_services_lottery_investment_webscript' => round($totalSpent, 4),
+            'current_deposit_balance' => round($actualDepositBalance, 4),
+            'current_earning_balance' => round((float) $user->earning_balance, 4),
+            'unexplained_deposit_balance_gap' => $unexplainedGap,
+            'likely_earning_to_deposit_transfer' => $unexplainedGap > 0.5,
+        ];
+    }
+
+    return response()->json([
+        'note' => 'Decision support only, not proof -- see the caveat in this route\'s own code comment about earning_balance-paid verifications being invisible here.',
+        'total_users_checked' => count($rows),
+        'users' => $rows,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
