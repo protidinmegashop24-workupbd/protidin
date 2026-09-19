@@ -134,6 +134,13 @@ class UserDepositCOntroller extends Controller
         $user->deposit_balance = $user->deposit_balance + $amount;
         $user->save();
 
+        if (\Illuminate\Support\Facades\Schema::hasTable('earning_to_deposit_transfers')) {
+            \App\Models\EarningToDepositTransfer::create([
+                'user_id' => $user->id,
+                'amount' => $amount,
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Transfer successful.');
     }
 

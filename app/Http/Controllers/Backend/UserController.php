@@ -33,7 +33,70 @@ class UserController extends Controller
         $ptc_job = ptc_job::all();
         $ptc_earn_history = ptc_earn_history::all();
 
+        $this->attachMoneyTrail($users->getCollection());
+
         return view('backend.pages.usermanage.user', compact('users', 'roles', 'website', 'jobs', 'JobWork', 'ptc_job', 'ptc_earn_history'));
+    }
+
+    /**
+     * Attaches a best-effort money-trail breakdown to each user for the
+     * admin User List: lifetime deposited, Earning->Deposit transferred,
+     * and spent from each balance. There is no full transaction ledger on
+     * this site, so this is built from whatever specific records DO exist
+     * (Deposit, Withdraw, service/lottery/investment/web-script purchases,
+     * instant_verify_logs, earning_to_deposit_transfers) -- the last two
+     * tables only cover activity from when they were added onward, so
+     * older activity that predates them won't show up here.
+     */
+    private function attachMoneyTrail($users)
+    {
+        $hasInstantVerifyLog = \Illuminate\Support\Facades\Schema::hasTable('instant_verify_logs');
+        $hasEarningTransferLog = \Illuminate\Support\Facades\Schema::hasTable('earning_to_deposit_transfers');
+        $hasServiceItemBooks = \Illuminate\Support\Facades\Schema::hasTable('service_item_books');
+        $hasLotteryBooks = \Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books') && \Illuminate\Support\Facades\Schema::hasTable('lotteries');
+        $hasInvestmentBooks = \Illuminate\Support\Facades\Schema::hasTable('investment_package_books');
+        $hasWebScriptBooks = \Illuminate\Support\Facades\Schema::hasTable('web_script_books');
+
+        foreach ($users as $user) {
+            $userId = $user->id;
+
+            $user->total_deposited = (float) \App\Models\Admin\Deposit::where('user_id', $userId)
+                ->where('approval', 1)
+                ->sum('amount');
+
+            $user->total_withdrawn = (float) \App\Models\Withdraw::where('user_id', $userId)
+                ->where('approval', 1)
+                ->sum('amount');
+
+            $user->total_earning_to_deposit_transferred = $hasEarningTransferLog
+                ? (float) \App\Models\EarningToDepositTransfer::where('user_id', $userId)->sum('amount')
+                : null;
+
+            $spentServices = $hasServiceItemBooks
+                ? (float) \App\Models\Admin\ServiceItemBook::where('user_id', $userId)->where('status', 1)->sum('price')
+                : 0;
+            $spentLottery = $hasLotteryBooks
+                ? (float) \App\Models\LotteryTicketBook::where('lottery_ticket_books.user_id', $userId)
+                    ->where('lottery_ticket_books.status', 1)
+                    ->join('lotteries', 'lotteries.id', '=', 'lottery_ticket_books.lottery_id')
+                    ->sum('lotteries.price')
+                : 0;
+            $spentInvestment = $hasInvestmentBooks
+                ? (float) \App\Models\InvestmentPackageBook::where('user_id', $userId)->where('status', 1)->sum('invest_amount')
+                : 0;
+            $spentWebScript = $hasWebScriptBooks
+                ? (float) \App\Models\WebScriptBook::where('user_id', $userId)->where('status', 1)->sum('price')
+                : 0;
+            $spentInstantVerifyDeposit = $hasInstantVerifyLog
+                ? (float) \App\Models\InstantVerifyLog::where('user_id', $userId)->where('balance_column', 'deposit_balance')->sum('fee_charged')
+                : 0;
+            $spentInstantVerifyEarning = $hasInstantVerifyLog
+                ? (float) \App\Models\InstantVerifyLog::where('user_id', $userId)->where('balance_column', 'earning_balance')->sum('fee_charged')
+                : 0;
+
+            $user->total_spent_from_deposit = $spentServices + $spentLottery + $spentInvestment + $spentWebScript + $spentInstantVerifyDeposit;
+            $user->total_spent_from_earning = $user->total_withdrawn + $spentInstantVerifyEarning;
+        }
     }
     
     public function duplicate_users()

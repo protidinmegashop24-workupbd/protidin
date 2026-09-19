@@ -2884,3 +2884,29 @@ Route::get('/system-add-instant-verify-log/{token}', function ($token) {
 
     return response()->json(['message' => 'instant_verify_logs table already exists.']);
 });
+
+// One-off: adds earning_to_deposit_transfers, a permanent record of every
+// Earning -> Deposit balance transfer going forward (this transfer has
+// existed as a feature -- UserDepositCOntroller::earningToDeposit() --
+// with no log at all until now). Combined with instant_verify_logs, the
+// admin User List can now show real numbers instead of guesses for new
+// activity; anything that happened before these tables existed still has
+// no trail (see /system-report-instant-verify-money-trail for that gap).
+Route::get('/system-add-earning-to-deposit-log/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('earning_to_deposit_transfers')) {
+        \Illuminate\Support\Facades\Schema::create('earning_to_deposit_transfers', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->decimal('amount', 10, 4)->default(0);
+            $table->timestamps();
+            $table->index('user_id');
+        });
+        return response()->json(['message' => 'Created earning_to_deposit_transfers table.']);
+    }
+
+    return response()->json(['message' => 'earning_to_deposit_transfers table already exists.']);
+});

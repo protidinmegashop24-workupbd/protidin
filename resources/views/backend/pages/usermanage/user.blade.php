@@ -77,7 +77,11 @@
                     <th>Total Job</th>
                     <th>Complete Job</th>
                     <th>Deposit</th>
-                    <th>Earning</th>                  
+                    <th>Earning</th>
+                    <th>Total<br>Deposited</th>
+                    <th>Earning &rarr; Deposit<br>Transferred</th>
+                    <th>Spent from<br>Deposit</th>
+                    <th>Spent from<br>Earning</th>
                     <th>Short<br>Details</th>
                     <th>Status</th>
                     @if(site_info()->instanat_verify_active == 1)
@@ -112,6 +116,16 @@
                             <td>{{ user_complete_job($user->id) }}</td>
                             <td>{{ $user->deposit_balance }}</td>
                             <td>{{ $user->earning_balance }}</td>
+                            <td>${{ number_format($user->total_deposited ?? 0, 4) }}</td>
+                            <td>
+                                @if(is_null($user->total_earning_to_deposit_transferred))
+                                    <span class="text-muted">N/A</span>
+                                @else
+                                    ${{ number_format($user->total_earning_to_deposit_transferred, 4) }}
+                                @endif
+                            </td>
+                            <td>${{ number_format($user->total_spent_from_deposit ?? 0, 4) }}</td>
+                            <td>${{ number_format($user->total_spent_from_earning ?? 0, 4) }}</td>
                             <td>
                                 <a style="cursor:pointer;" href="{{route('admin.user_full_job_view',['id'=> $user->id , 'viewType' => 'postedJob'])}}">Posted : {{$jobs->where('user_id',$user->id)->count()}}</a> 
                                 <br>
