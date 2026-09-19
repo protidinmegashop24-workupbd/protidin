@@ -2794,6 +2794,14 @@ Route::get('/system-report-instant-verify-money-trail/{token}', function ($token
         ->unique()
         ->values();
 
+    $tablesPresent = [
+        'deposits' => \Illuminate\Support\Facades\Schema::hasTable('deposits'),
+        'service_item_books' => \Illuminate\Support\Facades\Schema::hasTable('service_item_books'),
+        'lottery_ticket_books_and_lotteries' => \Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books') && \Illuminate\Support\Facades\Schema::hasTable('lotteries'),
+        'investment_package_books' => \Illuminate\Support\Facades\Schema::hasTable('investment_package_books'),
+        'web_script_books' => \Illuminate\Support\Facades\Schema::hasTable('web_script_books'),
+    ];
+
     $rows = [];
 
     foreach ($userIds as $userId) {
@@ -2802,26 +2810,28 @@ Route::get('/system-report-instant-verify-money-trail/{token}', function ($token
             continue;
         }
 
-        $totalDeposited = (float) \App\Models\Admin\Deposit::where('user_id', $userId)
-            ->where('approval', 1)
-            ->sum('amount');
+        $totalDeposited = \Illuminate\Support\Facades\Schema::hasTable('deposits')
+            ? (float) \App\Models\Admin\Deposit::where('user_id', $userId)->where('approval', 1)->sum('amount')
+            : 0;
 
-        $spentServices = (float) \App\Models\Admin\ServiceItemBook::where('user_id', $userId)
-            ->where('status', 1)
-            ->sum('price');
+        $spentServices = \Illuminate\Support\Facades\Schema::hasTable('service_item_books')
+            ? (float) \App\Models\Admin\ServiceItemBook::where('user_id', $userId)->where('status', 1)->sum('price')
+            : 0;
 
-        $spentLottery = (float) \App\Models\LotteryTicketBook::where('lottery_ticket_books.user_id', $userId)
-            ->where('lottery_ticket_books.status', 1)
-            ->join('lotteries', 'lotteries.id', '=', 'lottery_ticket_books.lottery_id')
-            ->sum('lotteries.price');
+        $spentLottery = (\Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books') && \Illuminate\Support\Facades\Schema::hasTable('lotteries'))
+            ? (float) \App\Models\LotteryTicketBook::where('lottery_ticket_books.user_id', $userId)
+                ->where('lottery_ticket_books.status', 1)
+                ->join('lotteries', 'lotteries.id', '=', 'lottery_ticket_books.lottery_id')
+                ->sum('lotteries.price')
+            : 0;
 
-        $spentInvestment = (float) \App\Models\InvestmentPackageBook::where('user_id', $userId)
-            ->where('status', 1)
-            ->sum('invest_amount');
+        $spentInvestment = \Illuminate\Support\Facades\Schema::hasTable('investment_package_books')
+            ? (float) \App\Models\InvestmentPackageBook::where('user_id', $userId)->where('status', 1)->sum('invest_amount')
+            : 0;
 
-        $spentWebScript = (float) \App\Models\WebScriptBook::where('user_id', $userId)
-            ->where('status', 1)
-            ->sum('price');
+        $spentWebScript = \Illuminate\Support\Facades\Schema::hasTable('web_script_books')
+            ? (float) \App\Models\WebScriptBook::where('user_id', $userId)->where('status', 1)->sum('price')
+            : 0;
 
         $totalSpent = $spentServices + $spentLottery + $spentInvestment + $spentWebScript;
         $expectedRemaining = $totalDeposited - $totalSpent;
@@ -2844,6 +2854,8 @@ Route::get('/system-report-instant-verify-money-trail/{token}', function ($token
 
     return response()->json([
         'note' => 'Decision support only, not proof -- see the caveat in this route\'s own code comment about earning_balance-paid verifications being invisible here.',
+        'tables_found_on_this_server' => $tablesPresent,
+        'tables_found_note' => 'Any "false" above means that spend category was skipped as 0 (table missing on this server), so totals may undercount spending for affected users.',
         'total_users_checked' => count($rows),
         'users' => $rows,
     ], 200, [], JSON_PRETTY_PRINT);
