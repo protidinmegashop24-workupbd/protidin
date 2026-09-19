@@ -325,6 +325,19 @@ class UserDashboardController extends Controller
         $user->referral_activated = 1;
         $user->save();
 
+        // Permanent record of exactly what this verification charged --
+        // without this, there is no way to later tell a genuinely-paid
+        // verification apart from one that happened while the fee was
+        // misconfigured (this is what caused the dispute over the earlier
+        // free-instant-verify cleanup).
+        if (\Illuminate\Support\Facades\Schema::hasTable('instant_verify_logs')) {
+            \App\Models\InstantVerifyLog::create([
+                'user_id' => $user->id,
+                'fee_charged' => $fee,
+                'balance_column' => $column,
+            ]);
+        }
+
         credit_referral_instant_verify_commission($user, $fee);
 
         return redirect()->back()->with('success', 'Your account has been verified successfully!');

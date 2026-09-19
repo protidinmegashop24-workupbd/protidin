@@ -2848,3 +2848,27 @@ Route::get('/system-report-instant-verify-money-trail/{token}', function ($token
         'users' => $rows,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// One-off: adds instant_verify_logs, a permanent per-verification record
+// (user_id, fee actually charged, which balance it came from). Going
+// forward, "did this user really pay?" has a direct, exact answer instead
+// of needing the reconciliation guesswork above.
+Route::get('/system-add-instant-verify-log/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('instant_verify_logs')) {
+        \Illuminate\Support\Facades\Schema::create('instant_verify_logs', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->decimal('fee_charged', 10, 2)->default(0);
+            $table->string('balance_column', 30)->nullable();
+            $table->timestamps();
+            $table->index('user_id');
+        });
+        return response()->json(['message' => 'Created instant_verify_logs table.']);
+    }
+
+    return response()->json(['message' => 'instant_verify_logs table already exists.']);
+});
