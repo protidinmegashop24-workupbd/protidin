@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Carbon\Carbon;
+use App\Models\LoginLog;
+use Illuminate\Support\Facades\Schema;
+use DeviceDetector\ClientHints;
+use DeviceDetector\DeviceDetector;
 
 class LoginController extends Controller
 {
@@ -98,6 +102,7 @@ class LoginController extends Controller
             }
             $user->activity = 1;
             $user->save();
+            $this->recordLoginLog($user, $request);
             $request->session()->put('login_erro', '');
             
             if (auth()->user()->role_id == 1 || auth()->user()->role_id == 2) {
@@ -135,6 +140,7 @@ class LoginController extends Controller
             }
             $user->activity = 1;
             $user->save();
+            $this->recordLoginLog($user, $request);
             $request->session()->put('login_erro', '');
             
             if (auth()->user()->role_id == 1 || auth()->user()->role_id == 2) {
@@ -149,6 +155,46 @@ class LoginController extends Controller
             return redirect()->back();
         }
 
+    }
+
+    /**
+     * Records every successful login's IP + device fingerprint, so
+     * multi-accounting (same device logging into different accounts) can be
+     * detected even when the accounts were registered from different IPs
+     * (common on mobile data, where the carrier IP changes often). Silently
+     * skipped if the login_logs table hasn't been created on this server yet.
+     */
+    private function recordLoginLog($user, $request)
+    {
+        if (!Schema::hasTable('login_logs')) {
+            return;
+        }
+
+        $device = null;
+        $brand = null;
+        $model = null;
+
+        try {
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $clientHints = ClientHints::factory($_SERVER);
+            $dd = new DeviceDetector($userAgent, $clientHints);
+            $dd->parse();
+            if (!$dd->isBot()) {
+                $device = $dd->getDeviceName();
+                $brand = $dd->getBrandName();
+                $model = $dd->getModel();
+            }
+        } catch (\Throwable $e) {
+            // Device detection failing must never block a login.
+        }
+
+        LoginLog::create([
+            'user_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'device_name' => $device,
+            'device_brand' => $brand,
+            'device_model' => $model,
+        ]);
     }
 
     /**

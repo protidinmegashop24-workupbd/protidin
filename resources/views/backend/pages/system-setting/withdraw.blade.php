@@ -70,6 +70,10 @@
                                                 @else
                                                     <span class="badge bg-danger p-2">Rejected</span>
                                                 @endif
+                                                @if($data->has_duplicate_alert)
+                                                    <br>
+                                                    <span class="badge bg-danger p-2 mt-1">⚠️ ডুপ্লিকেট ডিভাইস/আইপি</span>
+                                                @endif
                                             </td>
                                             <td>
                                                 @if($data->approval == 0)

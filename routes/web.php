@@ -2931,3 +2931,35 @@ Route::get('/system-fix-withdraw-headlines-autoincrement/{token}', function ($to
 
     return response()->json(['message' => 'withdraw_headlines.id is now AUTO_INCREMENT. Try saving a Withdraw Headline again.']);
 });
+
+// One-off: adds login_logs, a permanent record of every login's IP +
+// device fingerprint. Until now, a user's device fingerprint was only ever
+// captured once, at registration, and IP was only saved the very first
+// time they logged in and never again -- so "logged out of one account,
+// logged into another on the same phone" left no trail at all. Going
+// forward every login is logged, so the withdraw-time duplicate-account
+// check (WithdrawController::duplicateDeviceCodes) can catch that pattern
+// even when the two accounts were registered from different mobile-data
+// IPs.
+Route::get('/system-add-login-log/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('login_logs')) {
+        \Illuminate\Support\Facades\Schema::create('login_logs', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('ip_address', 45)->nullable();
+            $table->string('device_name')->nullable();
+            $table->string('device_brand')->nullable();
+            $table->string('device_model')->nullable();
+            $table->timestamps();
+            $table->index('user_id');
+            $table->index('ip_address');
+        });
+        return response()->json(['message' => 'Created login_logs table. Every login from now on will be recorded here.']);
+    }
+
+    return response()->json(['message' => 'login_logs table already exists.']);
+});

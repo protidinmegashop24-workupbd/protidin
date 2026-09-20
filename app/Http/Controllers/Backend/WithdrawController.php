@@ -12,6 +12,8 @@ use App\Models\Job;
 use App\Models\JobWork;
 use App\Models\ptc_earn_history;
 use App\Models\SurveySubmission;
+use App\Models\LoginLog;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 
 class WithdrawController extends Controller
@@ -24,6 +26,7 @@ class WithdrawController extends Controller
     public function index()
     {
         $datas = Withdraw::latest()->get();
+        $this->attachDuplicateAlert($datas);
         $website = Website::latest()->first();
         $title = 'Withdraw Request';
         return view('backend.pages.system-setting.withdraw', compact('title', 'datas', 'website'));
@@ -32,9 +35,93 @@ class WithdrawController extends Controller
     public function pending_withdraw_request()
     {
         $datas = Withdraw::where('approval', 0)->latest()->get();
+        $this->attachDuplicateAlert($datas);
         $website = Website::latest()->first();
         $title = 'Pending Withdraw Request';
         return view('backend.pages.system-setting.withdraw', compact('title', 'datas', 'website'));
+    }
+
+    /**
+     * Flags every withdraw row whose user shares a device or IP with
+     * another account, so the admin sees the warning directly in the list
+     * instead of having to click "Check This User" on every single row.
+     */
+    private function attachDuplicateAlert($withdraws)
+    {
+        foreach ($withdraws as $withdraw) {
+            $user = User::find($withdraw->user_id);
+            $withdraw->has_duplicate_alert = $user ? $this->duplicateDeviceCodes($user)->count() > 0 : false;
+        }
+    }
+
+    /**
+     * Same-device / same-IP account matches for a user, combining two
+     * signals: the one-time registration snapshot (users.ip_address +
+     * device_name/brand/model) and every login recorded since login_logs
+     * started being tracked. Either IP or device fingerprint matching is
+     * enough -- requiring both at once (the old behaviour) missed accounts
+     * registered/used from the same phone on different mobile-data IPs,
+     * which is exactly how "log out of one account, log into another on
+     * the same device" was slipping through undetected.
+     *
+     * @return \Illuminate\Support\Collection of user codes
+     */
+    private function duplicateDeviceCodes($user)
+    {
+        $codes = collect();
+        $hasDeviceSignature = !empty($user->device_name) || !empty($user->device_brand) || !empty($user->device_model);
+
+        if (!empty($user->ip_address) || $hasDeviceSignature) {
+            $query = User::where('id', '!=', $user->id)
+                ->where(function ($q) use ($user, $hasDeviceSignature) {
+                    if (!empty($user->ip_address)) {
+                        $q->orWhere('ip_address', $user->ip_address);
+                    }
+                    if ($hasDeviceSignature) {
+                        $q->orWhere(function ($q2) use ($user) {
+                            $q2->where('device_name', $user->device_name)
+                               ->where('device_brand', $user->device_brand)
+                               ->where('device_model', $user->device_model)
+                               ->whereNotNull('device_name');
+                        });
+                    }
+                });
+            $codes = $codes->merge($query->pluck('code'));
+        }
+
+        if (Schema::hasTable('login_logs')) {
+            $myLogins = LoginLog::where('user_id', $user->id)->get();
+
+            if ($myLogins->count() > 0) {
+                $ips = $myLogins->pluck('ip_address')->filter()->unique()->values();
+                $deviceCombos = $myLogins->filter(function ($l) {
+                    return $l->device_name && $l->device_brand && $l->device_model;
+                })->map(function ($l) {
+                    return $l->device_name . '|' . $l->device_brand . '|' . $l->device_model;
+                })->unique()->values();
+
+                if ($ips->count() > 0 || $deviceCombos->count() > 0) {
+                    $matchingUserIds = LoginLog::where('user_id', '!=', $user->id)
+                        ->where(function ($q) use ($ips, $deviceCombos) {
+                            if ($ips->count() > 0) {
+                                $q->orWhereIn('ip_address', $ips);
+                            }
+                            if ($deviceCombos->count() > 0) {
+                                $placeholders = implode(',', array_fill(0, $deviceCombos->count(), '?'));
+                                $q->orWhereRaw("CONCAT(device_name, '|', device_brand, '|', device_model) IN ($placeholders)", $deviceCombos->all());
+                            }
+                        })
+                        ->pluck('user_id')
+                        ->unique();
+
+                    if ($matchingUserIds->count() > 0) {
+                        $codes = $codes->merge(User::whereIn('id', $matchingUserIds)->pluck('code'));
+                    }
+                }
+            }
+        }
+
+        return $codes->unique()->values();
     }
 
     /**
@@ -69,13 +156,7 @@ class WithdrawController extends Controller
             ->join('jobs', 'job_works.job_id', '=', 'jobs.id')
             ->sum('jobs.each_worker_earn');
 
-        $duplicateDeviceUsers = User::where('id', '!=', $userId)
-            ->where('ip_address', $user->ip_address)
-            ->where('device_name', $user->device_name)
-            ->where('device_brand', $user->device_brand)
-            ->where('device_model', $user->device_model)
-            ->whereNotNull('device_name')
-            ->pluck('code');
+        $duplicateDeviceUsers = $this->duplicateDeviceCodes($user);
 
         $referredCount = User::where('rfered_by', $userId)->count();
 
