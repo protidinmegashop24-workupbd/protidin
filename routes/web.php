@@ -2910,3 +2910,24 @@ Route::get('/system-add-earning-to-deposit-log/{token}', function ($token) {
 
     return response()->json(['message' => 'earning_to_deposit_transfers table already exists.']);
 });
+
+// One-off: fixes "Field 'id' doesn't have a default value" when saving a
+// Withdraw Headline -- the withdraw_headlines table's id column exists on
+// this server but is missing its AUTO_INCREMENT property (a schema quirk
+// from however this table was originally created here, unrelated to any
+// code change). This restores AUTO_INCREMENT without touching any
+// existing rows. If the same error shows up for a different table later,
+// this same fix (MODIFY id ... AUTO_INCREMENT) applies there too.
+Route::get('/system-fix-withdraw-headlines-autoincrement/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('withdraw_headlines')) {
+        return response()->json(['error' => 'withdraw_headlines table not found.'], 404);
+    }
+
+    \Illuminate\Support\Facades\DB::statement('ALTER TABLE withdraw_headlines MODIFY id BIGINT UNSIGNED AUTO_INCREMENT');
+
+    return response()->json(['message' => 'withdraw_headlines.id is now AUTO_INCREMENT. Try saving a Withdraw Headline again.']);
+});
