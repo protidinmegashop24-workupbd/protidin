@@ -14,10 +14,8 @@
         @yield('css')
         <!--<meta name="google-site-verification" content="wpOGVjOfBoHYkTi38yDHvOmOQVwTs8VfvcY21b8fUGw" />-->
         <meta name="google-site-verification" content="hZrJqVypdtE7M947kCzx-dnfGYdroV34YSuAK0QoTn0" />
-        @if(!request()->is('login') && !request()->is('register'))
-            <meta name="google-adsense-account" content="ca-pub-6314276342535503">
-            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6314276342535503" crossorigin="anonymous"></script>
-        @endif
+        <meta name="google-adsense-account" content="ca-pub-6314276342535503">
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6314276342535503" crossorigin="anonymous"></script>
      <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
