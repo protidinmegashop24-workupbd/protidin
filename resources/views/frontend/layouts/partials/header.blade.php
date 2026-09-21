@@ -171,7 +171,14 @@
 </li>
 
                 <li class="nav-item">
-    <a href="{{ route('marketplace') }}" 
+    <a href="{{ route('user.find-job') }}" class="nav-link {{ request()->is('user/find-job') ? 'active' : '' }}">
+        <i class="fa fa-search" aria-hidden="true"></i>
+        <span>Find Job</span>
+    </a>
+</li>
+
+                <li class="nav-item">
+    <a href="{{ route('marketplace') }}"
        class="nav-link {{ request()->routeIs('marketplace') || request()->routeIs('marketplace.service.show') ? 'active' : '' }}">
         
         <i class="fa fa-briefcase" aria-hidden="true"></i>
