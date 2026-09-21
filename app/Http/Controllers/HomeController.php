@@ -182,6 +182,25 @@ class HomeController extends Controller
         return view('frontend.pages.career', compact('slider', 'website', 'career','p_categorys'));
     }
 
+    /**
+     * Public, no-login job board -- lets a visitor browse open jobs before
+     * signing up (the same idea as workedbd.com's guest-visible job list).
+     * Deliberately does not reuse UserDashboardController::index() or its
+     * view, since those assume Auth::user() everywhere; this stays a
+     * read-only listing and always sends "work this job" to login/register.
+     */
+    public function publicFindJob()
+    {
+        $categorys = Category::latest()->get();
+
+        $jobs = Job::where('status', 1)
+            ->whereColumn('worker_need', '>', 'worker_confirmed')
+            ->latest()
+            ->paginate(20);
+
+        return view('frontend.pages.find-job', compact('jobs', 'categorys'));
+    }
+
     public function job_details($code)
     {
         $job = Job::where('code', $code)->first();

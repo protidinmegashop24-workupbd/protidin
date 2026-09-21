@@ -167,6 +167,7 @@ Route::post('my-captcha', 'HomeController@myCaptchaPost')->name('myCaptcha.post'
 Route::get('refresh_captcha', 'HomeController@refreshCaptcha')->name('refresh_captcha');
 
 Route::get('/job/{code}', [HomeController::class, 'job_details'])->name('job-details');
+Route::get('/find-job', [HomeController::class, 'publicFindJob'])->name('find-job');
 
 /*
 |--------------------------------------------------------------------------

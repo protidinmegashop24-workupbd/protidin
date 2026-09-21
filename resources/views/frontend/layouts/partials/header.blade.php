@@ -171,7 +171,7 @@
 </li>
 
                 <li class="nav-item">
-    <a href="{{ route('user.find-job') }}" class="nav-link {{ request()->is('user/find-job') ? 'active' : '' }}">
+    <a href="{{ route('find-job') }}" class="nav-link {{ request()->is('find-job') ? 'active' : '' }}">
         <i class="fa fa-search" aria-hidden="true"></i>
         <span>Find Job</span>
     </a>
