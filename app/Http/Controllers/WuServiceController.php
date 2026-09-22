@@ -210,7 +210,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     */
     public function publicIndex(\Illuminate\Http\Request $request)
 {
-    $query = DB::table('wu_services')->where('status', 'active');
+    $query = DB::table('wu_services')->where('status', 'active')->where('type', 'service');
     $this->applyServiceSearchAndSort($query, $request);
     $services = $query->paginate(12)->appends($request->query());
 
@@ -235,6 +235,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $query = DB::table('wu_services')
         ->where('status', 'active')
+        ->where('type', 'service')
         ->where('category', $category->name);
     $this->applyServiceSearchAndSort($query, $request);
     $services = $query->paginate(12)->appends($request->query());
@@ -245,6 +246,51 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
         ->get();
 
     return view('frontend.wu_services.public-index', compact('services', 'categories', 'category'));
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | Public Digital Products (same wu_services table, type = digital_product)
+    |--------------------------------------------------------------------------
+    */
+    public function publicDigitalProducts(\Illuminate\Http\Request $request)
+{
+    $query = DB::table('wu_services')->where('status', 'active')->where('type', 'digital_product');
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
+
+    $categories = DB::table('wu_service_categories')
+        ->where('status', 1)
+        ->orderBy('name', 'asc')
+        ->get();
+
+    return view('frontend.wu_services.public-index-digital', compact('services', 'categories'));
+}
+
+    public function publicDigitalProductCategory(\Illuminate\Http\Request $request, $slug)
+{
+    $category = DB::table('wu_service_categories')
+        ->where('slug', $slug)
+        ->where('status', 1)
+        ->first();
+
+    if (!$category) {
+        abort(404);
+    }
+
+    $query = DB::table('wu_services')
+        ->where('status', 'active')
+        ->where('type', 'digital_product')
+        ->where('category', $category->name);
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
+
+    $categories = DB::table('wu_service_categories')
+        ->where('status', 1)
+        ->orderBy('name', 'asc')
+        ->get();
+
+    return view('frontend.wu_services.public-index-digital', compact('services', 'categories', 'category'));
 }
 
     public function serviceShow(\Illuminate\Http\Request $request, $slug)

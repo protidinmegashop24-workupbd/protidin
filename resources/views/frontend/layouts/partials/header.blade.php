@@ -179,10 +179,18 @@
 
                 <li class="nav-item">
     <a href="{{ route('marketplace') }}"
-       class="nav-link {{ request()->routeIs('marketplace') || request()->routeIs('marketplace.service.show') ? 'active' : '' }}">
-        
+       class="nav-link {{ request()->routeIs('marketplace') || request()->routeIs('marketplace.category') || request()->routeIs('marketplace.service.show') ? 'active' : '' }}">
+
         <i class="fa fa-briefcase" aria-hidden="true"></i>
         <span>Marketplace</span>
+    </a>
+</li>
+
+                <li class="nav-item">
+    <a href="{{ route('digital-products') }}"
+       class="nav-link {{ request()->routeIs('digital-products') || request()->routeIs('digital-products.category') ? 'active' : '' }}">
+        <i class="fa fa-download" aria-hidden="true"></i>
+        <span>Digital Product</span>
     </a>
 </li>
 

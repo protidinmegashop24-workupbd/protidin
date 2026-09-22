@@ -912,6 +912,8 @@ Route::get('/surveys', function () {
 Route::get('/marketplace', [WuServiceController::class, 'publicIndex'])->name('marketplace');
 Route::get('/marketplace/category/{slug}', [WuServiceController::class, 'publicCategory'])->name('marketplace.category');
 Route::get('/marketplace/service/{slug}', [WuServiceController::class, 'publicShow'])->name('marketplace.service.show');
+Route::get('/digital-products', [WuServiceController::class, 'publicDigitalProducts'])->name('digital-products');
+Route::get('/digital-products/category/{slug}', [WuServiceController::class, 'publicDigitalProductCategory'])->name('digital-products.category');
 
 //servay page route -- points to the real surveys list (auth-gated: guests land on login first)
 Route::get('/surveys-home', function () {
