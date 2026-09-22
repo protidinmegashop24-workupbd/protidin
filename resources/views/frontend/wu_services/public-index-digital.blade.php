@@ -3,112 +3,8 @@
 @section('css')
 <style>
 
-      .wu-market-hero{
-    padding: 90px 0;
-    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-}
-.wu-market-hero-content h1{
-    font-size: 42px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-bottom: 16px;
-}
-.wu-market-hero-content p{
-    font-size: 16px;
-    line-height: 1.9;
-    color: #64748b;
-    margin-bottom: 22px;
-}
-.wu-market-badge{
-    display: inline-block;
-    background: #e8f7ee;
-    color: #15803d;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 8px 14px;
-    border-radius: 999px;
-    margin-bottom: 18px;
-}
-.wu-market-points{
-    list-style: none;
-    padding: 0;
-    margin: 0 0 25px;
-}
-.wu-market-points li{
-    margin-bottom: 10px;
-    font-size: 16px;
-    color: #1e293b;
-}
-.wu-market-btns{
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-.wu-market-btn-primary,
-.wu-market-btn-secondary{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 14px 24px;
-    border-radius: 12px;
-    text-decoration: none !important;
-    font-weight: 700;
-}
-.wu-market-btn-primary{
-    background: #16a34a;
-    color: #fff !important;
-}
-.wu-market-btn-secondary{
-    background: #eff6ff;
-    color: #1d4ed8 !important;
-    border: 1px solid #bfdbfe;
-}
-.wu-market-hero-img img{
-    max-width: 100%;
-    height: auto;
-    border-radius: 22px;
-    box-shadow: 0 16px 35px rgba(15,23,42,.10);
-}
-@media (max-width: 991px){
-    .wu-market-hero-content h1{
-        font-size: 32px;
-    }
-  }
     .wu-marketplace-page {
         background: #f8fbff;
-    }
-
-    .wu-marketplace-hero {
-        padding: 80px 0 60px;
-        background: linear-gradient(135deg, #eef9f3 0%, #f8fbff 45%, #ffffff 100%);
-        border-bottom: 1px solid #e8eef5;
-    }
-
-    .wu-hero-badge {
-        display: inline-block;
-        background: #e8fff1;
-        color: #15803d;
-        font-weight: 700;
-        font-size: 13px;
-        padding: 8px 14px;
-        border-radius: 999px;
-        margin-bottom: 18px;
-    }
-
-    .wu-marketplace-hero h1 {
-        font-size: 42px;
-        line-height: 1.2;
-        font-weight: 800;
-        color: #172b4d;
-        margin-bottom: 18px;
-    }
-
-    .wu-marketplace-hero p {
-        font-size: 17px;
-        line-height: 1.8;
-        color: #52627a;
-        max-width: 760px;
-        margin: 0 auto 25px;
     }
 
     .wu-hero-btn {
@@ -128,16 +24,6 @@
 
     .wu-hero-btn-primary:hover {
         background: #1a8c48;
-        transform: translateY(-2px);
-    }
-
-    .wu-hero-btn-secondary {
-        background: #172b4d;
-        color: #fff !important;
-    }
-
-    .wu-hero-btn-secondary:hover {
-        background: #10203b;
         transform: translateY(-2px);
     }
 
@@ -495,8 +381,8 @@
                     </ul>
 
                     <div class="mp-hero-btns">
-                        <a href="{{ route('blog.index') }}" class="mp-btn-primary">
-                            Learning Marketplace
+                        <a href="#services-list" class="mp-btn-primary">
+                            Browse Digital Products
                         </a>
 
                         <a href="{{ route('marketplace') }}" class="mp-btn-secondary">
@@ -516,7 +402,7 @@
     </div>
 </section>
 
-    <section class="wu-section">
+    <section class="wu-section" id="services-list">
         <div class="container">
             <div class="wu-section-title">
                 <h2>Available Digital Products</h2>
@@ -636,15 +522,6 @@
                     These categories help users understand the kind of digital products available on the platform.
                 </p>
             </div>
-            <div class="text-center mb-4">
-    <a href="{{ route('digital-products') }}" class="wu-category-pill {{ !isset($category) ? 'active' : '' }}">All</a>
-
-    @foreach($categories as $cat)
-        <a href="{{ route('digital-products.category', $cat->slug) }}" class="wu-category-pill {{ (isset($category) && $category->id == $cat->id) ? 'active' : '' }}">
-            {{ $cat->name }}
-        </a>
-    @endforeach
-           </div>
 
             <div class="row">
                 <div class="col-md-4 mb-4">
@@ -770,12 +647,12 @@
     <section class="wu-section">
         <div class="container">
             <div class="wu-cta-box">
-                <h2>Ready to offer a service or hire someone for a task?</h2>
+                <h2>Ready to buy or sell a digital product?</h2>
                 <p>
-                    Create an account to explore buyer tools, seller tools, service chat, and internal order management through the Protidin Mega Earn Marketplace.
+                    Create an account to purchase digital products instantly, or list your own templates, scripts, ebooks and more for sale on Protidin Mega Earn Marketplace.
                 </p>
                 <a href="{{ route('register') }}" class="wu-hero-btn wu-hero-btn-primary">Start With an Account</a>
-                <a href="{{ route('user.marketplace.services') }}" class="mp-btn-secondary">Login to Continue</a>
+                <a href="{{ route('login') }}" class="mp-btn-secondary">Login to Continue</a>
             </div>
         </div>
     </section>
