@@ -13,7 +13,7 @@ class JobMaintenanceController extends Controller
     /**
      * Runs the two jobs that used to run inline on every page load of
      * UserJobWorkController::index() and UserDashboardController::index()
-     * (trashing week-old job_work rows, auto-approving day-old pending
+     * (trashing week-old job_work rows, auto-approving 72-hour-old pending
      * ones) -- scanning the whole job_works table for every visitor was
      * wasteful. Meant to be hit periodically by a cPanel cron job instead
      * (e.g. hourly), not by user traffic.
@@ -32,7 +32,7 @@ class JobMaintenanceController extends Controller
         $skippedQuotaFull = 0;
 
         $pending = JobWork::where('status', 0)
-            ->where('created_at', '<', Carbon::now()->subHours(24))
+            ->where('created_at', '<', Carbon::now()->subHours(72))
             ->get();
 
         foreach ($pending as $job_work) {
