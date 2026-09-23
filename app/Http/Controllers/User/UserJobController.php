@@ -290,7 +290,19 @@ class UserJobController extends Controller
             'estimited_day' => 'required',
             'budget' => 'required',
         ]);
-        
+
+        // The job-create page's own minimum-cost check (per sub-category
+        // "Minimum Job Cost", System Setting -> Sub Category) only runs in
+        // JavaScript, so it was possible to submit a job below that floor
+        // by skipping/bypassing the JS. Enforce the same rule server-side.
+        $subCategory = SubCategory::find($request->sub_category);
+        if ($subCategory && (float) $request->each_worker_earn < (float) $subCategory->minimum_cost) {
+            return redirect()->back()->withInput()->with(
+                'error',
+                'Per-worker cost must be at least $' . number_format($subCategory->minimum_cost, 4) . ' for this category.'
+            );
+        }
+
         // return $request;
 
         $website = Website::latest()->first();
