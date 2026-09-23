@@ -756,6 +756,53 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     return view('user.pages.marketplace.services', compact('services', 'categories', 'category'));
 }
 
+    public function browseDigitalProducts(\Illuminate\Http\Request $request)
+{
+    $query = DB::table('wu_services')
+        ->where('status', 'active')
+        ->where('type', 'digital_product')
+        ->where('user_id', '!=', auth()->id());
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
+
+    $categories = DB::table('wu_service_categories')
+        ->where('status', 1)
+        ->where('type', 'digital_product')
+        ->orderBy('name', 'asc')
+        ->get();
+
+    return view('user.pages.marketplace.products', compact('services', 'categories'));
+}
+
+    public function browseDigitalProductsByCategory(\Illuminate\Http\Request $request, $slug)
+{
+    $category = DB::table('wu_service_categories')
+        ->where('slug', $slug)
+        ->where('status', 1)
+        ->where('type', 'digital_product')
+        ->first();
+
+    if (!$category) {
+        abort(404);
+    }
+
+    $query = DB::table('wu_services')
+        ->where('status', 'active')
+        ->where('type', 'digital_product')
+        ->where('user_id', '!=', auth()->id())
+        ->where('category', $category->name);
+    $this->applyServiceSearchAndSort($query, $request);
+    $services = $query->paginate(12)->appends($request->query());
+
+    $categories = DB::table('wu_service_categories')
+        ->where('status', 1)
+        ->where('type', 'digital_product')
+        ->orderBy('name', 'asc')
+        ->get();
+
+    return view('user.pages.marketplace.products', compact('services', 'categories', 'category'));
+}
+
     /*
     |--------------------------------------------------------------------------
     | Pre-order inquiries

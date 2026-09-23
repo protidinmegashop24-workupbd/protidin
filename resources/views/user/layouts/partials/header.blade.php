@@ -80,6 +80,18 @@
                     <a href="{{ route('user.deposit') }}" class="btn btn-sm deposit-balance text-white mbl-btn mbl-mt mr-2" style="background: #008000; border: #008000;" type="button">
                         Deposit: ${{ round(Auth::user()->deposit_balance, 4) }}
                     </a>
+
+                    <div class="dropdown d-inline-block">
+                        <button type="button" class="btn btn-sm text-white mbl-btn mbl-mt dropdown-toggle" style="background: #22ab59; border: #22ab59;" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Post A Service or Product
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ route('user.marketplace.create') }}?type=service"><i class="fas fa-briefcase me-1"></i> Post a Service</a>
+                            <a class="dropdown-item" href="{{ route('user.marketplace.create') }}?type=digital_product"><i class="fas fa-download me-1"></i> Post a Digital Product</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{{ route('user.marketplace.my_services') }}"><i class="fas fa-list me-1"></i> My Listings</a>
+                        </div>
+                    </div>
                 </div>
             </div>
             

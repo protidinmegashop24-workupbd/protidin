@@ -168,8 +168,8 @@
                         <div class="mb-4">
                             <label class="mp-label">Listing Type</label>
                             <select name="type" id="listing-type" class="form-control mp-input" onchange="toggleListingType()">
-                                <option value="service" {{ old('type', 'service') == 'service' ? 'selected' : '' }}>Service (custom work, you deliver manually)</option>
-                                <option value="digital_product" {{ old('type') == 'digital_product' ? 'selected' : '' }}>Digital Product (a file, delivered instantly)</option>
+                                <option value="service" {{ old('type', request('type', 'service')) == 'service' ? 'selected' : '' }}>Service (custom work, you deliver manually)</option>
+                                <option value="digital_product" {{ old('type', request('type')) == 'digital_product' ? 'selected' : '' }}>Digital Product (a file, delivered instantly)</option>
                             </select>
                         </div>
 

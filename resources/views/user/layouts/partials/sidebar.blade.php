@@ -134,6 +134,14 @@
     </a>
 </li>
 
+<li class="@if(Route::is('user.marketplace.products') || Route::is('user.marketplace.products.category')) active @endif">
+    <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('user.marketplace.products') }} @endif"
+       @if(Auth::user()->status == 0) onclick="return alert('Your Account is blocked! {{ Auth::user()->reason }}. Please Contact with authority!')" @endif>
+        <i class="fas fa-download"></i>
+        <span>Brouse Product</span>
+    </a>
+</li>
+
                 <li>
                     <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('user.find-job') }} @endif" @if(Auth::user()->status == 0) onclick="return alert('Your Account is blocked! {{ Auth::user()->reason }}. Please Contact with authority!')" @endif class=" waves-effect">
                         <i class="fas fa-search-dollar"></i>

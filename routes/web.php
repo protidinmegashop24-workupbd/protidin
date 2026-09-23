@@ -815,6 +815,8 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
 
     Route::get('/marketplace/services', [WuServiceController::class, 'browseServices'])->name('marketplace.services');
     Route::get('/marketplace/services/category/{slug}', [WuServiceController::class, 'browseServicesByCategory'])->name('marketplace.services.category');
+    Route::get('/marketplace/products', [WuServiceController::class, 'browseDigitalProducts'])->name('marketplace.products');
+    Route::get('/marketplace/products/category/{slug}', [WuServiceController::class, 'browseDigitalProductsByCategory'])->name('marketplace.products.category');
     Route::get('/marketplace/service/{slug}', [WuServiceController::class, 'serviceShow'])->name('marketplace.service.show');
 
     Route::get('/marketplace/inquiries', [WuServiceController::class, 'inquiries'])->name('marketplace.inquiries');
