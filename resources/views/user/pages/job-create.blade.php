@@ -322,7 +322,7 @@
             <form class="myPostWizard" id="job_creat_form" action="{{ route('user.job-post') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" id="job_fee" value="{{ $job_fee->fee }}">
-                <input type="hidden" id="minimum_cost" value="{{min_job_fee()}}">
+                <input type="hidden" id="minimum_cost" value="{{site_info()->minimum_job_cost}}">
                 <input type="hidden" class="form-control" id="my_deposit_balance" value="{{ Auth::user()->deposit_balance }}">
                 
                 <div class="step-container-main">
@@ -526,7 +526,7 @@
                                             </div>
                                             <input type="number" class="form-control" readonly name="budget" id="budget" value="0" min="0">
                                         </div>
-                                        <p class="font-weight-bold text-red spend1" style="font-size: 14px;" id="job_cost_alert">Minimum spend ${{min_job_fee()}}</p>
+                                        <p class="font-weight-bold text-red spend1" style="font-size: 14px;" id="job_cost_alert">Minimum spend ${{site_info()->minimum_job_cost}}</p>
                                         <p></p>
                                         <div class="text-right"><a href="{{route('user.deposit')}}" class="btn btn-success btn-sm text-dark" id="btnplsDeposit" style="background:#fec30f;border:none;display:none">Please! Deposit</a></div>
                                     </div>
