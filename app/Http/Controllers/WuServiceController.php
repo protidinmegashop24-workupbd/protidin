@@ -216,6 +216,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'service')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -227,6 +228,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     $category = DB::table('wu_service_categories')
         ->where('slug', $slug)
         ->where('status', 1)
+        ->where('type', 'service')
         ->first();
 
     if (!$category) {
@@ -242,6 +244,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'service')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -261,6 +264,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'digital_product')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -272,6 +276,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     $category = DB::table('wu_service_categories')
         ->where('slug', $slug)
         ->where('status', 1)
+        ->where('type', 'digital_product')
         ->first();
 
     if (!$category) {
@@ -287,6 +292,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'digital_product')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -456,12 +462,19 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     */
     public function create()
 {
-    $categories = DB::table('wu_service_categories')
+    $serviceCategories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'service')
         ->orderBy('name', 'asc')
         ->get();
 
-    return view('user.pages.marketplace.create', compact('categories'));
+    $digitalCategories = DB::table('wu_service_categories')
+        ->where('status', 1)
+        ->where('type', 'digital_product')
+        ->orderBy('name', 'asc')
+        ->get();
+
+    return view('user.pages.marketplace.create', compact('serviceCategories', 'digitalCategories'));
 }
 
     public function store(Request $request)
@@ -485,6 +498,14 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     }
 
     $request->validate($rules);
+
+    $categoryMatchesType = DB::table('wu_service_categories')
+        ->where('name', $request->category)
+        ->where('type', $type)
+        ->exists();
+    if (!$categoryMatchesType) {
+        return back()->withInput()->with('error', 'Please choose a category that matches the selected listing type.');
+    }
 
     $slug = Str::slug($request->title) . '-' . rand(1000, 9999);
     $imagePath = null;
@@ -582,6 +603,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', $service->type ?? 'service')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -620,6 +642,14 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     }
 
     $request->validate($rules);
+
+    $categoryMatchesType = DB::table('wu_service_categories')
+        ->where('name', $request->category)
+        ->where('type', $type)
+        ->exists();
+    if (!$categoryMatchesType) {
+        return back()->withInput()->with('error', 'Please choose a category that matches this listing\'s type.');
+    }
 
     $imagePath = $service->image;
 
@@ -683,12 +713,14 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 {
     $query = DB::table('wu_services')
         ->where('status', 'active')
+        ->where('type', 'service')
         ->where('user_id', '!=', auth()->id());
     $this->applyServiceSearchAndSort($query, $request);
     $services = $query->paginate(12)->appends($request->query());
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'service')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -700,6 +732,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
     $category = DB::table('wu_service_categories')
         ->where('slug', $slug)
         ->where('status', 1)
+        ->where('type', 'service')
         ->first();
 
     if (!$category) {
@@ -708,6 +741,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $query = DB::table('wu_services')
         ->where('status', 'active')
+        ->where('type', 'service')
         ->where('user_id', '!=', auth()->id())
         ->where('category', $category->name);
     $this->applyServiceSearchAndSort($query, $request);
@@ -715,6 +749,7 @@ private function createEscrowLog($orderId, $buyerId, $sellerId, $amount, $type, 
 
     $categories = DB::table('wu_service_categories')
         ->where('status', 1)
+        ->where('type', 'service')
         ->orderBy('name', 'asc')
         ->get();
 
@@ -1605,10 +1640,12 @@ public function downloadProduct($orderId)
 {
     $request->validate([
         'name' => 'required|max:191|unique:wu_service_categories,name',
+        'type' => 'required|in:service,digital_product',
     ]);
 
     DB::table('wu_service_categories')->insert([
         'name' => $request->name,
+        'type' => $request->type,
         'slug' => Str::slug($request->name),
         'status' => 1,
         'created_at' => now(),
@@ -1622,12 +1659,14 @@ public function downloadProduct($orderId)
 {
     $request->validate([
         'name' => 'required|max:191|unique:wu_service_categories,name,' . $id,
+        'type' => 'required|in:service,digital_product',
     ]);
 
     DB::table('wu_service_categories')
         ->where('id', $id)
         ->update([
             'name' => $request->name,
+            'type' => $request->type,
             'slug' => Str::slug($request->name),
             'updated_at' => now(),
         ]);

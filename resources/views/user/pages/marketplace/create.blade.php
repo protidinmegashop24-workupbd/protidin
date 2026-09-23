@@ -182,9 +182,17 @@
                         <div class="row">
                             <div class="col-md-6 mb-4">
                                 <label class="mp-label">Category</label>
-                                <select name="category" class="form-control mp-input" required>
+                                <select name="category" id="category-service" class="form-control mp-input">
     <option value="">Select Category</option>
-    @foreach($categories as $cat)
+    @foreach($serviceCategories as $cat)
+        <option value="{{ $cat->name }}" {{ old('category') == $cat->name ? 'selected' : '' }}>
+            {{ $cat->name }}
+        </option>
+    @endforeach
+</select>
+                                <select name="category" id="category-digital" class="form-control mp-input" style="display:none;" disabled>
+    <option value="">Select Category</option>
+    @foreach($digitalCategories as $cat)
         <option value="{{ $cat->name }}" {{ old('category') == $cat->name ? 'selected' : '' }}>
             {{ $cat->name }}
         </option>
@@ -273,17 +281,33 @@
         const digitalFields = document.getElementById('digital-fields');
         const deliveryDays = document.getElementById('delivery_days');
         const titleLabel = document.getElementById('title-label');
+        const categoryService = document.getElementById('category-service');
+        const categoryDigital = document.getElementById('category-digital');
 
         if (type === 'digital_product') {
             serviceFields.style.display = 'none';
             digitalFields.style.display = 'block';
             deliveryDays.removeAttribute('required');
             titleLabel.textContent = 'Product Title';
+
+            categoryService.style.display = 'none';
+            categoryService.disabled = true;
+            categoryService.removeAttribute('required');
+            categoryDigital.style.display = 'block';
+            categoryDigital.disabled = false;
+            categoryDigital.setAttribute('required', 'required');
         } else {
             serviceFields.style.display = 'flex';
             digitalFields.style.display = 'none';
             deliveryDays.setAttribute('required', 'required');
             titleLabel.textContent = 'Service Title';
+
+            categoryDigital.style.display = 'none';
+            categoryDigital.disabled = true;
+            categoryDigital.removeAttribute('required');
+            categoryService.style.display = 'block';
+            categoryService.disabled = false;
+            categoryService.setAttribute('required', 'required');
         }
     }
     document.addEventListener('DOMContentLoaded', toggleListingType);

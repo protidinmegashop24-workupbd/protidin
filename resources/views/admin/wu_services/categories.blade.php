@@ -1,6 +1,6 @@
 @extends('backend.layouts.master')
 
-@section('title','Marketplace Categories')
+@section('title','Marketplace & Digital Product Categories')
 @section('back-content')
 
 <div class="container-fluid mt-3">
@@ -33,6 +33,14 @@
                             <input type="text" name="name" class="form-control" placeholder="Enter category name" required>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Type</label>
+                            <select name="type" class="form-control" required>
+                                <option value="service">Service (shows on Marketplace)</option>
+                                <option value="digital_product">Digital Product (shows on Digital Products page)</option>
+                            </select>
+                        </div>
+
                         <button type="submit" class="btn btn-success">Add Category</button>
                     </form>
                 </div>
@@ -51,8 +59,9 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
+                                    <th>Type</th>
                                     <th>Slug</th>
-                                    <th width="220">Action</th>
+                                    <th width="260">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -60,12 +69,23 @@
                                     <tr>
                                         <td>{{ $cat->id }}</td>
                                         <td>{{ $cat->name }}</td>
+                                        <td>
+                                            @if(($cat->type ?? 'service') == 'digital_product')
+                                                <span class="badge bg-info text-dark">Digital Product</span>
+                                            @else
+                                                <span class="badge bg-success">Service</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $cat->slug }}</td>
                                         <td>
                                             <form action="{{ route('admin.wu-marketplace-categories-update', $cat->id) }}" method="POST" class="d-inline-block">
                                                 @csrf
-                                                <div class="input-group">
+                                                <div class="input-group mb-1">
                                                     <input type="text" name="name" value="{{ $cat->name }}" class="form-control form-control-sm" required>
+                                                    <select name="type" class="form-control form-control-sm">
+                                                        <option value="service" {{ ($cat->type ?? 'service') == 'service' ? 'selected' : '' }}>Service</option>
+                                                        <option value="digital_product" {{ ($cat->type ?? 'service') == 'digital_product' ? 'selected' : '' }}>Digital Product</option>
+                                                    </select>
                                                     <button type="submit" class="btn btn-primary btn-sm">Update</button>
                                                 </div>
                                             </form>
@@ -79,7 +99,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center">No categories found.</td>
+                                        <td colspan="5" class="text-center">No categories found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

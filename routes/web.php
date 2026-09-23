@@ -2966,3 +2966,22 @@ Route::get('/system-add-login-log/{token}', function ($token) {
 
     return response()->json(['message' => 'login_logs table already exists.']);
 });
+
+// One-off: adds a `type` column to wu_service_categories (service |
+// digital_product), so Marketplace and Digital Product can each have
+// their own separate category list instead of sharing one. Existing
+// categories default to 'service' so nothing already live changes pages.
+Route::get('/system-add-category-type/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('wu_service_categories', 'type')) {
+        \Illuminate\Support\Facades\Schema::table('wu_service_categories', function ($table) {
+            $table->string('type')->default('service')->after('name');
+        });
+        return response()->json(['message' => 'Added type column to wu_service_categories. All existing categories default to service -- create new ones for Digital Product from the admin panel.']);
+    }
+
+    return response()->json(['message' => 'type column already exists on wu_service_categories.']);
+});
