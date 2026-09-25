@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TelegramController extends Controller
@@ -120,6 +121,19 @@ class TelegramController extends Controller
             'user_id' => $userId,
         ]);
 
+        if (!$response->json('ok')) {
+            // Can't confirm the sender's admin status -- e.g. the bot itself
+            // isn't a member/admin of this chat anymore. Treat as "not
+            // admin" so link moderation still runs, and log it since a
+            // failing lookup here usually means the bot's own status in the
+            // group has changed.
+            Log::warning('Telegram getChatMember failed', [
+                'chat_id' => $chatId,
+                'user_id' => $userId,
+                'response' => $response->json(),
+            ]);
+        }
+
         $status = $response->json('result.status');
 
         return in_array($status, ['administrator', 'creator'], true);
@@ -132,10 +146,21 @@ class TelegramController extends Controller
             return;
         }
 
-        Http::asForm()->post("https://api.telegram.org/bot{$token}/deleteMessage", [
+        $response = Http::asForm()->post("https://api.telegram.org/bot{$token}/deleteMessage", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
         ]);
+
+        if (!$response->json('ok')) {
+            // Most common cause: the bot isn't an admin in the group (or
+            // lost the "Delete messages" permission), so Telegram silently
+            // refused the delete. This used to fail with no trace at all.
+            Log::warning('Telegram deleteMessage failed -- bot may not have delete permission in this group', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'response' => $response->json(),
+            ]);
+        }
     }
 
     private function sendJoinGate($chatId, $refCode)

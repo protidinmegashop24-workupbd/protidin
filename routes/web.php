@@ -1539,6 +1539,41 @@ Route::get('/system-telegram-set-webhook/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// Read-only: asks Telegram directly what it currently knows about this
+// bot's webhook -- whether one is registered at all, whether it matches
+// this site's URL, and any delivery errors Telegram has hit trying to
+// call it. Use this to diagnose "the bot isn't doing anything" instead
+// of guessing.
+Route::get('/system-telegram-webhook-info/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $botToken = env('TELEGRAM_BOT_TOKEN');
+    $webhookSecret = env('TELEGRAM_WEBHOOK_SECRET');
+
+    if (!$botToken) {
+        return response()->json([
+            'error' => 'TELEGRAM_BOT_TOKEN missing in .env -- the bot cannot work at all until this is set.',
+        ], 500, [], JSON_PRETTY_PRINT);
+    }
+
+    $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getWebhookInfo");
+    $info = $response->json('result', []);
+
+    $expectedUrl = $webhookSecret ? url('/api/telegram-webhook/' . $webhookSecret) : null;
+
+    return response()->json([
+        'expected_webhook_url' => $expectedUrl,
+        'currently_registered_url' => $info['url'] ?? null,
+        'urls_match' => $expectedUrl && ($info['url'] ?? null) === $expectedUrl,
+        'pending_update_count' => $info['pending_update_count'] ?? null,
+        'last_error_message' => $info['last_error_message'] ?? null,
+        'last_error_date' => isset($info['last_error_date']) ? date('Y-m-d H:i:s', $info['last_error_date']) : null,
+        'raw_telegram_response' => $info,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
 // Shows the effective mail settings the app will actually use to send OTP
 // mail (pulled from the DB via website_info(), same as AppServiceProvider
 // does at boot). Sensitive values are masked.
