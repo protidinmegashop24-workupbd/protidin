@@ -1,0 +1,233 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Providers\RouteServiceProvider;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Carbon\Carbon;
+use App\Models\LoginLog;
+use Illuminate\Support\Facades\Schema;
+use DeviceDetector\ClientHints;
+use DeviceDetector\DeviceDetector;
+
+class LoginController extends Controller
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Login Controller
+    |--------------------------------------------------------------------------
+    |
+    | This controller handles authenticating users for the application and
+    | redirecting them to your home screen. The controller uses a trait
+    | to conveniently provide its functionality to your applications.
+    |
+    */
+
+    use AuthenticatesUsers;
+
+    /**
+     * Where to redirect users after login.
+     *
+     * @var string
+     */
+    // protected $redirectTo = RouteServiceProvider::HOME;
+    // protected $redirectTo = '/home';
+    protected $redirectTo = '/';
+
+    /**
+     * Create a new controller instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        $this->middleware('guest')->except('logout');
+    }
+
+    public function login(Request $request)
+    {
+        $input = $request->all();
+        
+        // $messages = [
+        //     'g-recaptcha-response.required' => 'You must check the Captcha.',
+        //     'g-recaptcha-response.captcha' => 'Captcha error! try again later or contact site admin.',
+        // ];
+  
+        // $validator = Validator::make($request->all(), [
+        //     'g-recaptcha-response' => 'required|captcha'
+        // ], $messages);
+  
+        // if ($validator->fails()) {
+        //     return redirect('login')
+        //                 ->withErrors($validator)
+        //                 ->withInput();
+        // }
+
+        // $this->validate($request, [
+        //     'phone' => 'required',
+        //     'password' => 'required',
+        // ]);
+
+        if(auth()->attempt(array('email' => $input['phone'], 'password' => $input['password']))){
+            $user = User::find(auth()->user()->id);
+            
+            if($user->is_ban == 1){
+                Auth::logout();
+                $request->session()->put('login_erro', 'This account is ban! Please contact with authority');
+                return redirect()->back();
+            }
+            
+            if($user->is_suspended == 1){
+                if($user->is_suspended <= Carbon::now()){
+                    $user->is_suspended == 0;
+                }else{
+                    Auth::logout();
+                    $request->session()->put('login_erro', 'This account is suspended! Please contact with authority');
+                    return redirect()->back();   
+                }
+            }
+            
+            if ($this->blockUnverifiedRegistration($user)) {
+                return redirect()->route('otp.verify', ['email' => $user->email]);
+            }
+
+            if($user->ip_address == NULL){
+                $user->ip_address = $request->ip();
+            }
+            $user->activity = 1;
+            $user->save();
+            $this->recordLoginLog($user, $request);
+            $request->session()->put('login_erro', '');
+            
+            if (auth()->user()->role_id == 1 || auth()->user()->role_id == 2) {
+                return redirect()->route('admin.dashboard');
+            }elseif (auth()->user()->role_id == 3) {
+                return redirect()->route('user.dashboard');
+            }else{
+                return redirect()->route('home');
+            }
+        }elseif(auth()->attempt(array('phone' => $input['phone'], 'password' => $input['password']))){
+            $user = User::find(auth()->user()->id);
+            
+            if($user->is_ban == 1){
+                Auth::logout();
+                $request->session()->put('login_erro', 'This account is ban! Please contact with authority');
+                return redirect()->back();
+            }
+            
+            if($user->is_suspended == 1){
+                if($user->suspend_release <= Carbon::now()){
+                    $user->is_suspended == 0;
+                }else{
+                    Auth::logout();
+                    $request->session()->put('login_erro', 'This account is suspended! Please contact with authority');
+                    return redirect()->back();   
+                }
+            }
+            
+            if ($this->blockUnverifiedRegistration($user)) {
+                return redirect()->route('otp.verify', ['email' => $user->email]);
+            }
+
+            if($user->ip_address == NULL){
+                $user->ip_address = $request->ip();
+            }
+            $user->activity = 1;
+            $user->save();
+            $this->recordLoginLog($user, $request);
+            $request->session()->put('login_erro', '');
+            
+            if (auth()->user()->role_id == 1 || auth()->user()->role_id == 2) {
+                return redirect()->route('admin.dashboard');
+            }elseif (auth()->user()->role_id == 3) {
+                return redirect()->route('user.dashboard');
+            }else{
+                return redirect()->route('home');
+            }
+        }else{
+          // $request->session()->put('login_erro', 'Email/Password not matches!');
+            return redirect()->back();
+        }
+
+    }
+
+    /**
+     * Records every successful login's IP + device fingerprint, so
+     * multi-accounting (same device logging into different accounts) can be
+     * detected even when the accounts were registered from different IPs
+     * (common on mobile data, where the carrier IP changes often). Silently
+     * skipped if the login_logs table hasn't been created on this server yet.
+     */
+    private function recordLoginLog($user, $request)
+    {
+        if (!Schema::hasTable('login_logs')) {
+            return;
+        }
+
+        $device = null;
+        $brand = null;
+        $model = null;
+
+        try {
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $clientHints = ClientHints::factory($_SERVER);
+            $dd = new DeviceDetector($userAgent, $clientHints);
+            $dd->parse();
+            if (!$dd->isBot()) {
+                $device = $dd->getDeviceName();
+                $brand = $dd->getBrandName();
+                $model = $dd->getModel();
+            }
+        } catch (\Throwable $e) {
+            // Device detection failing must never block a login.
+        }
+
+        LoginLog::create([
+            'user_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'device_name' => $device,
+            'device_brand' => $brand,
+            'device_model' => $model,
+        ]);
+    }
+
+    /**
+     * True (and a fresh OTP resent) if this account was created through the
+     * OTP-verification registration flow and never completed it -- only
+     * accounts with a pending otp_code are affected, so the ~1000+ existing
+     * accounts from before this flow existed (otp_code always null) are
+     * never blocked from logging in.
+     */
+    private function blockUnverifiedRegistration($user)
+    {
+        if (empty($user->otp_code) || $user->hasVerifiedEmail()) {
+            return false;
+        }
+
+        Auth::logout();
+
+        $otp = (string) rand(100000, 999999);
+        $user->otp_code = $otp;
+        $user->otp_expires_at = now()->addMinutes(15);
+        $user->save();
+
+        try {
+            Mail::send('emails.otp', ['name' => $user->name, 'otp' => $otp], function ($mail) use ($user) {
+                $mail->from(website_info()->mail_from, website_info()->title)
+                    ->to($user->email, $user->name)
+                    ->subject('Verify your email - ' . website_info()->title);
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Login-time OTP resend failed: ' . $e->getMessage());
+        }
+
+        return true;
+    }
+
+}
