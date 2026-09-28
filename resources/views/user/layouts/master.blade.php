@@ -56,6 +56,18 @@
             .body-top-section{
                 margin-top: 9px;
             }
+            /* The dashboard theme's .footer is position:absolute; bottom:0,
+               pinned to the bottom of its container's calculated height --
+               on short pages (like /verify) that height is less than the
+               footer's position, so it overlaps the page's own content
+               (the code input, the submit button) instead of sitting below
+               it. On mobile, let it flow normally after the content instead. */
+            .footer{
+                position: static !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: auto !important;
+            }
         }
     </style>
     
