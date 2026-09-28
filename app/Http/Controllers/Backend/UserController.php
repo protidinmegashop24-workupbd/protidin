@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Role;
 use Illuminate\Http\Request;
+use App\Models\Admin\UserMessage;
 use App\Models\Admin\Website;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -403,6 +404,28 @@ class UserController extends Controller
         $user->kyc_notice = $request->kyc_notice;
         $user->is_verified = $request->kyc_status === 'approve' ? 1 : 0;
         $user->save();
+
+        // The admin form's "Send him Notice" textarea only ever saved
+        // kyc_notice on the user row -- nothing actually notified the user
+        // (no bell notification), so they'd only ever see it if they
+        // happened to revisit the KYC page themselves. Send a real
+        // UserMessage too, same as every other admin action that's
+        // supposed to notify a user (withdraw approval, job reject, etc.).
+        if ($request->kyc_status === 'unapprove') {
+            $notice = new UserMessage();
+            $notice->user_id = $user->id;
+            $notice->message_title = 'KYC Verification';
+            $notice->message = 'Your ID verification was rejected.'
+                . ($request->kyc_notice ? ' Reason: ' . $request->kyc_notice : '')
+                . ' Please resubmit with correct information.';
+            $notice->save();
+        } elseif ($request->kyc_status === 'approve') {
+            $notice = new UserMessage();
+            $notice->user_id = $user->id;
+            $notice->message_title = 'KYC Verification';
+            $notice->message = 'Your ID verification has been approved.';
+            $notice->save();
+        }
 
         return redirect()->back()->with('success', 'KYC status updated successfully.');
     }
