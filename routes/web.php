@@ -349,6 +349,11 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::post('wu-marketplace-categories-update/{id}', [WuServiceController::class, 'adminCategoryUpdate'])->name('wu-marketplace-categories-update');
     Route::get('wu-marketplace-categories-delete/{id}', [WuServiceController::class, 'adminCategoryDelete'])->name('wu-marketplace-categories-delete');
 
+    // Telegram broadcast -- send a message (with an optional button) to
+    // the promo channel or group using the site's own bot.
+    Route::get('telegram-broadcast', [\App\Http\Controllers\TelegramController::class, 'broadcastForm'])->name('telegram-broadcast');
+    Route::post('telegram-broadcast-send', [\App\Http\Controllers\TelegramController::class, 'broadcastSend'])->name('telegram-broadcast.send');
+
     // Surveys
     Route::get('/surveys', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'index'])->name('surveys.index');
     Route::get('/surveys/create', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'create'])->name('surveys.create');

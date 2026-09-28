@@ -654,6 +654,12 @@
         <span>Marketplace Categories</span>
     </a>
 </li>
+<li>
+    <a href="{{ route('admin.telegram-broadcast') }}">
+        <i class="fab fa-telegram"></i>
+        <span>Telegram Broadcast</span>
+    </a>
+</li>
 
             @if (Auth::user()->role_id == 1)
                 <li class="nav-item">

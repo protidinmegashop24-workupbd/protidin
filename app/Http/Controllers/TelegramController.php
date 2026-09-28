@@ -259,7 +259,7 @@ class TelegramController extends Controller
     {
         $token = $this->botToken();
         if (!$token) {
-            return;
+            return null;
         }
 
         $params = [
@@ -271,6 +271,50 @@ class TelegramController extends Controller
             $params['reply_markup'] = json_encode(['inline_keyboard' => $buttonRows]);
         }
 
-        Http::asForm()->post("https://api.telegram.org/bot{$token}/sendMessage", $params);
+        return Http::asForm()->post("https://api.telegram.org/bot{$token}/sendMessage", $params);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin: broadcast a message (with an optional button) to the channel
+    | or group, using the same bot already wired up for the join gate and
+    | link moderation.
+    |--------------------------------------------------------------------------
+    */
+    public function broadcastForm()
+    {
+        return view('backend.pages.telegram.broadcast');
+    }
+
+    public function broadcastSend(Request $request)
+    {
+        $request->validate([
+            'target' => 'required|in:channel,group',
+            'message' => 'required|string|max:4000',
+            'button_text' => 'nullable|string|max:60|required_with:button_url',
+            'button_url' => 'nullable|url|max:2000|required_with:button_text',
+        ]);
+
+        if (!$this->botToken()) {
+            return redirect()->back()->withInput()->with('error', 'TELEGRAM_BOT_TOKEN is missing in .env -- the bot cannot send messages.');
+        }
+
+        $chatId = $request->target === 'channel' ? self::CHANNEL_USERNAME : self::GROUP_USERNAME;
+
+        $buttonRows = [];
+        if ($request->filled('button_text') && $request->filled('button_url')) {
+            $buttonRows = [[['text' => $request->button_text, 'url' => $request->button_url]]];
+        }
+
+        $response = $this->sendMessage($chatId, $request->message, $buttonRows);
+
+        if (!$response || !$response->json('ok')) {
+            return redirect()->back()->withInput()->with(
+                'error',
+                'Telegram rejected the message: ' . ($response ? $response->json('description') : 'no response from Telegram.')
+            );
+        }
+
+        return redirect()->back()->with('success', 'Message sent successfully to the ' . $request->target . '.');
     }
 }
