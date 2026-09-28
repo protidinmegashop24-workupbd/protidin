@@ -88,13 +88,25 @@
             <div class="page-content">
                 
                 <div class="dsk-dnone">
-                    <div class="mb-2 d-flex justify-content-center d-lg-inline-block">
+                    <div class="mb-2 d-flex flex-wrap justify-content-center d-lg-inline-block">
                         <button class="btn btn-sm btn-info text-white mbl-btn mbl-mt" style="background: #000066; border: #000066;" type="button">
                             Earning: ${{ round(Auth::user()->earning_balance, 4) }}
                         </button>
                         <button class="btn btn-sm btn-info text-white mbl-btn mbl-mt mr-2" style="background: #008000; border: #008000;" type="button">
                             Deposit: ${{ round(Auth::user()->deposit_balance, 4) }}
                         </button>
+
+                        <div class="dropdown d-inline-block mbl-mt">
+                            <button type="button" class="btn btn-sm text-white mbl-btn dropdown-toggle" style="background: #22ab59; border: #22ab59;" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Post A Service or Product
+                            </button>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="{{ route('user.marketplace.create') }}?type=service"><i class="fas fa-briefcase me-1"></i> Post a Service</a>
+                                <a class="dropdown-item" href="{{ route('user.marketplace.create') }}?type=digital_product"><i class="fas fa-download me-1"></i> Post a Digital Product</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('user.marketplace.my_services') }}"><i class="fas fa-list me-1"></i> My Listings</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
