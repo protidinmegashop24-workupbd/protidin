@@ -80,6 +80,15 @@
                 max-width: 100% !important;
                 height: auto;
             }
+            /* The sidebar logo icon only ever had a bare height="40" HTML
+               attribute (no width), so the generic "height: auto" rule
+               above overrode it and let the logo stretch to its full
+               natural (large) size. Restore its fixed size explicitly. */
+            .mbl-logo img {
+                max-width: 40px !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
             body, html {
                 overflow-x: hidden;
                 max-width: 100vw;
