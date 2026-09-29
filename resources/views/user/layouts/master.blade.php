@@ -68,6 +68,22 @@
                 right: 0 !important;
                 height: auto !important;
             }
+            /* Ad widgets pasted into the site (Google Ad, "Inside Body Tag
+               Code", etc.) sometimes render at a fixed width wider than a
+               phone screen, which pushes the WHOLE page wider and makes it
+               scroll sideways -- everything (buttons, boxes) then looks
+               shifted/cut off depending on scroll position. Cap every
+               embedded ad/media element to the screen's width, and stop the
+               page itself from ever scrolling horizontally, so one
+               oversized ad can't drag the rest of the layout with it. */
+            img, iframe, embed, object, video {
+                max-width: 100% !important;
+                height: auto;
+            }
+            body, html {
+                overflow-x: hidden;
+                max-width: 100vw;
+            }
         }
     </style>
     
