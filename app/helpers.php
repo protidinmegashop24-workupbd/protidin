@@ -1,0 +1,1563 @@
+<?php
+
+use App\Models\Admin\Advertisement;
+use App\Models\Admin\Category;
+use App\Models\Admin\Country;
+use App\Models\Admin\Continent;
+use App\Models\Admin\ContinentCountry;
+use App\Models\Admin\Deposit;
+use App\Models\Admin\DepositDocumentData;
+use App\Models\Admin\DepositAccount;
+use App\Models\Admin\DepositAccountDocument;
+use App\Models\Admin\Headline;
+use App\Models\Admin\LocationZone;
+use App\Models\Admin\MainWallet;
+use App\Models\Admin\SubCategory;
+use App\Models\Admin\DollarRate;
+use App\Models\Admin\UserMessage;
+use App\Models\Admin\DepositFee;
+use App\Models\Admin\UserVerifyDocumentData;
+use App\Models\Admin\Website;
+use App\Models\BoostCategory;
+use App\Models\Admin\Aboutus;
+use App\Models\BoostSubCategory;
+use App\Models\DepositDocument;
+use App\Models\GoogleAd;
+use App\Models\Admin\PaidAdRate;
+use App\Models\Job;
+use App\Models\JobCountry;
+use App\Models\Admin\JobFee;
+use App\Models\BoostCharge;
+use App\Models\BoostJob;
+use App\Models\JobWork;
+use App\Models\JobHide;
+use App\Models\Policy;
+use App\Models\User;
+use App\Models\Withdraw;
+use App\Models\WithdrawDocumentData;
+use App\Models\WithdrawMethod;
+use App\Models\WithdrawMethodDocument;
+use App\Models\Admin\AdminType;
+use App\Models\Admin\Module;
+use App\Models\Admin\ScreenShootCharge;
+use App\Models\Admin\SubModule;
+use App\Models\Admin\AdminPermission;
+
+use App\Models\Admin\SpinSetting;
+use App\Models\Admin\UserDailySpin;
+
+use App\Models\SupportTicket;
+use App\Models\SupportTicketData;
+use App\Models\InvestmentPackage;
+use App\Models\InvestmentPackageBook;
+
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+
+function about_us(){
+    return Aboutus::latest()->first();
+}
+
+function minimum_deposit(){
+    $data = 0;
+    $depositFee = DepositFee::latest()->first();
+    if($depositFee){
+        $data = $depositFee->minimum;
+    }
+    return $data;
+}
+
+function getCreatedAtAttribute($date) {
+    return Carbon::createFromFormat('Y-m-d H:i:s', $date)->format('H:i:s');
+}
+
+function spin_setting(){
+    return SpinSetting::latest()->first();
+}
+
+function user_rating($user_id){
+    $rating = 0;
+    $total_rated = JobWork::where('user_id', $user_id)->where('is_rated', 1)->count();
+    $total_rating = JobWork::where('user_id', $user_id)->where('is_rated', 1)->sum('rating');
+    if($total_rating > 0){
+        $rating = $total_rating / $total_rated;
+    }
+    return number_format($rating, 1);
+}
+
+function support_ticket_data($ticket_id){
+    return SupportTicketData::where('ticket_id', $ticket_id)->latest()->get();
+}
+
+function find_support_ticket($id){
+    return SupportTicket::find($id);
+}
+
+function today_user_spin($user_id){
+    return UserDailySpin::where('user_id', $user_id)->whereDate('created_at', Carbon::today())->count();
+}
+
+function time_elapsed_string($datetime, $full = false) {
+    $now = new DateTime;
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+
+    $diff->w = floor($diff->d / 7);
+    $diff->d -= $diff->w * 7;
+
+    $string = array(
+        'y' => 'year',
+        'm' => 'month',
+        'w' => 'week',
+        'd' => 'day',
+        'h' => 'hour',
+        'i' => 'minute',
+        's' => 'second',
+    );
+    foreach ($string as $k => &$v) {
+        if ($diff->$k) {
+            $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
+        } else {
+            unset($string[$k]);
+        }
+    }    
+    if (!$full) $string = array_slice($string, 0, 1);
+    return $string ? implode(', ', $string) . ' ago' : 'just now';
+} 
+
+function screenshoot_charge(){
+    $fee = 0;
+    $data = ScreenShootCharge::latest()->first();
+    if($data->status == 1){
+        $fee = $data->fee;
+    }
+    return $fee;
+}
+
+function find_job_fee(){
+    return JobFee::latest()->first();
+}
+
+function min_job_fee(){
+    $fee = 0;
+    $data = JobFee::latest()->first();
+    if($data){
+        $fee = $data->min_fee;
+    }
+    return $fee;
+}
+
+function boost_charges(){
+    return BoostCharge::orderBy('id', 'ASC')->get();
+}
+
+function has_complete_job(){
+    $result = 0;
+    $jobs = Job::where('user_id', Auth::user()->id)->whereColumn('worker_need', 'worker_confirmed')->get();
+    if($jobs->count() > 0){
+        $result = 1;
+    }
+    return $result;
+}
+
+function boost_active($job_id){
+    $startTime = date("Y-m-d H:i:s");
+    $result = 0;
+    $boost_job = BoostJob::where('job_id', $job_id)->where('expired_time', '>=', $startTime)->first();
+    if($boost_job){
+        $result = 1;
+    }
+    return $result;
+}
+
+function job_ready_for_boost($job_id){
+    $result = 1;
+    $boost_job = BoostJob::where('job_id', $job_id)->first();
+    if($boost_job){
+        $startTime = strtotime(date("Y-m-d H:i:s"));
+        $diff = round(abs(strtotime($boost_job->expired_time) - $startTime) / 60,2);
+        if(find_job_fee()->boost_interval > $diff){
+            $result = 0;
+        }
+    }
+    return $result;
+}
+
+function remain_interval_for_boost($job_id){
+    $result = 0;
+    $boost_job = BoostJob::where('job_id', $job_id)->first();
+    if($boost_job){
+        $startTime = strtotime(date("Y-m-d H:i:s"));
+        $diff = round(abs(strtotime($boost_job->expired_time) - $startTime) / 60,2);
+        // if(find_job_fee()->boost_interval > $diff){
+        //     $result = find_job_fee()->boost_interval - $diff;
+        // }
+        
+        if($diff > 0){
+            $result = $diff;
+        }
+    }
+    return $result;
+}
+
+function boost_active_time($job_id){
+    $result = 0;
+    $boost_job = BoostJob::where('job_id', $job_id)->first();
+    if($boost_job){
+        $startTime = strtotime(date("Y-m-d H:i:s"));
+        $diff = round(abs(strtotime($boost_job->expired_time) - $startTime) / 60,2);
+        if(find_job_fee()->boost_interval > $diff){
+            $result = find_job_fee()->boost_interval - $diff;
+        }
+    }
+    $startTime = date("Y-m-d H:i:s");
+    $acive_time = date('Y-m-d H:i:s', strtotime('+'.$result .'minutes', strtotime($startTime)));
+    
+    return $acive_time;
+}
+
+function boost_jobs(){
+    $startTime = date("Y-m-d H:i:s");
+    return BoostJob::where('expired_time', '>=', $startTime)->orderBy('start_time', 'ASC')->get();
+}
+
+function hide_job_for_country($job_id){
+    return JobCountry::where('job_id', $job_id)->orderBy('country_id', 'ASC')->get();
+}
+
+function this_job_for_me($job_id){
+    $result = 1;
+    $data = JobCountry::where('job_id', $job_id)->where('country_id', Auth::user()->country)->first();
+    if($data){
+        $result = 0;
+    }
+    return $result;
+}
+
+function main_category($id){
+    $category = Category::find($id);
+    if($category){
+        echo $category->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function main_boost_category($id){
+    $category = BoostCategory::find($id);
+    if($category){
+        echo $category->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function sub_boost_category($id){
+    $category = BoostSubCategory::find($id);
+    if($category){
+        echo $category->id.'-'.$category->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function account_name($id){
+    $d_account = DepositAccount::find($id);
+    if($d_account){
+        echo $d_account->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function deposit_account_documents($account_id){
+    return DepositAccountDocument::where('account_id', $account_id)->orderBy('id', 'ASC')->get();
+}
+
+function deposit_document_datas($deposit_id){
+    return DepositDocumentData::where('deposit_id', $deposit_id)->orderBy('id', 'ASC')->get();
+}
+
+function withdraw_method_name($id){
+    $d_account = WithdrawMethod::find($id);
+    if($d_account){
+        echo $d_account->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function withdraw_method_documents($account_id){
+    return WithdrawMethodDocument::where('account_id', $account_id)->orderBy('id', 'ASC')->get();
+}
+
+function withdraw_document_datas($withdraw_id){
+    return WithdrawDocumentData::where('withdraw_id', $withdraw_id)->orderBy('id', 'ASC')->get();
+}
+
+function user_verify_document_datas($user_id){
+    return UserVerifyDocumentData::where('user_id', $user_id)->orderBy('id', 'ASC')->get();
+}
+
+function country($id){
+    $country = Country::find($id);
+    if($country){
+        return $country->name;
+    }else{
+        return 'N/A';
+    }
+}
+
+function continent($id){
+    $data = Continent::find($id);
+    if($data){
+        return $data->name;
+    }else{
+        return 'N/A';
+    }
+}
+
+function continent_country($continent_id){
+    return ContinentCountry::where('continent_id', $continent_id)->orderBy('country_id', 'ASC')->get();
+}
+
+function country_continent($country_id){
+    return ContinentCountry::where('country_id', $country_id)->orderBy('continent_id', 'ASC')->get();
+}
+
+function user_verify_data($user_id, $label, $type){
+    return UserVerifyDocumentData::where('user_id', $user_id)->where('label', $label)->where('type', $type)->first();
+}
+
+function website_title(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->title;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function website_logo(){
+    $website = Website::latest()->first();
+    if($website){
+        return $website->logo;
+    }else{
+        return 'N/A';
+    }
+}
+
+function website_favicon(){
+    $website = Website::latest()->first();
+    if($website){
+        return $website->favicon;
+    }else{
+        return 'N/A';
+    }
+}
+
+function website_phone(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->phone;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function website_address(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->address;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function website_email(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->email;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function website_description(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->description;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function accepted_task_note(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->accepted_task_note;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function complete_task_note(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->complete_task_note;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function referral_notice(){
+    $website = Website::latest()->first();
+    if($website){
+        echo $website->referral_notice;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function website_icon(){
+    $website = Website::latest()->first();
+    return $website->icon;
+}
+
+function website_link(){
+    $website = Website::latest()->first();
+    return $website->link;
+}
+
+function website_info(){
+    return Website::latest()->first();
+}
+
+function site_info(){
+    return Website::latest()->first();
+}
+
+function user_name($id){
+    $user = User::find($id);
+    if($user){
+        echo $user->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function user_code($id){
+    $user = User::find($id);
+    if($user){
+        echo $user->code;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function user_phone($id){
+    $user = User::find($id);
+    if($user){
+        echo $user->phone;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function user_activity($id){
+    $user = User::find($id);
+    if($user){
+        return $user->activity;
+    }else{
+        return 0;
+    }
+}
+
+function user_image($id){
+    $user = User::find($id);
+    if($user){
+        if($user->image != NULL){
+            return $user->image;
+        }else{
+            return 'frontend/img/skmj-user.jpg';
+        }
+    }else{
+        return 'frontend/img/skmj-user.jpg';
+    }
+}
+
+function location_zone($id){
+    $location = LocationZone::find($id);
+    if($location){
+        echo $location->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function category($id){
+    $category = Category::find($id);
+    if($category){
+        echo $category->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function find_job($id){
+    return Job::find($id);
+}
+
+function job_title($id){
+    $job = Job::find($id);
+    if($job){
+        echo $job->title;
+    }else{
+        echo 'This job is deleted';
+    }
+}
+
+function job_earning($id){
+    $result = 0;
+    $job = Job::find($id);
+    if($job){
+        $result = $job->each_worker_earn;
+    }
+    return $result;
+}
+
+function job_owner($id){
+    $job = Job::find($id);
+    if($job){
+        $user = User::find($job->user_id);
+        if($user){
+            echo $user->name;
+        }else{
+            echo 'N/A';
+        }
+    }else{
+        echo 'This job is deleted';
+    }
+}
+
+function this_work_for_my_job($id){
+    $job = Job::find($id);
+    if($job){
+        if($job->user_id == Auth::user()->id){
+            return 1;
+        }else{
+            return 0;
+        }
+    }else{
+        return 0;
+    }
+}
+
+function sub_category($id){
+    $category = SubCategory::find($id);
+    if($category){
+        echo $category->name;
+    }else{
+        echo 'N/A';
+    }
+}
+
+function sub_categorys($category_id){
+    return SubCategory::where('category_id', $category_id)->orderBy('id', 'ASC')->get();
+}
+
+function specific_task($id){
+    $html = '';
+    $job = Job::find($id);
+    if($job){
+        $tasks = explode("|",$job->specific_task);
+        if($tasks){
+            foreach($tasks as $key=>$task){
+                $html .= ($key+1).'. '.$task.'</br>';
+            }
+        }
+    }else{
+        $html .= 'This job is deleted';
+    }
+
+    echo $html;
+}
+
+function headlines(){
+    return Headline::latest()->get();
+}
+
+function countrys(){
+    return Country::latest()->get();
+}
+
+function user_total_job($id){
+    return Job::where('user_id', $id)->count();
+}
+
+function total_attend_work($id){
+    return JobWork::where('user_id', $id)->count();
+}
+
+function user_complete_job($id){
+    return JobWork::where('user_id', $id)->count();
+}
+
+function user_complete_job_pending($id){
+    return JobWork::where('user_id', $id)->where('status', 0)->count();
+}
+
+function user_complete_job_approve($id){
+    return JobWork::where('user_id', $id)->where('status', 1)->count();
+}
+
+function user_complete_job_reject($id){
+    return JobWork::where('user_id', $id)->where('status', 2)->orWhere('status', 3)->count();
+}
+
+function complete_work_this_job($id){
+    return JobWork::where('job_id', $id)->where('status', '!=', 2)->count();
+    // return JobWork::where('job_id', $id)->where('status', 1)->count();
+}
+
+
+function user_total_pending_job($id){
+    return Job::where('user_id', $id)->where('status', 0)->count();
+}
+function user_total_approve_job($id){
+    return Job::where('user_id', $id)->where('status', 1)->count();
+}
+function user_total_reject_job($id){
+    return Job::where('user_id', $id)->where('status', 2)->count();
+}
+function user_total_jobe_delete_request($id){
+    return Job::where('user_id', $id)->where('delete_request', 1)->count();
+}
+
+function work_approve_ratio($user_id){
+    $ratio = 0;
+    $total_attempt = user_complete_job($user_id);
+    $total_approve = user_complete_job_approve($user_id);
+    if($total_attempt > 0){
+        $ratio = ($total_approve * 100) / $total_attempt;
+    }
+    return $ratio;
+}
+
+function work_pending_ratio($user_id){
+    $ratio = 0;
+    $total_attempt = user_complete_job($user_id);
+    $total_pending = user_complete_job_pending($user_id);
+    if($total_attempt > 0){
+        $ratio = ($total_pending * 100) / $total_attempt;
+    }
+    return $ratio;
+}
+
+function work_reject_ratio($user_id){
+    $ratio = 0;
+    $total_attempt = user_complete_job($user_id);
+    $total_reject = user_complete_job_reject($user_id);
+    if($total_attempt > 0){
+        $ratio = ($total_reject * 100) / $total_attempt;
+    }
+    return $ratio;
+}
+
+function work_satisfication($user_id){
+    $approval_ratio = 0;
+    $total_attempt = user_complete_job($user_id);
+    $total_pending = user_complete_job_pending($user_id);
+    $total_reject = user_complete_job_reject($user_id);
+    $total_approve = user_complete_job_approve($user_id);
+    if($total_attempt > 0){
+        $total_activity_work = $total_attempt - ($total_pending + $total_reject);
+        if($total_activity_work > 0){
+            $approval_ratio = ($total_approve * 100) / $total_activity_work;
+        }
+    }
+    return $approval_ratio;
+}
+
+
+function job_approve_ratio($user_id){
+    $ratio = 0;
+    $total_attempt = user_total_job($user_id);
+    $total_approve = user_total_approve_job($user_id);
+    if($total_attempt > 0){
+        $ratio = ($total_approve * 100) / $total_attempt;
+    }
+    return $ratio;
+}
+
+function job_pending_ratio($user_id){
+    $ratio = 0;
+    $total_attempt = user_total_job($user_id);
+    $total_pending = user_total_pending_job($user_id);
+    if($total_attempt > 0){
+        $ratio = ($total_pending * 100) / $total_attempt;
+    }
+    return $ratio;
+}
+
+function job_reject_ratio($user_id){
+    $ratio = 0;
+    $total_attempt = user_total_job($user_id);
+    $total_reject = user_total_reject_job($user_id);
+    if($total_attempt > 0){
+        $ratio = ($total_reject * 100) / $total_attempt;
+    }
+    return $ratio;
+}
+
+function job_satisfication($user_id){
+    $approval_ratio = 0;
+    $total_attempt = user_total_job($user_id);
+    $total_pending = user_total_pending_job($user_id);
+    $total_reject = user_total_reject_job($user_id);
+    $total_approve = user_total_approve_job($user_id);
+    if($total_attempt > 0){
+        $total_activity_work = $total_attempt - ($total_pending + $total_reject);
+        if($total_activity_work > 0){
+            $approval_ratio = ($total_approve * 100) / $total_activity_work;
+        }
+    }
+    return $approval_ratio;
+}
+
+function work_by_me($id){
+    $work = JobWork::where('job_id', $id)->where('user_id', Auth::user()->id)->first();
+    if($work){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+function work_for_me($id){
+    $work = JobHide::where('job_id', $id)->where('user_id', Auth::user()->id)->first();
+    if($work){
+        return 0;
+    }else{
+        return 1;
+    }
+}
+
+function totle_work_done(){
+    return JobWork::where('status', 1)->count();
+}
+
+function pending_work_for_job($id){
+    return JobWork::where('job_id', $id)->where('status', 0)->count();
+}
+
+function complete_work_for_job($id){
+    return JobWork::where('job_id', $id)->where('status', 1)->count();
+}
+
+function reject_work_for_job($id){
+    return JobWork::where('job_id', $id)->where('status', 2)->count();
+}
+
+function this_job_complet_rate($id){
+    $complete = complete_work_this_job($id);
+    $job = Job::find($id);
+    $need_complete = $job->worker_need;
+    return $complete_rate = ceil((100 * $complete)/$need_complete);
+}
+
+function this_job_total_work($id){
+    return JobWork::where('job_id', $id)->count();
+}
+
+function this_job_pending_ratio($id){
+    $result = 0;
+    $job = Job::find($id);
+    $need_complete = $job->worker_need;
+    $pending = pending_work_for_job($id);
+    if($need_complete > 0){
+        $result = ceil((100 * $pending)/$need_complete);
+    }
+    return $result;
+}
+
+function this_job_approve_ratio($id){
+    $result = 0;
+    $job = Job::find($id);
+    $need_complete = $job->worker_need;
+    $complete = complete_work_for_job($id);
+    if($need_complete > 0){
+        $result = ceil((100 * $complete)/$need_complete);
+    }
+    return $result;
+}
+
+function this_job_reject_ratio($id){
+    $result = 0;
+    $job = Job::find($id);
+    $need_complete = $job->worker_need;
+    $reject = reject_work_for_job($id);
+    if($need_complete > 0){
+        $result = ceil((100 * $reject)/$need_complete);
+    }
+    return $result;
+}
+
+function ad_banner(){
+    $today = date('Y-m-d');
+    return $ads = Advertisement::where('exp_date', '>=', $today)->where('approval', 1)->inRandomOrder()->get();
+}
+
+if (!function_exists('recordAdImpressions')) {
+    // Counts one "view" for each ad actually shown in a single page-render,
+    // so an advertiser can see impressions on their own Ads History page.
+    // Call this ONCE per page per ad_banner() batch actually displayed --
+    // never inside a loop that calls ad_banner() repeatedly (e.g. once per
+    // Community post), or the same pageview would inflate every ad's count
+    // once per post instead of once per viewer. Guarded so it's a no-op
+    // until /system-add-advertisement-stats has added the column.
+    function recordAdImpressions($ads){
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('advertisements', 'views')) {
+            return;
+        }
+        $ids = is_iterable($ads) ? collect($ads)->pluck('id') : [];
+        if (count($ids)) {
+            \App\Models\Admin\Advertisement::whereIn('id', $ids)->increment('views');
+        }
+    }
+}
+
+function system_policy(){
+    return Policy::latest()->get();
+}
+
+function total_pending_job(){
+    return Job::where('status', 0)->count();
+}
+
+function total_reject_job(){
+    return Job::where('status', 2)->count();
+}
+
+function total_job_delete_requests(){
+    return Job::where('delete_request', 1)->count();
+}
+
+function total_complete_job(){
+    return Job::where('status', 1)->whereColumn('worker_need', '<=', 'worker_confirmed')->count();
+}
+
+function total_job(){
+    return Job::where('status', 1)->whereColumn('worker_need', '>', 'worker_confirmed')->count();
+}
+
+function total_deposit(){
+    return Deposit::where('approval', '!=', 2)->sum('amount');
+}
+
+function total_pending_deposit(){
+    return Deposit::where('approval', 0)->count();
+}
+
+function total_withdraw(){
+    return Withdraw::where('approval', '!=', 2)->sum('amount');
+}
+
+function total_pending_withdraw(){
+    return Withdraw::where('approval', 0)->count();
+}
+
+function total_pending_ads(){
+    return Advertisement::where('approval', 0)->count();
+}
+
+function total_approval_ads(){
+    $today = date('Y-m-d');
+    return Advertisement::where('approval', 1)->where('exp_date', '>=', $today)->count();
+}
+
+function total_expired_ads(){
+    $today = date('Y-m-d');
+    return Advertisement::where('exp_date', '<', $today)->count();
+}
+
+function find_user($id){
+    return User::find($id);
+}
+
+function total_user(){
+    return User::where('role_id', 3)->count();
+}
+
+function total_user_balance(){
+    return User::where('role_id', 3)->sum('earning_balance');
+}
+
+function total_admin_balance(){
+    $main_wallet = MainWallet::latest()->first();
+    return $main_wallet->amount;
+}
+
+function user_message_seen($user_id){
+    return UserMessage::where('user_id', $user_id)->where('seen', 0)->count();
+}
+
+function job_delete($user_id){
+    $jobs = Job::where('user_id', $user_id)->latest()->get();
+    foreach ($jobs as $key=>$job){
+        if ($job->worker_confirmed == $job->worker_need){
+            $check_job_work = JobWork::where('job_id', $job->id)->count();
+            if($check_job_work <= 0){
+                $d_job = Job::find($job->id);
+                $job->delete_request = 1;
+                $job->save();
+            }
+        }
+    }
+
+    return 'Done';
+}
+
+
+function job_found(){
+    $data = 0;
+    $jobs = Job::where('status', 1)->get();
+    foreach ($jobs as $key=>$job){
+        if ($job->worker_need > $job->worker_confirmed ){
+            $data = $data + 1;
+        }
+    }
+
+    return $data;
+}
+
+function google_head_ad(){
+    return GoogleAd::where('position', 'Head')->first();
+}
+
+function google_body_ad(){
+    return GoogleAd::where('position', 'Body')->first();
+}
+
+function google_footer_ad(){
+    return GoogleAd::where('position', 'Footer')->first();
+}
+
+function all_latest_notification($user_id){
+    return UserMessage::where('user_id', $user_id)->latest()->get();
+}
+
+function latest_notification($user_id){
+    return UserMessage::where('user_id', $user_id)->where('seen', 0)->latest()->get();
+}
+
+// For public "payment proof" displays -- shows enough of a real name to
+// feel genuine without publishing someone's full identity, e.g.
+// "Karim Hossain" -> "Karim H.", or a single-word name "Karim" -> "Kar***".
+function mask_name($name){
+    $name = trim((string) $name);
+    if ($name === '') {
+        return 'A User';
+    }
+
+    $parts = preg_split('/\s+/', $name);
+    if (count($parts) > 1) {
+        return $parts[0] . ' ' . mb_substr(end($parts), 0, 1) . '.';
+    }
+
+    if (mb_strlen($name) <= 3) {
+        return mb_substr($name, 0, 1) . str_repeat('*', max(1, mb_strlen($name) - 1));
+    }
+
+    return mb_substr($name, 0, 3) . '***';
+}
+
+// Masks all but the last few digits of an account/phone number for the
+// same public "payment proof" display, e.g. "01711223344" -> "*******344".
+function mask_account_no($number, $showLast = 3){
+    $number = (string) $number;
+    $length = mb_strlen($number);
+
+    if ($length <= $showLast) {
+        return str_repeat('*', $length);
+    }
+
+    return str_repeat('*', $length - $showLast) . mb_substr($number, -$showLast);
+}
+
+function dollar_rate(){
+    return DollarRate::latest()->first();
+}
+
+function paid_ads_rate(){
+    return PaidAdRate::orderBy('id', 'ASC')->get();
+}
+
+function deposit_documents(){
+    return DepositDocument::orderBy('id', 'ASC')->get();
+}
+
+function sub_modules($module_id){
+    return SubModule::where('main_module', $module_id)->orderBy('serial', 'ASC')->get();
+}
+
+function admin_module_permission($admin_type, $module_id){
+    return AdminPermission::where('admin_type', $admin_type)->where('module_id', $module_id)->first();
+}
+
+function admin_sub_module_permission($admin_type, $module_id, $sub_module_id){
+    return AdminPermission::where('admin_type', $admin_type)->where('module_id', $module_id)->where('sub_module_id', $sub_module_id)->first();
+}
+
+if (!function_exists('linkify')) {
+    // Escapes plain text then turns bare http(s) URLs into clickable links
+    // that open in a new tab -- used to render community post content so a
+    // link typed inside the text works like Facebook.
+    function linkify($text){
+        if ($text === null || $text === '') {
+            return '';
+        }
+
+        $escaped = e($text);
+
+        // Markdown-style [text](url) links, inserted via the "mark text and
+        // add a link" composer button, are converted first and shielded
+        // behind placeholders so the bare-URL pass below doesn't also try
+        // to linkify the URL sitting inside their href attribute.
+        $placeholders = [];
+        $withMarkdownLinks = preg_replace_callback('/\[([^\]]+)\]\((https?:\/\/[^\s()]+)\)/i', function ($m) use (&$placeholders) {
+            $anchor = '<a href="' . e($m[2]) . '" target="_blank" rel="noopener nofollow ugc">' . $m[1] . '</a>';
+            $key = '@@LINK' . count($placeholders) . '@@';
+            $placeholders[$key] = $anchor;
+            return $key;
+        }, $escaped);
+
+        $withBareUrls = preg_replace_callback('/(https?:\/\/[^\s<]+)/i', function ($m) {
+            $url = rtrim($m[1], '.,!?)]');
+            $trailing = substr($m[1], strlen($url));
+            return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a>' . $trailing;
+        }, $withMarkdownLinks);
+
+        return strtr($withBareUrls, $placeholders);
+    }
+}
+
+if (!function_exists('communityTopicsEnabled')) {
+    // The Community Topics feature (community_topics/community_post_topics
+    // tables) is added via a one-off route rather than a migration, so
+    // views/queries that touch $post->topics guard themselves with this
+    // first -- keeps everything working on a site where that route hasn't
+    // been run yet, instead of a missing-table SQL error.
+    function communityTopicsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_topics');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityFollowEnabled')) {
+    // Guards Follow (user-to-user) the same way communityTopicsEnabled()
+    // guards Topics -- keeps the site working before/without the one-off
+    // /system-add-community-follow-save route being run.
+    function communityFollowEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_follows');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityBookmarkEnabled')) {
+    // Guards Save/Bookmark the same way communityTopicsEnabled() guards
+    // Topics -- keeps the site working before/without the one-off
+    // /system-add-community-follow-save route being run.
+    function communityBookmarkEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_bookmarks');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityProductFieldsEnabled')) {
+    // Guards the Phase 3 Affiliate Product fields (price/discount/features)
+    // the same way communityTopicsEnabled() guards Topics -- keeps the
+    // site working before/without the one-off
+    // /system-add-community-product-fields route being run.
+    function communityProductFieldsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'productPrice');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityLinkClickTrackingEnabled')) {
+    function communityLinkClickTrackingEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_link_clicks');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityReportsEnabled')) {
+    function communityReportsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasTable('community_reports');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityViewsEnabled')) {
+    function communityViewsEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'views');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('communityPostTitleEnabled')) {
+    function communityPostTitleEnabled(){
+        static $enabled = null;
+        if ($enabled === null) {
+            $enabled = \Illuminate\Support\Facades\Schema::hasColumn('feedposts', 'title');
+        }
+        return $enabled;
+    }
+}
+
+if (!function_exists('community_word_count')) {
+    // str_word_count() only recognizes A-Z/a-z, so it silently returns ~0
+    // for Bengali (or any non-Latin) text -- this splits on whitespace
+    // instead, which works for any script.
+    function community_word_count($text){
+        $text = trim(strip_tags((string) $text));
+        if ($text === '') {
+            return 0;
+        }
+        return count(preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY));
+    }
+}
+
+if (!function_exists('community_teaser')) {
+    // Unicode-safe word-based teaser for the Article/Q&A feed card: full
+    // text is only ever shown on the post's own detail page, both to keep
+    // the feed scannable and so "Read More" has something to link to.
+    function community_teaser($text, $limit = 150){
+        $plain = trim(strip_tags((string) $text));
+        $words = $plain === '' ? [] : preg_split('/\s+/u', $plain, -1, PREG_SPLIT_NO_EMPTY);
+        $truncated = count($words) > $limit;
+        $teaser = $truncated ? implode(' ', array_slice($words, 0, $limit)) : $text;
+        return ['text' => $teaser, 'truncated' => $truncated];
+    }
+}
+
+if (!function_exists('custom_path')) {
+    // Used by the KYC verification pages to resolve a stored document/photo
+    // path to a public URL, falling back to a placeholder image. Files are
+    // saved with base_path() (see WuServiceController/UserDashboardController),
+    // since this deployment's real webroot is the project root, not public/.
+    function custom_path($path){
+        if (!$path || trim($path) === '') {
+            return asset('frontend/assets/img/default-service.svg');
+        }
+
+        $path = ltrim($path, '/');
+
+        if (\Illuminate\Support\Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (file_exists(base_path($path))) {
+            return asset($path);
+        }
+
+        return asset('frontend/assets/img/default-service.svg');
+    }
+}
+
+if (!function_exists('wu_service_image')) {
+    // Used throughout the marketplace (WuServiceController + views) to resolve a
+    // service's stored image path to a public URL, falling back to a default image.
+    function wu_service_image($path){
+        if (!$path || trim($path) === '') {
+            return asset('frontend/assets/img/default-service.svg');
+        }
+
+        $path = ltrim($path, '/');
+
+        if (\Illuminate\Support\Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (file_exists(base_path($path))) {
+            return asset($path);
+        }
+
+        return asset('frontend/assets/img/default-service.svg');
+    }
+}
+
+if (!function_exists('wu_marketplace_unread_inquiries')) {
+    // Count of unread pre-order inquiries addressed to the logged-in user, shown as a
+    // sidebar badge next to "Marketplace".
+    function wu_marketplace_unread_inquiries(){
+        if (!auth()->check()) {
+            return 0;
+        }
+        return \Illuminate\Support\Facades\DB::table('wu_service_inquiries')
+            ->where('receiver_id', auth()->id())
+            ->where('is_seen', 0)
+            ->count();
+    }
+}
+
+if (!function_exists('wu_marketplace_unread_order_messages')) {
+    // Count of unread order-chat messages addressed to the logged-in user, shown as a
+    // sidebar badge next to "Marketplace".
+    function wu_marketplace_unread_order_messages(){
+        if (!auth()->check()) {
+            return 0;
+        }
+        return \Illuminate\Support\Facades\DB::table('wu_service_messages')
+            ->where('receiver_id', auth()->id())
+            ->where('is_seen', 0)
+            ->count();
+    }
+}
+
+if (!function_exists('credit_referral_deposit_commission')) {
+    // The one correct place referral deposit commission gets credited.
+    // Every deposit-approval code path on this site had its own copy-pasted
+    // version of this logic, and EVERY copy had the same bug: the real cash
+    // (deposit_balance) was credited to the referrer correctly, but the
+    // "commission from referral" stat field was mistakenly saved onto the
+    // DEPOSITOR (whoever just deposited) instead of onto the REFERRER who
+    // actually earned it -- so a referrer's own referral dashboard showed
+    // $0 commission even after being paid, while the depositor's dashboard
+    // falsely showed commission they never earned. Fixed here once so it
+    // can't drift out of sync between call sites again.
+    function credit_referral_deposit_commission(\App\Models\User $depositor, float $depositAmount)
+    {
+        if (!$depositor->rfered_by) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($depositor->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if ($website && $website->referral_deposit_commission > 0) {
+            $commission = ($website->referral_deposit_commission * $depositAmount) / 100;
+
+            $referrer->deposit_balance = $referrer->deposit_balance + $commission;
+            $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
+            $referrer->save();
+
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $depositor->id,
+                'type' => 'deposit',
+                'amount' => $commission,
+            ]);
+        }
+
+        pay_referral_milestones($referrer);
+    }
+}
+
+if (!function_exists('credit_referral_earning_commission')) {
+    // Same bug, same fix, for earning-side referral commission (job work,
+    // Community post earnings, etc.) -- referrer's earning_balance was
+    // already credited correctly at every call site, but the
+    // earning_commision_from_refer stat was saved onto the earner instead
+    // of the referrer.
+    function credit_referral_earning_commission(\App\Models\User $earner, float $earnedAmount)
+    {
+        if (!$earner->rfered_by) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($earner->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if ($website && $website->referral_earning_commission > 0) {
+            $commission = ($website->referral_earning_commission * $earnedAmount) / 100;
+
+            $referrer->earning_balance = $referrer->earning_balance + $commission;
+            $referrer->earning_commision_from_refer = $referrer->earning_commision_from_refer + $commission;
+            $referrer->save();
+
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $earner->id,
+                'type' => 'earning',
+                'amount' => $commission,
+            ]);
+        }
+
+        pay_referral_milestones($referrer);
+    }
+}
+
+if (!function_exists('reverse_referral_earning_commission')) {
+    // Undoes credit_referral_earning_commission()'s effect -- used when a
+    // previously-approved job work gets rejected after the fact, so the
+    // referrer doesn't keep commission on earnings that were themselves
+    // reversed.
+    function reverse_referral_earning_commission(\App\Models\User $earner, float $earnedAmount)
+    {
+        if (!$earner->rfered_by) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if (!$website || $website->referral_earning_commission <= 0) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($earner->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $commission = ($website->referral_earning_commission * $earnedAmount) / 100;
+
+        $referrer->earning_balance = max(0, (float) $referrer->earning_balance - $commission);
+        $referrer->earning_commision_from_refer = max(0, (float) $referrer->earning_commision_from_refer - $commission);
+        $referrer->save();
+
+        \App\Models\ReferralCommissionLog::create([
+            'referrer_id' => $referrer->id,
+            'source_user_id' => $earner->id,
+            'type' => 'earning',
+            'amount' => -$commission,
+        ]);
+    }
+}
+
+if (!function_exists('credit_referral_instant_verify_commission')) {
+    // Pays the referrer a commission when their referred user pays the
+    // Instant Verify fee to skip NID/KYC review. The
+    // instant_verify_referral_commission % field has existed on Website
+    // Settings for a while, but nothing ever read it -- the fee was taken
+    // from the user with no referral commission paid at all.
+    function credit_referral_instant_verify_commission(\App\Models\User $verifiedUser, float $fee)
+    {
+        if (!$verifiedUser->rfered_by) {
+            return;
+        }
+
+        $referrer = \App\Models\User::find($verifiedUser->rfered_by);
+        if (!$referrer) {
+            return;
+        }
+
+        $website = \App\Models\Admin\Website::latest()->first();
+        if ($website && $website->instant_verify_referral_commission > 0 && $fee > 0) {
+            $commission = ($website->instant_verify_referral_commission * $fee) / 100;
+
+            $referrer->deposit_balance = $referrer->deposit_balance + $commission;
+            $referrer->deposit_commision_from_refer = $referrer->deposit_commision_from_refer + $commission;
+            $referrer->save();
+
+            \App\Models\ReferralCommissionLog::create([
+                'referrer_id' => $referrer->id,
+                'source_user_id' => $verifiedUser->id,
+                'type' => 'deposit',
+                'amount' => $commission,
+            ]);
+        }
+
+        pay_referral_milestones($referrer);
+    }
+}
+
+if (!function_exists('pay_referral_milestones')) {
+    // Pays a one-time bonus to a referrer the first time their number of
+    // ACTIVE referrals (referral_activated = 1) reaches a configured
+    // milestone target (see referral_milestones, admin-editable, defaults
+    // 5/10/25/50). Payouts are recorded in referral_milestone_payouts so
+    // each milestone is only ever paid once per referrer no matter how
+    // many times this runs.
+    function pay_referral_milestones(\App\Models\User $referrer)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('referral_milestones')) {
+            return;
+        }
+
+        $activeCount = \App\Models\User::where('rfered_by', $referrer->id)
+            ->where('referral_activated', 1)
+            ->count();
+
+        $alreadyPaidMilestoneIds = \App\Models\ReferralMilestonePayout::where('user_id', $referrer->id)
+            ->pluck('milestone_id');
+
+        $qualifying = \App\Models\ReferralMilestone::where('referral_count', '<=', $activeCount)
+            ->whereNotIn('id', $alreadyPaidMilestoneIds)
+            ->get();
+
+        foreach ($qualifying as $milestone) {
+            $referrer->earning_balance = (float) $referrer->earning_balance + (float) $milestone->reward_amount;
+            $referrer->save();
+
+            \App\Models\ReferralMilestonePayout::create([
+                'user_id' => $referrer->id,
+                'milestone_id' => $milestone->id,
+                'amount' => $milestone->reward_amount,
+            ]);
+        }
+    }
+}
+
+if (!function_exists('daily_login_bonus_status')) {
+    // Read-only: what the daily-bonus popup should show for this user.
+    // Never credits anything -- see claim_daily_login_bonus_now() for that.
+    //
+    // Streak rule: claiming on the calendar day right after your last claim
+    // advances you to the next day (1 -> 2 -> 3 ...); any gap (you skip a
+    // day) resets you back to day 1 the next time you claim. Eligibility
+    // itself requires an admin-approved review (site_reviews.status =
+    // 'approved') -- submitting alone does not start the bonus.
+    function daily_login_bonus_status(\App\Models\User $user)
+    {
+        $status = [
+            'eligible' => false,
+            'claimed_today' => false,
+            'current_streak_day' => 0,
+            'next_day_number' => 1,
+            'next_amount' => null,
+            'max_day' => 0,
+        ];
+
+        if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_claims')) {
+            return $status;
+        }
+
+        $reviewApproved = \App\Models\SiteReview::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (!$reviewApproved) {
+            return $status;
+        }
+
+        $status['eligible'] = true;
+
+        $tiers = \App\Models\DailyLoginBonusTier::orderBy('day_number')->get();
+        $status['max_day'] = (int) ($tiers->max('day_number') ?? 0);
+
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        $lastClaim = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+            ->orderByDesc('claim_date')
+            ->first();
+
+        if (!$lastClaim) {
+            $status['next_day_number'] = 1;
+        } elseif ($lastClaim->claim_date->toDateString() === $today) {
+            $status['claimed_today'] = true;
+            $status['current_streak_day'] = $lastClaim->day_number;
+            $status['next_day_number'] = $lastClaim->day_number;
+        } elseif ($lastClaim->claim_date->toDateString() === $yesterday) {
+            $status['current_streak_day'] = $lastClaim->day_number;
+            $status['next_day_number'] = $lastClaim->day_number + 1;
+        } else {
+            // A day was missed -- streak resets to day 1.
+            $status['next_day_number'] = 1;
+        }
+
+        $tierDay = min($status['next_day_number'], max($status['max_day'], 1));
+        $tier = $tiers->firstWhere('day_number', $tierDay) ?? $tiers->last();
+        $status['next_amount'] = $tier ? (float) $tier->amount : null;
+
+        return $status;
+    }
+}
+
+if (!function_exists('claim_daily_login_bonus_now')) {
+    // The write path -- actually credits today's bonus. Called only from
+    // the user's explicit "claim" click, never automatically on page load.
+    function claim_daily_login_bonus_now(\App\Models\User $user)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('daily_login_bonus_claims')) {
+            return ['success' => false, 'message' => 'Bonus system is not set up yet.'];
+        }
+
+        $reviewApproved = \App\Models\SiteReview::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (!$reviewApproved) {
+            return ['success' => false, 'message' => 'আপনার রিভিউ এখনো অ্যাডমিন অনুমোদন করেনি।'];
+        }
+
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        $alreadyToday = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+            ->where('claim_date', $today)
+            ->exists();
+
+        if ($alreadyToday) {
+            return ['success' => false, 'message' => 'আজকের বোনাস ইতিমধ্যে নেওয়া হয়ে গেছে।'];
+        }
+
+        $lastClaim = \App\Models\DailyLoginBonusClaim::where('user_id', $user->id)
+            ->orderByDesc('claim_date')
+            ->first();
+
+        if ($lastClaim && $lastClaim->claim_date->toDateString() === $yesterday) {
+            $dayNumber = $lastClaim->day_number + 1;
+        } else {
+            // No claim yet, or a day was skipped -- (re)start at day 1.
+            $dayNumber = 1;
+        }
+
+        $tier = \App\Models\DailyLoginBonusTier::where('day_number', $dayNumber)->first()
+            ?? \App\Models\DailyLoginBonusTier::orderByDesc('day_number')->first();
+
+        if (!$tier) {
+            return ['success' => false, 'message' => 'Bonus schedule not configured yet.'];
+        }
+
+        $user->earning_balance = (float) $user->earning_balance + (float) $tier->amount;
+        $user->save();
+
+        \App\Models\DailyLoginBonusClaim::create([
+            'user_id' => $user->id,
+            'claim_date' => $today,
+            'day_number' => $dayNumber,
+            'amount' => $tier->amount,
+        ]);
+
+        return [
+            'success' => true,
+            'day_number' => $dayNumber,
+            'amount' => (float) $tier->amount,
+            'new_balance' => (float) $user->earning_balance,
+        ];
+    }
+}
+
+
+
+
+
