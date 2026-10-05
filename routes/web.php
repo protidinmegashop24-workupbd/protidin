@@ -3027,3 +3027,23 @@ Route::get('/system-add-category-type/{token}', function ($token) {
 
     return response()->json(['message' => 'type column already exists on wu_service_categories.']);
 });
+
+// Read-only diagnostic: shows the most common device_name/brand/model
+// combinations across all users, so we can confirm whether the
+// duplicate-device check in WithdrawController is matching on a real
+// device fingerprint or on an empty/generic combo that many unrelated
+// desktop/unknown-device users happen to share.
+Route::get('/system-device-signature-report/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $top = \App\Models\User::select('device_name', 'device_brand', 'device_model')
+        ->selectRaw('count(*) as total')
+        ->groupBy('device_name', 'device_brand', 'device_model')
+        ->orderByDesc('total')
+        ->limit(15)
+        ->get();
+
+    return response()->json(['top_device_signatures' => $top]);
+});
