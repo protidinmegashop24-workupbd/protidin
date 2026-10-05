@@ -119,13 +119,22 @@
         for (var d = 1; d <= maxDay; d++) {
             var cls = 'daily-bonus-day-box';
             var clickable = false;
-            if (d <= status.current_streak_day) {
-                cls += ' claimed';
-            } else if (d === status.next_day_number && !status.claimed_today) {
+            // After the full cycle is finished, next_day_number keeps
+            // counting past maxDay (16, 17, ...) so it never matches any
+            // box in this 1..maxDay grid -- nothing was ever clickable
+            // again. Treat the last box as the "claim again" slot once
+            // that happens, matching the backend which keeps paying the
+            // final tier's amount indefinitely.
+            var isNextClaimSlot = (d === status.next_day_number) || (status.next_day_number > maxDay && d === maxDay);
+
+            if (isNextClaimSlot && !status.claimed_today) {
                 cls += ' claimable';
                 clickable = true;
+            } else if (d <= status.current_streak_day) {
+                cls += ' claimed';
             }
-            html += '<div class="' + cls + '"' + (clickable ? ' onclick="claimDailyBonus()"' : '') + '>Day ' + d + (d <= status.current_streak_day ? ' &#10003;' : '') + '</div>';
+
+            html += '<div class="' + cls + '"' + (clickable ? ' onclick="claimDailyBonus()"' : '') + '>Day ' + d + (d <= status.current_streak_day && !clickable ? ' &#10003;' : '') + '</div>';
         }
         html += '</div>';
 
@@ -133,6 +142,10 @@
             html += '<p style="color:#166534; font-weight:700;">আজকের বোনাস ইতিমধ্যে নেওয়া হয়ে গেছে। আগামীকাল আবার আসুন!</p>';
         } else if (status.next_amount) {
             html += '<p>আজকের বোনাস: <strong>$' + Number(status.next_amount).toFixed(4) + '</strong> -- উপরের হলুদ বক্সে ক্লিক করুন।</p>';
+        }
+
+        if (status.next_day_number > maxDay) {
+            html += '<p style="color:#92400e; font-weight:700;">আপনি পুরো ' + maxDay + ' দিনের সাইকেল শেষ করেছেন! এখন থেকে প্রতিদিন Day ' + maxDay + '-এর রেটে বোনাস পেতে থাকবেন।</p>';
         }
 
         html += '<p style="color:#94a3b8; font-size:12px; margin-top:10px;">একদিন মিস করলে আবার Day 1 থেকে শুরু হবে -- তাই প্রতিদিন লগইন করে বোনাস নিতে ভুলবেন না।</p>';
