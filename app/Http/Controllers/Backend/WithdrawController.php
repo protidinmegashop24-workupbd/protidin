@@ -91,7 +91,12 @@ class WithdrawController extends Controller
         $deviceCodes = collect();
         $ipCodes = collect();
 
-        $hasDeviceSignature = !empty($user->device_name) || !empty($user->device_brand) || !empty($user->device_model);
+        // Brand + model must BOTH be known for this to be a real device
+        // fingerprint. device_name alone ("smartphone"/"desktop") is far
+        // too generic -- thousands of unrelated users share it because
+        // their phone's exact brand/model simply couldn't be detected,
+        // which was causing mass false-positive duplicate-account flags.
+        $hasDeviceSignature = !empty($user->device_brand) && !empty($user->device_model);
 
         if ($hasDeviceSignature) {
             $deviceCodes = $deviceCodes->merge(
