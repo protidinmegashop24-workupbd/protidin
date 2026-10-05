@@ -108,6 +108,18 @@ class WithdrawController extends Controller
         $mediumCodes = collect();
         $ipCodes = collect();
 
+        // The persistent registration-time cookie (see
+        // EnsureDeviceFingerprint) survives across browsers/UA changes on
+        // the same phone, so an exact match here is the strongest possible
+        // signal -- stronger even than brand+model, which only identifies
+        // "same phone model", not "same physical phone".
+        if (!empty($user->device_fingerprint) && Schema::hasColumn('users', 'device_fingerprint')) {
+            $deviceCodes = $deviceCodes->merge($this->userCodes(
+                User::where('id', '!=', $user->id)
+                    ->where('device_fingerprint', $user->device_fingerprint)
+            ));
+        }
+
         // Brand + model must BOTH be known for this to be a real device
         // fingerprint. device_name alone ("smartphone"/"desktop") is far
         // too generic -- thousands of unrelated users share it because
@@ -250,7 +262,7 @@ class WithdrawController extends Controller
             $flags[] = 'ইমেইল ভেরিফাই করা নেই';
         }
         if ($duplicateDeviceCodes->count() > 0) {
-            $flags[] = '🔴 একই ডিভাইস (ফোন/ব্রাউজার, ব্র্যান্ড+মডেল মিলেছে) থেকে আরও ' . $duplicateDeviceCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateDeviceCodes->implode(', ') . ') -- শক্তিশালী প্রমাণ, সম্ভবত একই মানুষ';
+            $flags[] = '🔴 একই ডিভাইস (ফোনের ইউনিক ফিঙ্গারপ্রিন্ট বা ব্র্যান্ড+মডেল মিলেছে) থেকে আরও ' . $duplicateDeviceCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateDeviceCodes->implode(', ') . ') -- শক্তিশালী প্রমাণ, সম্ভবত একই মানুষ';
         }
         if ($duplicateMediumCodes->count() > 0) {
             $flags[] = '🟠 একই আইপি এবং একই ধরনের ডিভাইস (যেমন স্মার্টফোন) থেকে আরও ' . $duplicateMediumCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateMediumCodes->implode(', ') . ') -- মাঝারি প্রমাণ, ফোনের ব্র্যান্ড/মডেল শনাক্ত হয়নি কিন্তু আইপি+ডিভাইসের ধরন দুটোই মিলেছে, সম্ভবত একই মানুষ';

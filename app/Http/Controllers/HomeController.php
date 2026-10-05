@@ -17,6 +17,7 @@ use App\Models\Admin\Website;
 use App\Models\Admin\Project;
 use App\Models\Admin\WelcomeBonus;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Job;
 use App\Models\JobWork;
 use App\Models\Policy;
@@ -273,6 +274,21 @@ class HomeController extends Controller
             $parent_user = NULL;
         }
 
+        // Persistent device fingerprint (set by EnsureDeviceFingerprint
+        // middleware) survives across browsers/UA changes on the same
+        // phone, unlike the UA-parsed device_name/brand/model above --
+        // used here to actually block a device that already has an
+        // account from registering a second one.
+        $deviceFingerprint = $request->cookie(\App\Http\Middleware\EnsureDeviceFingerprint::COOKIE_NAME);
+        if (!empty($deviceFingerprint) && Schema::hasColumn('users', 'device_fingerprint')) {
+            $existingFingerprintUser = User::where('device_fingerprint', $deviceFingerprint)->first();
+            if ($existingFingerprintUser) {
+                return redirect()->back()->withErrors([
+                    'email' => 'এই ডিভাইস থেকে ইতিমধ্যে একটি অ্যাকাউন্ট (কোড: ' . $existingFingerprintUser->code . ') তৈরি করা আছে। একই ডিভাইস থেকে একাধিক অ্যাকাউন্ট খোলার অনুমতি নেই।',
+                ])->withInput();
+            }
+        }
+
         $welcome_bonus = WelcomeBonus::latest()->first();
 
         $last_ac = User::select('id')->latest()->first();
@@ -295,6 +311,9 @@ class HomeController extends Controller
         $user->device_name = $device;
         $user->device_brand = $brand;
         $user->device_model = $model;
+        if (!empty($deviceFingerprint) && Schema::hasColumn('users', 'device_fingerprint')) {
+            $user->device_fingerprint = $deviceFingerprint;
+        }
         if($parent_user != NULL){
             $user->is_new_device = 0;
         }

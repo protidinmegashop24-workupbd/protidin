@@ -3097,3 +3097,22 @@ Route::get('/system-user-device-debug/{token}', function ($token) {
 
     return response()->json($result);
 });
+
+// One-off: adds the device_fingerprint column users need for the
+// cookie-based duplicate-account block at registration (see
+// EnsureDeviceFingerprint middleware + HomeController::user_register).
+Route::get('/system-add-device-fingerprint-column/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'device_fingerprint')) {
+        \Illuminate\Support\Facades\Schema::table('users', function ($table) {
+            $table->string('device_fingerprint')->nullable()->after('device_model');
+            $table->index('device_fingerprint');
+        });
+        return response()->json(['message' => 'Added device_fingerprint column to users.']);
+    }
+
+    return response()->json(['message' => 'device_fingerprint column already exists on users.']);
+});
