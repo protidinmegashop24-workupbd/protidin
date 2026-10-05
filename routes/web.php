@@ -3141,3 +3141,28 @@ Route::get('/system-latest-registrations/{token}', function ($token) {
         'latest_users' => $latest,
     ]);
 });
+
+// One-off: adds device_fingerprint to login_logs, so that logging into
+// DIFFERENT accounts from the SAME physical device/browser is caught --
+// closes the gap where someone registers accounts on separate devices
+// (so the registration block never fires) but then logs into all of
+// them from one device to actually work them.
+Route::get('/system-add-login-log-fingerprint-column/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('login_logs')) {
+        return response()->json(['error' => 'login_logs table does not exist yet -- visit /system-add-login-log/{token} first.']);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('login_logs', 'device_fingerprint')) {
+        \Illuminate\Support\Facades\Schema::table('login_logs', function ($table) {
+            $table->string('device_fingerprint')->nullable()->after('device_model');
+            $table->index('device_fingerprint');
+        });
+        return response()->json(['message' => 'Added device_fingerprint column to login_logs.']);
+    }
+
+    return response()->json(['message' => 'device_fingerprint column already exists on login_logs.']);
+});

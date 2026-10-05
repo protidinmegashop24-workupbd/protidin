@@ -204,13 +204,19 @@ class LoginController extends Controller
             // Device detection failing must never block a login.
         }
 
-        LoginLog::create([
+        $loginData = [
             'user_id' => $user->id,
             'ip_address' => $request->ip(),
             'device_name' => $device,
             'device_brand' => $brand,
             'device_model' => $model,
-        ]);
+        ];
+
+        if (Schema::hasColumn('login_logs', 'device_fingerprint')) {
+            $loginData['device_fingerprint'] = $request->cookie(\App\Http\Middleware\EnsureDeviceFingerprint::COOKIE_NAME);
+        }
+
+        LoginLog::create($loginData);
     }
 
     /**

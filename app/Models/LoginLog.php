@@ -14,5 +14,6 @@ class LoginLog extends Model
         'device_name',
         'device_brand',
         'device_model',
+        'device_fingerprint',
     ];
 }

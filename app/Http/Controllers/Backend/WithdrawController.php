@@ -112,11 +112,19 @@ class WithdrawController extends Controller
         // EnsureDeviceFingerprint) survives across browsers/UA changes on
         // the same phone, so an exact match here is the strongest possible
         // signal -- stronger even than brand+model, which only identifies
-        // "same phone model", not "same physical phone".
-        if (!empty($user->device_fingerprint) && Schema::hasColumn('users', 'device_fingerprint')) {
+        // "same phone model", not "same physical phone". Checked against
+        // every fingerprint this user's OWN login history has ever shown
+        // (not just their registration-time one), so this also catches
+        // someone who registered separate accounts on separate devices
+        // but later logs into all of them from one shared device --
+        // that shared device's fingerprint shows up in every account's
+        // login_logs, linking them even though they registered clean.
+        $myFingerprints = collect([$user->device_fingerprint])->filter()->unique()->values();
+
+        if ($myFingerprints->count() > 0 && Schema::hasColumn('users', 'device_fingerprint')) {
             $deviceCodes = $deviceCodes->merge($this->userCodes(
                 User::where('id', '!=', $user->id)
-                    ->where('device_fingerprint', $user->device_fingerprint)
+                    ->whereIn('device_fingerprint', $myFingerprints)
             ));
         }
 
@@ -156,6 +164,38 @@ class WithdrawController extends Controller
             $myLogins = LoginLog::where('user_id', $user->id)->get();
 
             if ($myLogins->count() > 0) {
+                if (Schema::hasColumn('login_logs', 'device_fingerprint')) {
+                    $myFingerprints = $myFingerprints
+                        ->merge($myLogins->pluck('device_fingerprint')->filter())
+                        ->unique()->values();
+                }
+
+                if ($myFingerprints->count() > 0) {
+                    $matchingFingerprintUserIds = collect();
+
+                    if (Schema::hasColumn('users', 'device_fingerprint')) {
+                        $matchingFingerprintUserIds = $matchingFingerprintUserIds->merge(
+                            User::where('id', '!=', $user->id)
+                                ->whereIn('device_fingerprint', $myFingerprints)
+                                ->pluck('id')
+                        );
+                    }
+
+                    if (Schema::hasColumn('login_logs', 'device_fingerprint')) {
+                        $matchingFingerprintUserIds = $matchingFingerprintUserIds->merge(
+                            LoginLog::where('user_id', '!=', $user->id)
+                                ->whereIn('device_fingerprint', $myFingerprints)
+                                ->pluck('user_id')
+                        );
+                    }
+
+                    $matchingFingerprintUserIds = $matchingFingerprintUserIds->unique()->values();
+
+                    if ($matchingFingerprintUserIds->count() > 0) {
+                        $deviceCodes = $deviceCodes->merge($this->userCodes(User::whereIn('id', $matchingFingerprintUserIds)));
+                    }
+                }
+
                 $ips = $myLogins->pluck('ip_address')->filter()->unique()->values();
                 $deviceCombos = $myLogins->filter(function ($l) {
                     return $l->device_name && $l->device_brand && $l->device_model;
