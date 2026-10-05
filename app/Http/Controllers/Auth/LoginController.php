@@ -166,6 +166,22 @@ class LoginController extends Controller
      */
     private function recordLoginLog($user, $request)
     {
+        // Backfill the persistent device-fingerprint cookie onto accounts
+        // that registered before this cookie existed, the first time they
+        // log in afterward. Only set once (never overwritten) so an
+        // account's fingerprint always reflects the device it was first
+        // seen on after this feature shipped, same as a brand-new
+        // registration -- this is what lets the new-account block in
+        // HomeController::user_register also catch a device that already
+        // has an OLD account, not just devices that registered after.
+        if (Schema::hasColumn('users', 'device_fingerprint') && empty($user->device_fingerprint)) {
+            $fingerprint = $request->cookie(\App\Http\Middleware\EnsureDeviceFingerprint::COOKIE_NAME);
+            if (!empty($fingerprint)) {
+                $user->device_fingerprint = $fingerprint;
+                $user->save();
+            }
+        }
+
         if (!Schema::hasTable('login_logs')) {
             return;
         }
