@@ -258,8 +258,11 @@ class UserController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|min:3|max:50',
             'email' => 'required',
+            'phone' => 'nullable|unique:users,phone,' . $id,
+        ], [
+            'phone.unique' => 'This phone number is already used by another account.',
         ]);
-        
+
         $user = User::find($id);
         $user->name = Str::ucfirst($request->input('name'));
         $user->username = $request->input('username');

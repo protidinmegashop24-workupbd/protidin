@@ -98,6 +98,9 @@ class UserProfileController extends Controller
     {
         $validatedData = $request->validate([
             'name' => 'required|min:3|max:50',
+            'phone' => 'nullable|unique:users,phone,' . $id,
+        ], [
+            'phone.unique' => 'এই ফোন নম্বর দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট আছে। একই ফোন নম্বর একাধিক অ্যাকাউন্টে ব্যবহার করা যাবে না।',
         ]);
         $user = User::find($id);
         if(Auth::user()->code == NULL){
