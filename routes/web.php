@@ -3116,3 +3116,28 @@ Route::get('/system-add-device-fingerprint-column/{token}', function ($token) {
 
     return response()->json(['message' => 'device_fingerprint column already exists on users.']);
 });
+
+// Read-only diagnostic: shows the most recently registered users' device
+// fingerprint + registration snapshot, to check whether the
+// device_fingerprint column exists/is being captured, and whether a
+// cookie-matched registration is being blocked as expected.
+Route::get('/system-latest-registrations/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $hasFingerprintColumn = \Illuminate\Support\Facades\Schema::hasColumn('users', 'device_fingerprint');
+
+    $columns = ['id', 'code', 'name', 'ip_address', 'device_name', 'device_brand', 'device_model', 'created_at'];
+    if ($hasFingerprintColumn) {
+        $columns[] = 'device_fingerprint';
+    }
+
+    $latest = \App\Models\User::orderByDesc('id')->limit(10)->get($columns);
+
+    return response()->json([
+        'device_fingerprint_column_exists' => $hasFingerprintColumn,
+        'your_current_cookie' => request()->cookie(\App\Http\Middleware\EnsureDeviceFingerprint::COOKIE_NAME),
+        'latest_users' => $latest,
+    ]);
+});
