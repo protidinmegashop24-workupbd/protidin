@@ -246,8 +246,11 @@ class HomeController extends Controller
         $request->validate([
             'name' => 'required',
             'email' => 'required|unique:users',
+            'phone' => 'required|unique:users|max:20',
             'password' => 'required',
             'country' => 'required',
+        ], [
+            'phone.unique' => 'এই ফোন নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট আছে। একই ফোন নম্বর দিয়ে একাধিক অ্যাকাউন্ট খোলা যাবে না।',
         ]);
 
         // For Device detect-----------
@@ -305,6 +308,7 @@ class HomeController extends Controller
         $user->code = $code;
         $user->name = $request->name;
         $user->email = $request->email;
+        $user->phone = $request->phone;
         $user->country = $request->country;
         $user->password = Hash::make($request->password);
         $user->ip_address = $ip_address;

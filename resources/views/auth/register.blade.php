@@ -372,6 +372,14 @@
                             @enderror
                         </div>
 
+                        <div class="form_field">
+                            <label for="phone" class="wu-form-label">Phone Number</label>
+                            <input type="text" placeholder="Enter your phone number" name="phone" id="phone" value="{{ old('phone') }}" class="wu-form-control" />
+                            @error('phone')
+                                <span class="my_error">{{ $message }}</span>
+                            @enderror
+                        </div>
+
                         <div class="form-group mb-3">
     <label for="referral">Referral By</label>
     <input
