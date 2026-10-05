@@ -55,38 +55,61 @@ class WithdrawController extends Controller
     }
 
     /**
-     * Same-device / same-IP account matches for a user, combining two
-     * signals: the one-time registration snapshot (users.ip_address +
-     * device_name/brand/model) and every login recorded since login_logs
-     * started being tracked. Either IP or device fingerprint matching is
-     * enough -- requiring both at once (the old behaviour) missed accounts
-     * registered/used from the same phone on different mobile-data IPs,
-     * which is exactly how "log out of one account, log into another on
-     * the same device" was slipping through undetected.
+     * All duplicate-account codes (device match OR IP-only match)
+     * combined, for the simple list-page badge where the distinction
+     * doesn't matter -- just "worth a look or not".
      *
      * @return \Illuminate\Support\Collection of user codes
      */
     private function duplicateDeviceCodes($user)
     {
-        $codes = collect();
+        $matches = $this->duplicateMatches($user);
+        return $matches['device']->merge($matches['ip_only'])->unique()->values();
+    }
+
+    /**
+     * Same-device / same-IP account matches for a user, split into two
+     * separate signals instead of one combined list, because they carry
+     * very different weight:
+     *   - 'device': the other account was used from the exact same phone/
+     *     browser fingerprint -- strong evidence of the same real person
+     *     running multiple accounts, regardless of IP (mobile data IPs
+     *     change constantly).
+     *   - 'ip_only': the other account only shares an IP address, with no
+     *     device match -- much weaker evidence, since a shared home/office
+     *     WiFi puts unrelated people on the same IP. Shown separately so
+     *     the admin isn't treating "same WiFi" as if it were "same phone".
+     *
+     * Combines two sources: the one-time registration snapshot
+     * (users.ip_address + device_name/brand/model) and every login
+     * recorded since login_logs started being tracked.
+     *
+     * @return array{device: \Illuminate\Support\Collection, ip_only: \Illuminate\Support\Collection}
+     */
+    private function duplicateMatches($user)
+    {
+        $deviceCodes = collect();
+        $ipCodes = collect();
+
         $hasDeviceSignature = !empty($user->device_name) || !empty($user->device_brand) || !empty($user->device_model);
 
-        if (!empty($user->ip_address) || $hasDeviceSignature) {
-            $query = User::where('id', '!=', $user->id)
-                ->where(function ($q) use ($user, $hasDeviceSignature) {
-                    if (!empty($user->ip_address)) {
-                        $q->orWhere('ip_address', $user->ip_address);
-                    }
-                    if ($hasDeviceSignature) {
-                        $q->orWhere(function ($q2) use ($user) {
-                            $q2->where('device_name', $user->device_name)
-                               ->where('device_brand', $user->device_brand)
-                               ->where('device_model', $user->device_model)
-                               ->whereNotNull('device_name');
-                        });
-                    }
-                });
-            $codes = $codes->merge($query->pluck('code'));
+        if ($hasDeviceSignature) {
+            $deviceCodes = $deviceCodes->merge(
+                User::where('id', '!=', $user->id)
+                    ->where('device_name', $user->device_name)
+                    ->where('device_brand', $user->device_brand)
+                    ->where('device_model', $user->device_model)
+                    ->whereNotNull('device_name')
+                    ->pluck('code')
+            );
+        }
+
+        if (!empty($user->ip_address)) {
+            $ipCodes = $ipCodes->merge(
+                User::where('id', '!=', $user->id)
+                    ->where('ip_address', $user->ip_address)
+                    ->pluck('code')
+            );
         }
 
         if (Schema::hasTable('login_logs')) {
@@ -100,28 +123,35 @@ class WithdrawController extends Controller
                     return $l->device_name . '|' . $l->device_brand . '|' . $l->device_model;
                 })->unique()->values();
 
-                if ($ips->count() > 0 || $deviceCombos->count() > 0) {
-                    $matchingUserIds = LoginLog::where('user_id', '!=', $user->id)
-                        ->where(function ($q) use ($ips, $deviceCombos) {
-                            if ($ips->count() > 0) {
-                                $q->orWhereIn('ip_address', $ips);
-                            }
-                            if ($deviceCombos->count() > 0) {
-                                $placeholders = implode(',', array_fill(0, $deviceCombos->count(), '?'));
-                                $q->orWhereRaw("CONCAT(device_name, '|', device_brand, '|', device_model) IN ($placeholders)", $deviceCombos->all());
-                            }
-                        })
+                if ($deviceCombos->count() > 0) {
+                    $placeholders = implode(',', array_fill(0, $deviceCombos->count(), '?'));
+                    $matchingDeviceUserIds = LoginLog::where('user_id', '!=', $user->id)
+                        ->whereRaw("CONCAT(device_name, '|', device_brand, '|', device_model) IN ($placeholders)", $deviceCombos->all())
                         ->pluck('user_id')
                         ->unique();
 
-                    if ($matchingUserIds->count() > 0) {
-                        $codes = $codes->merge(User::whereIn('id', $matchingUserIds)->pluck('code'));
+                    if ($matchingDeviceUserIds->count() > 0) {
+                        $deviceCodes = $deviceCodes->merge(User::whereIn('id', $matchingDeviceUserIds)->pluck('code'));
+                    }
+                }
+
+                if ($ips->count() > 0) {
+                    $matchingIpUserIds = LoginLog::where('user_id', '!=', $user->id)
+                        ->whereIn('ip_address', $ips)
+                        ->pluck('user_id')
+                        ->unique();
+
+                    if ($matchingIpUserIds->count() > 0) {
+                        $ipCodes = $ipCodes->merge(User::whereIn('id', $matchingIpUserIds)->pluck('code'));
                     }
                 }
             }
         }
 
-        return $codes->unique()->values();
+        $deviceCodes = $deviceCodes->unique()->values();
+        $ipOnlyCodes = $ipCodes->unique()->diff($deviceCodes)->values();
+
+        return ['device' => $deviceCodes, 'ip_only' => $ipOnlyCodes];
     }
 
     /**
@@ -156,7 +186,9 @@ class WithdrawController extends Controller
             ->join('jobs', 'job_works.job_id', '=', 'jobs.id')
             ->sum('jobs.each_worker_earn');
 
-        $duplicateDeviceUsers = $this->duplicateDeviceCodes($user);
+        $duplicateMatches = $this->duplicateMatches($user);
+        $duplicateDeviceCodes = $duplicateMatches['device'];
+        $duplicateIpOnlyCodes = $duplicateMatches['ip_only'];
 
         $referredCount = User::where('rfered_by', $userId)->count();
 
@@ -170,8 +202,11 @@ class WithdrawController extends Controller
         if (!$user->hasVerifiedEmail()) {
             $flags[] = 'ইমেইল ভেরিফাই করা নেই';
         }
-        if ($duplicateDeviceUsers->count() > 0) {
-            $flags[] = 'একই ডিভাইস/আইপি থেকে আরও ' . $duplicateDeviceUsers->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateDeviceUsers->implode(', ') . ')';
+        if ($duplicateDeviceCodes->count() > 0) {
+            $flags[] = '🔴 একই ডিভাইস (ফোন/ব্রাউজার) থেকে আরও ' . $duplicateDeviceCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateDeviceCodes->implode(', ') . ') -- শক্তিশালী প্রমাণ, সম্ভবত একই মানুষ';
+        }
+        if ($duplicateIpOnlyCodes->count() > 0) {
+            $flags[] = '🟡 শুধু একই আইপি/নেটওয়ার্ক (যেমন ওয়াইফাই) থেকে আরও ' . $duplicateIpOnlyCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateIpOnlyCodes->implode(', ') . ') -- ডিভাইস মেলেনি, তাই পরিবার/অফিস/শেয়ার করা ওয়াইফাই হতে পারে, এটা একা প্রমাণ না';
         }
         if ($rejectedJobs > 0 && $approvedJobs > 0 && $rejectedJobs >= $approvedJobs) {
             $flags[] = "Approved-এর চেয়ে Rejected job বেশি বা সমান ({$rejectedJobs} rejected vs {$approvedJobs} approved)";
@@ -211,7 +246,8 @@ class WithdrawController extends Controller
             'referral_commission' => $referralCommission,
             'total_referrals' => $referredCount,
             'total_tracked_earned' => $totalTrackedEarned,
-            'duplicate_device_accounts' => $duplicateDeviceUsers->values(),
+            'duplicate_device_accounts' => $duplicateDeviceCodes->values(),
+            'duplicate_ip_only_accounts' => $duplicateIpOnlyCodes->values(),
             'flags' => $flags,
             'looks_clean' => count($flags) === 0,
         ]);
