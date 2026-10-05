@@ -3047,3 +3047,53 @@ Route::get('/system-device-signature-report/{token}', function ($token) {
 
     return response()->json(['top_device_signatures' => $top]);
 });
+
+// Read-only diagnostic: shows the exact registration-snapshot device/IP
+// fields plus every login_logs row for one or more users (by their
+// "code"), so we can see exactly why the duplicate-account check placed
+// a given pair of accounts in one tier (device/medium/ip_only) instead
+// of another, instead of guessing.
+Route::get('/system-user-device-debug/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $codes = array_filter(array_map('trim', explode(',', request('codes', ''))));
+    if (empty($codes)) {
+        return response()->json(['error' => 'Pass ?codes=12039,11698,12054 (comma separated user codes or #id).']);
+    }
+
+    $result = [];
+    foreach ($codes as $code) {
+        if (str_starts_with($code, '#')) {
+            $user = \App\Models\User::find((int) substr($code, 1));
+        } else {
+            $user = \App\Models\User::where('code', $code)->first();
+        }
+
+        if (!$user) {
+            $result[$code] = ['error' => 'not found'];
+            continue;
+        }
+
+        $logins = \Illuminate\Support\Facades\Schema::hasTable('login_logs')
+            ? \App\Models\LoginLog::where('user_id', $user->id)->orderByDesc('id')->limit(10)->get([
+                'ip_address', 'device_name', 'device_brand', 'device_model', 'created_at',
+            ])
+            : [];
+
+        $result[$code] = [
+            'id' => $user->id,
+            'code' => $user->code,
+            'registration_snapshot' => [
+                'ip_address' => $user->ip_address,
+                'device_name' => $user->device_name,
+                'device_brand' => $user->device_brand,
+                'device_model' => $user->device_model,
+            ],
+            'login_logs' => $logins,
+        ];
+    }
+
+    return response()->json($result);
+});
