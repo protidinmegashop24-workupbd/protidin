@@ -148,7 +148,6 @@
                             </p>
                             <form action="{{ route('user.instant-verify-my-account') }}" method="POST">
                                 @csrf
-                                <input type="hidden" name="balance_type" value="deposit_balance">
                                 <div class="text-center mt-4">
                                     <button type="submit" class="btn btn-verify" onclick="return confirm('Are you sure?')">
                                         একাউন্ট ভেরিফাই করুন

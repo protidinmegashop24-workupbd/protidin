@@ -301,10 +301,6 @@ class UserDashboardController extends Controller
 
     public function instant_verify_my_account(Request $request)
     {
-        $request->validate([
-            'balance_type' => 'required|in:deposit_balance,earning_balance',
-        ]);
-
         $user = User::find(Auth::id());
 
         if ($user->is_verified) {
@@ -312,12 +308,28 @@ class UserDashboardController extends Controller
         }
 
         $fee = (float) (optional(site_info())->instant_verify_fee ?? 0);
-        $column = $request->balance_type;
+
+        // The page tells users they can verify with dollars they EARNED on
+        // the site, but the form used to always charge deposit_balance --
+        // so anyone with only earning_balance (the common case, since most
+        // users earn rather than deposit) always got "Insufficient
+        // balance" even with plenty of money. Now whichever balance
+        // actually covers the fee is used, checking earning_balance first
+        // since that matches what the page promises.
+        $column = null;
+        if ($fee <= 0) {
+            $column = 'earning_balance';
+        } elseif ((float) $user->earning_balance >= $fee) {
+            $column = 'earning_balance';
+        } elseif ((float) $user->deposit_balance >= $fee) {
+            $column = 'deposit_balance';
+        }
+
+        if ($fee > 0 && !$column) {
+            return redirect()->back()->with('error', 'Insufficient balance to verify your account. আপনার earning balance বা deposit balance-এ অন্তত $' . number_format($fee, 2) . ' থাকতে হবে।');
+        }
 
         if ($fee > 0) {
-            if ((float) $user->{$column} < $fee) {
-                return redirect()->back()->with('error', 'Insufficient balance to verify your account.');
-            }
             $user->{$column} = (float) $user->{$column} - $fee;
         }
 
