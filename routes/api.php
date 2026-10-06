@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UddoktapayController;
+use App\Http\Controllers\ShopPayController;
 use App\Http\Controllers\TelegramController;
 
 /*
@@ -20,6 +20,6 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post( 'webhook', [UddoktapayController::class, 'webhook'] )->name( 'uddoktapay.webhook' );
+Route::match(['get', 'post'], 'shoppay-webhook', [ShopPayController::class, 'webhook'])->name('shoppay.webhook');
 
 Route::post('telegram-webhook/{secret}', [TelegramController::class, 'webhook'])->name('telegram.webhook');

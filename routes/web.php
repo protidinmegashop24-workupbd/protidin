@@ -73,6 +73,7 @@ use App\Http\Controllers\socialEarnController;
 // TODO:: User
 use App\Http\Controllers\User\UserDashboardController;
 use App\Http\Controllers\User\UserDepositCOntroller;
+use App\Http\Controllers\ShopPayController;
 use App\Http\Controllers\User\UserAdvertisementController;
 use App\Http\Controllers\User\UserWithdrawController;
 use App\Http\Controllers\User\UserJobController;
@@ -659,6 +660,12 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('/deposit-list', [UserDepositCOntroller::class, 'deposit_list'])->name('deposit-list');
     Route::post('/deposit-account-info', [UserDepositCOntroller::class, 'deposit_account_info'])->name('deposit-account-info');
     Route::post('/deposit-store', [UserDepositCOntroller::class, 'store'])->name('deposit-store');
+
+    Route::get('/shoppay/pay', [ShopPayController::class, 'show'])->name('shoppay.show');
+    Route::post('/shoppay/pay', [ShopPayController::class, 'pay'])->name('shoppay.pay');
+    Route::get('/shoppay/success', [ShopPayController::class, 'success'])->name('shoppay.success');
+    Route::get('/shoppay/cancel', [ShopPayController::class, 'cancel'])->name('shoppay.cancel');
+
     Route::get('/earning-to-deposit', [UserDepositController::class, 'showEarningToDepositPage'])->name('earning-to-deposit');
     Route::post('/earning-to-deposit', [UserDepositController::class, 'earningToDeposit'])->name('user.earning-to-deposit');
 

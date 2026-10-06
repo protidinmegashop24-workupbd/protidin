@@ -25,7 +25,8 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Library\UddoktaPay;
+use Illuminate\Support\Facades\Schema;
+use App\Library\ShopPay;
 
 class UserDashboardController extends Controller
 {
@@ -38,21 +39,31 @@ class UserDashboardController extends Controller
     {
         $userId = Auth::user()->id;
         $userInfo = User::find(Auth::user()->id);
-        $deposits = Deposit::where(['user_id' => $userId, 'approval' => 0])->get();
 
-        foreach($deposits as $deposit) {
-            $data = UddoktaPay::verify_payment($deposit->invoice_id);
-            if (isset($data['status']) && $data['status'] == 'COMPLETED') {
-                $depositAmount = $data['amount'] / 100;
-                $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
-                $userInfo->referral_activated = 1;
-                $userInfo->save();
+        // Only re-verify deposits that actually came through the ShopPay
+        // gateway (account_id-scoped) -- a manually typed bKash/Nagad
+        // transaction_id is never a valid ShopPay transaction_id.
+        if (Schema::hasTable('deposit_accounts')) {
+            $shopPayAccountId = ShopPay::depositAccountId();
+            $deposits = Deposit::where(['user_id' => $userId, 'approval' => 0, 'account_id' => $shopPayAccountId])
+                ->whereNotNull('transaction_id')
+                ->get();
 
-                credit_referral_deposit_commission($userInfo, (float) $depositAmount);
+            foreach ($deposits as $deposit) {
+                $data = ShopPay::verify_payment($deposit->transaction_id);
+                if (!empty($data['status']) && $data['status'] == 'COMPLETED') {
+                    $depositAmount = (float) ($data['amount'] ?? 0);
+                    $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
+                    $userInfo->referral_activated = 1;
+                    $userInfo->save();
 
-                $deposit_update = Deposit::find($deposit->id);
-                $deposit_update->approval = 1;
-                $deposit_update->save();
+                    credit_referral_deposit_commission($userInfo, $depositAmount);
+
+                    $deposit_update = Deposit::find($deposit->id);
+                    $deposit_update->amount = $depositAmount;
+                    $deposit_update->approval = 1;
+                    $deposit_update->save();
+                }
             }
         }
         

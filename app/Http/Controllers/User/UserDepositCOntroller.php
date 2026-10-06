@@ -11,7 +11,8 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use App\Library\UddoktaPay;
+use Illuminate\Support\Facades\Schema;
+use App\Library\ShopPay;
 
 class UserDepositCOntroller extends Controller
 {
@@ -31,25 +32,35 @@ class UserDepositCOntroller extends Controller
     {
         $userId = Auth::user()->id;
         $userInfo = User::find(Auth::user()->id);
-        $deposits = Deposit::where(['user_id' => $userId, 'approval' => 0])->get();
-        
-        foreach($deposits as $deposit) {
-            $data = UddoktaPay::verify_payment($deposit->invoice_id);
-            if (isset($data['status']) && $data['status'] == 'COMPLETED') {
-                $depositAmount = $data['amount'] / 100;
-                $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
-                $userInfo->referral_activated = 1;
-                $userInfo->save();
 
-                credit_referral_deposit_commission($userInfo, (float) $depositAmount);
+        // Only re-verify deposits that actually came through the ShopPay
+        // gateway (account_id-scoped) -- a manually typed bKash/Nagad
+        // transaction_id is never a valid ShopPay transaction_id, so
+        // sending it to that API would be meaningless at best.
+        if (Schema::hasTable('deposit_accounts')) {
+            $shopPayAccountId = ShopPay::depositAccountId();
+            $deposits = Deposit::where(['user_id' => $userId, 'approval' => 0, 'account_id' => $shopPayAccountId])
+                ->whereNotNull('transaction_id')
+                ->get();
 
-                $deposit_update = Deposit::find($deposit->id);
-                $deposit_update->approval = 1;
-                $deposit_update->save();
+            foreach ($deposits as $deposit) {
+                $data = ShopPay::verify_payment($deposit->transaction_id);
+                if (!empty($data['status']) && $data['status'] == 'COMPLETED') {
+                    $depositAmount = (float) ($data['amount'] ?? 0);
+                    $userInfo->deposit_balance = $userInfo->deposit_balance + $depositAmount;
+                    $userInfo->referral_activated = 1;
+                    $userInfo->save();
+
+                    credit_referral_deposit_commission($userInfo, $depositAmount);
+
+                    $deposit_update = Deposit::find($deposit->id);
+                    $deposit_update->amount = $depositAmount;
+                    $deposit_update->approval = 1;
+                    $deposit_update->save();
+                }
             }
         }
-        
-        
+
         $deposits = Deposit::where('user_id', Auth::user()->id)->latest()->get();
         $headlines = DepositHeadline::all();
         return view('user.pages.deposit-list', compact('deposits', 'headlines'));
