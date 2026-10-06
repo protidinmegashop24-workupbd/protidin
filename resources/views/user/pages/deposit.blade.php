@@ -155,8 +155,10 @@
                 <div class="card-header">
                     <h4 class="card-title">Select Account For Balance Deposit</h4>
                    <p class="text-muted font-weight-500" style="border-radius: 4px; border: 2px solid red; padding: 5px; text-align: center; color: #fff; background-color: #f8f9fa;">
-    ভেরিফিকেশন এর জন্য অপেক্ষা না করে ইন্সট্যান্ট টাকা ডিপজিট করতে চাইলে 
+    ভেরিফিকেশন এর জন্য অপেক্ষা না করে ইন্সট্যান্ট টাকা ডিপজিট করতে চাইলে
     <a href="/user/instant-deposit" target="_blank" style="color: #007bff; font-weight: bold;">এখানে চাপুন</a>
+    অথবা
+    <a href="{{ route('user.shoppay.show') }}" style="color: #007bff; font-weight: bold;">ShopPay দিয়ে ইনস্ট্যান্ট ডিপোজিট</a>
 </p>
 
                 </div>
