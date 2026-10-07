@@ -3192,3 +3192,44 @@ Route::get('/system-inspect-user-share-bonuses/{token}', function ($token) {
 
     return response()->json(['columns' => $columns, 'sample_rows' => $sample]);
 });
+
+// Read-only diagnostic: calls earnsocials.com's BuddyPress REST API
+// directly and shows the raw response, so a failed share-code verification
+// can be debugged (wrong .env credentials vs wrong API path vs genuinely
+// no matching post) without guessing.
+Route::get('/system-test-earnsocials-api/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $code = request()->query('code', 'test');
+    $baseUrl = rtrim((string) env('EARNSOCIALS_API_URL'), '/');
+    $username = env('EARNSOCIALS_API_USERNAME');
+    $hasPassword = !empty(env('EARNSOCIALS_API_APP_PASSWORD'));
+
+    if (empty($baseUrl) || empty($username) || !$hasPassword) {
+        return response()->json([
+            'error' => 'EARNSOCIALS_API_URL / EARNSOCIALS_API_USERNAME / EARNSOCIALS_API_APP_PASSWORD not fully set in .env.',
+            'base_url' => $baseUrl,
+            'username' => $username,
+            'has_password' => $hasPassword,
+        ]);
+    }
+
+    $response = \Illuminate\Support\Facades\Http::withBasicAuth(
+        $username,
+        env('EARNSOCIALS_API_APP_PASSWORD')
+    )->get($baseUrl . '/wp-json/buddypress/v1/activity', [
+        'search' => $code,
+        'per_page' => 10,
+    ]);
+
+    return response()->json([
+        'requested_code' => $code,
+        'base_url' => $baseUrl,
+        'username' => $username,
+        'http_status' => $response->status(),
+        'successful' => $response->successful(),
+        'raw_body' => $response->body(),
+    ]);
+});
