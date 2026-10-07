@@ -119,25 +119,24 @@
         @if($shareAlreadyClaimedToday)
             <p style="color:#16a34a; font-weight:700;">✅ আজকের বোনাস ইতিমধ্যে দাবি করা হয়েছে। আগামীকাল আবার আসুন!</p>
         @else
-            <p style="color:#64748b; line-height:1.7; text-align:left;">
-                ১) নিচের কোডটা কপি করুন।<br>
-                ২) <a href="https://earnsocials.com" target="_blank">earnsocials.com</a>-এ গিয়ে এই কোডটা একটা পোস্ট/স্ট্যাটাস হিসেবে শেয়ার করুন।<br>
-                ৩) এখানে ফিরে এসে "Verify & Claim" চাপুন।
+            <p style="color:#64748b; line-height:1.7;">
+                নিচের বাটনে চাপুন — earnsocials.com খুলবে এবং আপনার হয়ে একটা পোস্ট অটোমেটিক শেয়ার হয়ে যাবে। এরপর ওই ট্যাব বন্ধ করে এখানে ফিরে আসুন — বোনাস নিজে থেকেই যুক্ত হয়ে যাবে। (earnsocials.com-এ লগইন করা থাকতে হবে)
             </p>
 
-            <div class="d-flex align-items-center justify-content-center gap-2 mt-2" style="flex-wrap:wrap;">
-                <input id="shareCodeInput" class="form-control" style="max-width:220px; font-weight:800; text-align:center;" readonly value="{{ $shareCode }}">
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyShareCode()">Copy</button>
-            </div>
+            <input type="hidden" id="shareCodeInput" value="{{ $shareCode }}">
 
-            <a href="https://earnsocials.com" target="_blank" class="btn btn-primary mt-3" style="border-radius:10px; font-weight:700;">
-                earnsocials.com-এ পোস্ট করুন
-            </a>
+            <button type="button"
+                    id="shareNowBtn"
+                    class="btn btn-primary mt-2"
+                    style="border-radius:10px; font-weight:700;"
+                    onclick="startShareFlow()">
+                Share Now & Get Bonus
+            </button>
 
             <button type="button"
                     id="claimShareBonusBtn"
                     class="btn btn-success mt-2"
-                    style="border-radius:10px; font-weight:700;"
+                    style="border-radius:10px; font-weight:700; display:none;"
                     onclick="claimShareBonus()">
                 Verify & Claim
             </button>
@@ -281,18 +280,34 @@
                         $("#message").removeClass("success-alert").addClass("danger-alert").show();
                     }
                     
-                    function copyShareCode() {
-    var el = document.getElementById('shareCodeInput');
-    if (!el) return;
-    el.select();
-    el.setSelectionRange(0, 99999);
-    try {
-        document.execCommand('copy');
-        $("#shareBonusMessage").html("✅ কোড কপি হয়েছে!");
-    } catch (e) {}
+                    var shareWindow = null;
+var shareWindowTimer = null;
+
+function startShareFlow() {
+    var code = document.getElementById('shareCodeInput').value;
+    var shareUrl = "https://earnsocials.com/?pme_share=" + encodeURIComponent(code);
+
+    shareWindow = window.open(shareUrl, "earnSocialsShare", "width=700,height=650");
+
+    if (!shareWindow) {
+        // Popup blocked -- fall back to a manual button instead of a dead end.
+        $("#shareBonusMessage").html("পপআপ ব্লক হয়ে থাকতে পারে। নিচের 'Verify & Claim' বাটন ব্যবহার করুন।");
+        $("#claimShareBonusBtn").show();
+        return;
+    }
+
+    $("#shareBonusMessage").html("earnsocials.com-এ শেয়ার হচ্ছে... ট্যাবটা বন্ধ করলেই বোনাস চেক হবে।");
+
+    shareWindowTimer = setInterval(function () {
+        if (shareWindow && shareWindow.closed) {
+            clearInterval(shareWindowTimer);
+            claimShareBonus();
+        }
+    }, 700);
 }
 
 function claimShareBonus() {
+    $("#claimShareBonusBtn").show();
     $("#claimShareBonusBtn").prop("disabled", true).text("Processing...");
 
     $.ajax({
