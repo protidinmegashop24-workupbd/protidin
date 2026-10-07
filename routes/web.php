@@ -3173,3 +3173,22 @@ Route::get('/system-add-login-log-fingerprint-column/{token}', function ($token)
 
     return response()->json(['message' => 'device_fingerprint column already exists on login_logs.']);
 });
+
+// Read-only diagnostic: shows the real columns on user_share_bonuses (this
+// table exists live but has no migration file in the repo), so the
+// earnsocials.com share-verification rebuild is designed around what's
+// actually there instead of guessing.
+Route::get('/system-inspect-user-share-bonuses/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('user_share_bonuses')) {
+        return response()->json(['error' => 'user_share_bonuses table does not exist.']);
+    }
+
+    $columns = \Illuminate\Support\Facades\Schema::getColumnListing('user_share_bonuses');
+    $sample = \Illuminate\Support\Facades\DB::table('user_share_bonuses')->latest()->limit(3)->get();
+
+    return response()->json(['columns' => $columns, 'sample_rows' => $sample]);
+});
