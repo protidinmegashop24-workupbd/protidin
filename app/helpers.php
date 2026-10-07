@@ -1557,6 +1557,24 @@ if (!function_exists('claim_daily_login_bonus_now')) {
     }
 }
 
+if (!function_exists('earn_socials_share_code')) {
+    /**
+     * A per-user, per-day code the user is asked to post on earnsocials.com
+     * to prove they actually shared -- computed deterministically (HMAC of
+     * user id + date, keyed on APP_KEY) instead of stored, so there is
+     * nothing to look up: the exact same code can always be recomputed to
+     * verify a claim, and it naturally changes every day and can never be
+     * guessed without the app key.
+     */
+    function earn_socials_share_code($userId, ?string $date = null): string
+    {
+        $date = $date ?: now()->toDateString();
+        $hash = hash_hmac('sha256', $userId . '|' . $date, (string) config('app.key'));
+
+        return 'PME-' . strtoupper(substr($hash, 0, 10));
+    }
+}
+
 
 
 

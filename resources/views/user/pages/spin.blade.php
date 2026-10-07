@@ -112,43 +112,38 @@
                     </div>
                 </div>
 
-@php
-    $todayShareClaim = \Illuminate\Support\Facades\DB::table('user_share_bonuses')
-        ->where('user_id', Auth::user()->id)
-        ->whereDate('created_at', now()->toDateString())
-        ->count();
-
-    $shareUrl = url('/');
-@endphp
-
 <div class="card mt-4" style="width:100%; max-width:520px; border-radius:16px; border:1px solid #e5e7eb;">
     <div class="card-body text-center">
-        <h4 style="font-weight:800; color:#111827;">Share Protidin Mega Earn & Get Bonus</h4>
-        <p style="color:#64748b; line-height:1.7;">
-            Share Protidin Mega Earn with your friends and claim a small daily activity bonus.
-        </p>
+        <h4 style="font-weight:800; color:#111827;">Share & Get Bonus</h4>
 
-        <button type="button"
-        class="btn btn-primary"
-        style="border-radius:10px; font-weight:700;"
-        onclick="openFacebookShare()">
-    Share on Facebook
-</button>
+        @if($shareAlreadyClaimedToday)
+            <p style="color:#16a34a; font-weight:700;">✅ আজকের বোনাস ইতিমধ্যে দাবি করা হয়েছে। আগামীকাল আবার আসুন!</p>
+        @else
+            <p style="color:#64748b; line-height:1.7; text-align:left;">
+                ১) নিচের কোডটা কপি করুন।<br>
+                ২) <a href="https://earnsocials.com" target="_blank">earnsocials.com</a>-এ গিয়ে এই কোডটা একটা পোস্ট/স্ট্যাটাস হিসেবে শেয়ার করুন।<br>
+                ৩) এখানে ফিরে এসে "Verify & Claim" চাপুন।
+            </p>
 
-<button type="button"
-        id="claimShareBonusBtn"
-        class="btn btn-success mt-2"
-        style="border-radius:10px; font-weight:700;"
-        @if($todayShareClaim > 0) disabled @else disabled @endif
-        onclick="claimShareBonus()">
-    @if($todayShareClaim > 0)
-        Today Bonus Claimed
-    @else
-        Claim Facebook Share Bonus
-    @endif
-</button>
+            <div class="d-flex align-items-center justify-content-center gap-2 mt-2" style="flex-wrap:wrap;">
+                <input id="shareCodeInput" class="form-control" style="max-width:220px; font-weight:800; text-align:center;" readonly value="{{ $shareCode }}">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyShareCode()">Copy</button>
+            </div>
 
-        <div id="shareBonusMessage" class="mt-3" style="font-weight:700;"></div>
+            <a href="https://earnsocials.com" target="_blank" class="btn btn-primary mt-3" style="border-radius:10px; font-weight:700;">
+                earnsocials.com-এ পোস্ট করুন
+            </a>
+
+            <button type="button"
+                    id="claimShareBonusBtn"
+                    class="btn btn-success mt-2"
+                    style="border-radius:10px; font-weight:700;"
+                    onclick="claimShareBonus()">
+                Verify & Claim
+            </button>
+
+            <div id="shareBonusMessage" class="mt-3" style="font-weight:700;"></div>
+        @endif
     </div>
 </div>
 
@@ -286,35 +281,18 @@
                         $("#message").removeClass("success-alert").addClass("danger-alert").show();
                     }
                     
-                    var shareClicked = false;
-var fbPopup = null;
-var fbPopupTimer = null;
-
-function openFacebookShare() {
-    var shareUrl = "{{ urlencode(url('/')) }}";
-    var fbUrl = "https://www.facebook.com/sharer/sharer.php?u=" + shareUrl;
-
-    fbPopup = window.open(fbUrl, "facebookShare", "width=600,height=500");
-
-    fbPopupTimer = setInterval(function () {
-        if (fbPopup && fbPopup.closed) {
-            clearInterval(fbPopupTimer);
-            shareClicked = true;
-
-            $("#shareBonusMessage").html("Facebook share completed. Now claim your reward.");
-            $("#claimShareBonusBtn")
-                .prop("disabled", false)
-                .text("Claim Facebook Share Bonus");
-        }
-    }, 700);
+                    function copyShareCode() {
+    var el = document.getElementById('shareCodeInput');
+    if (!el) return;
+    el.select();
+    el.setSelectionRange(0, 99999);
+    try {
+        document.execCommand('copy');
+        $("#shareBonusMessage").html("✅ কোড কপি হয়েছে!");
+    } catch (e) {}
 }
 
 function claimShareBonus() {
-    if (!shareClicked) {
-        $("#shareBonusMessage").html("Please share on Facebook first.");
-        return;
-    }
-
     $("#claimShareBonusBtn").prop("disabled", true).text("Processing...");
 
     $.ajax({
@@ -324,10 +302,10 @@ function claimShareBonus() {
             _token: "{{ csrf_token() }}"
         },
         success: function(data) {
-            $("#shareBonusMessage").html("Facebook share bonus added. Reloading...");
+            $("#shareBonusMessage").html(data.message || "বোনাস যোগ হয়েছে। রিলোড হচ্ছে...");
             setTimeout(function(){
                 window.location.reload();
-            }, 1000);
+            }, 1200);
         },
         error: function(xhr) {
             let msg = "Bonus claim failed.";
@@ -337,7 +315,7 @@ function claimShareBonus() {
             }
 
             $("#shareBonusMessage").html(msg);
-            $("#claimShareBonusBtn").prop("disabled", false).text("Claim Facebook Share Bonus");
+            $("#claimShareBonusBtn").prop("disabled", false).text("Verify & Claim");
         }
     });
 }

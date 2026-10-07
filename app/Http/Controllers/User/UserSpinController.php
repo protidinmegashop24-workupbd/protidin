@@ -26,8 +26,14 @@ class UserSpinController extends Controller
         if( Auth::user()->is_ban == 1 && suspend_url_status($currenturl) == 1){
             return redirect()->route('user.account-suspended');
         }
-        
-        return view('user.pages.spin');
+
+        $shareCode = earn_socials_share_code(Auth::id());
+        $shareAlreadyClaimedToday = \Illuminate\Support\Facades\DB::table('user_share_bonuses')
+            ->where('user_id', Auth::id())
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+
+        return view('user.pages.spin', compact('shareCode', 'shareAlreadyClaimedToday'));
     }
 
     /**

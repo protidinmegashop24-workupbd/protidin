@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin\Country;
 use App\Models\User;
 use App\Models\Admin\UserDailySpin;
+use App\Library\EarnSocials;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -39,8 +41,60 @@ class UserProfileController extends Controller
         $uspin->user_id = Auth::user()->id;
         $uspin->spin_amount = $request->mark;
         $uspin->save();
-        
+
         return 'Updated';
+    }
+
+    /**
+     * Pays the daily "share" bonus -- rebuilt to actually verify the share
+     * (a Facebook share can never be confirmed server-side, so this used
+     * to just trust a client-side JS flag; this method itself didn't even
+     * exist, so the Claim button fatal-errored every time). The user posts
+     * their one-time daily code (earn_socials_share_code()) on
+     * earnsocials.com, and this checks the BuddyPress REST API for it
+     * before paying anything.
+     */
+    public function claim_share_bonus(Request $request)
+    {
+        $userId = Auth::id();
+        $today = now()->toDateString();
+
+        $alreadyClaimed = DB::table('user_share_bonuses')
+            ->where('user_id', $userId)
+            ->whereDate('created_at', $today)
+            ->exists();
+
+        if ($alreadyClaimed) {
+            return response()->json(['status' => false, 'message' => 'আজকের বোনাস আগেই দাবি করা হয়েছে।'], 422);
+        }
+
+        $code = earn_socials_share_code($userId, $today);
+
+        if (!EarnSocials::codeWasPosted($code)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'earnsocials.com-এ এই কোডটা দিয়ে কোনো পোস্ট খুঁজে পাওয়া যায়নি। প্রথমে কোডটা পোস্ট করুন, তারপর আবার চেষ্টা করুন।',
+            ], 422);
+        }
+
+        $bonusAmount = 0.001;
+
+        $user = User::find($userId);
+        $user->earning_balance = (float) $user->earning_balance + $bonusAmount;
+        $user->save();
+
+        DB::table('user_share_bonuses')->insert([
+            'user_id' => $userId,
+            'bonus_amount' => $bonusAmount,
+            'share_type' => 'earnsocials',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'বোনাস যোগ হয়েছে: $' . number_format($bonusAmount, 4),
+        ]);
     }
 
     /**
