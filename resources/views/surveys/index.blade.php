@@ -75,7 +75,16 @@
       </a>
     </div>
 
-    <div id="cpx-fullscreen" style="max-width:950px;margin:auto;min-height:40px;" class="mb-2"></div>
+    {{-- The survey boxes inside the widget are rendered by CPX's script
+         inside a cross-origin iframe, so our JS can't attach a click
+         handler to them directly (browsers block that for security). A
+         transparent overlay link on top is the only reliable way to make
+         clicking anywhere in this area behave like the button above. --}}
+    <div class="mb-2" style="max-width:950px;margin:auto;position:relative;">
+      <div id="cpx-fullscreen" style="min-height:40px;"></div>
+      <a href="{{ route('survey-provider.start', $cpxProvider->slug) }}" target="_blank"
+         style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;" aria-label="ফুল পেজে সার্ভে দেখুন"></a>
+    </div>
   @endif
 
   @if($otherProviders->count())
