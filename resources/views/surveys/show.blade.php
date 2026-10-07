@@ -105,7 +105,7 @@
              href="{{ route('surveys.show', [$survey->id, 'sv_step' => max(1,$step-1)]) }}">
             Previous
           </a>
-          <button type="submit" class="btn btn-success">Finish & Get Code</button>
+          <button type="submit" class="btn btn-success" id="finishSurveyBtn">Finish & Get Code</button>
 
           <a class="btn btn-outline-dark ms-auto" href="{{ route('surveys.index') }}">Back to list</a>
         </div>
@@ -135,5 +135,23 @@ function copyCode(){
     msg.style.color = "#b91c1c";
   }
 }
+
+// Loads the popunder ad script exactly once, triggered by the user
+// clicking "Finish & Get Code" on the last survey question -- never on
+// page load, never more than once per click.
+(function () {
+  var btn = document.getElementById('finishSurveyBtn');
+  if (!btn) return;
+
+  var fired = false;
+  btn.addEventListener('click', function () {
+    if (fired) return;
+    fired = true;
+
+    var s = document.createElement('script');
+    s.src = 'https://pl31711201.profitableratecpmnetwork.com/e0/25/ce/e025ce8c071d1f88bfe1ce606ddfa2e1.js';
+    document.body.appendChild(s);
+  });
+})();
 </script>
 @endsection
