@@ -686,12 +686,13 @@ class UserJobController extends Controller
     public function ptcEditStore(Request $request)
     {
         $request->validate([
-            'id'              => 'required|exists:ptc_job,id',
-            'ptc_title'       => 'required|string|max:255',
-            'ptc_jobLink'     => 'required|url',
-            'ptc_expire_day'  => 'required|date',
-            'ptc_job_details' => 'nullable|string',
-            'ptc_status'      => 'required|in:pending,review,running',
+            'id'                 => 'required|exists:ptc_job,id',
+            'ptc_title'          => 'required|string|max:255',
+            'ptc_jobLink'        => 'required|url',
+            'ptc_expire_day'     => 'required|date',
+            'ptc_job_details'    => 'nullable|string',
+            'ptc_status'         => 'required|in:pending,review,running',
+            'additional_workers' => 'nullable|integer|min:0',
         ]);
 
         $job = ptc_job::where('id', $request->id)->where('ptc_post_user_id', Auth::id())->first();
@@ -703,6 +704,32 @@ class UserJobController extends Controller
         $job->ptc_jobLink = $request->ptc_jobLink;
         $job->ptc_expire_day = $request->ptc_expire_day;
         $job->ptc_job_details = $request->ptc_job_details;
+
+        // Lets a finished job (ptc_clicked reached ptc_worker_needed) be
+        // topped up with more click slots instead of forcing the user to
+        // post a brand new job (and lose the old one's history/stats)
+        // every time it completes. Price per click stays whatever it was
+        // when the job was first created -- only the slot count grows.
+        $additionalWorkers = (int) $request->input('additional_workers', 0);
+        if ($additionalWorkers > 0) {
+            $topUpCost = round($job->ptc_each_earn * $additionalWorkers * 1.03, 5);
+
+            $user = User::find(Auth::id());
+            if ($user->deposit_balance < $topUpCost) {
+                return redirect()->back()->with('error', 'অতিরিক্ত ' . $additionalWorkers . ' জন Worker যোগ করতে $' . number_format($topUpCost, 2) . ' লাগবে, কিন্তু আপনার deposit balance-এ এত টাকা নেই।');
+            }
+
+            $user->deposit_balance = $user->deposit_balance - $topUpCost;
+            $user->save();
+
+            $main_wallet = MainWallet::latest()->first();
+            if ($main_wallet) {
+                $main_wallet->amount = $main_wallet->amount + $topUpCost;
+                $main_wallet->save();
+            }
+
+            $job->ptc_worker_needed = $job->ptc_worker_needed + $additionalWorkers;
+        }
 
         // No admin approval gate -- an edited job just goes straight back
         // to running (whether it was being renewed after expiry or fixed

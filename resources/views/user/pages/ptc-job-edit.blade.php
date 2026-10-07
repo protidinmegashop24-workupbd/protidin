@@ -49,11 +49,22 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="package_name" class="form-label">প্রতিটা ক্লিক এর প্রদত্ত মূল্য পরিবর্তন গ্রহণযোগ্য নয় <span class="text-red">*</span></label>    
+                            <label class="form-label">প্রতিটা ক্লিকের মূল্য: <strong>${{ number_format($job->ptc_each_earn, 5) }}</strong> (এটা পরিবর্তনযোগ্য নয়)</label>
                         </div>
-                        
+
                         <div class="form-group">
-                            <label for="ptc_worker_needed" class="form-label">কতটি ক্লিক পরিবর্তন গ্রহণযোগ্য নয়?<span class="text-red">*</span></label>
+                            <label class="form-label">এখন পর্যন্ত ক্লিক হয়েছে: <strong>{{ $job->ptc_clicked }} / {{ $job->ptc_worker_needed }}</strong></label>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="additional_workers" class="form-label">কাজ শেষ হয়ে গেলে নতুন করে পোস্ট না করে, এখানে আরও কতজন Worker/ক্লিক যোগ করতে চান লিখুন (ঐচ্ছিক)</label>
+                            <input class="form-control" type="number" min="0" step="1" name="additional_workers" id="additional_workers" placeholder="0" value="0">
+                            <small class="text-muted">প্রতি ক্লিকে ${{ number_format($job->ptc_each_earn, 5) }} হারে ডিপোজিট ব্যালেন্স থেকে কাটা হবে।</small>
+                            @if ($errors->has('additional_workers'))
+                                <div class="alert alert-danger">
+                                    {{ $errors->first('additional_workers') }}
+                                </div>
+                            @endif
                         </div>
                         <div class="form-group">
                             <label for="ptc_expire_day" class="form-label">কত তারিখ(দিন)পর্যন্ত কাজটি মার্কেটে থাকবে?<span class="text-red">*</span></label>
