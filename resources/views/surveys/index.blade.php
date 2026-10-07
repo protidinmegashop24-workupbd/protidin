@@ -37,18 +37,22 @@
       {{ $cpxProvider->name }}
       <span class="badge bg-light text-dark" style="font-weight:800;font-size:11px;">Sponsored Survey Partner</span>
     </div>
-    {{-- CPX Research's own "Script Tag" widget (their recommended method for
-         Web) -- it renders the live survey list inside an iframe right on
-         this page, so users never leave the site to browse surveys. This is
-         DISPLAY ONLY: the wallet is still credited exclusively by the
-         server-side postback in SurveyProviderController, never by this
-         widget's client-side callbacks. --}}
-    <div id="cpx-fullscreen" style="max-width:950px;margin:auto;min-height:40px;" class="mb-2"></div>
-    <div class="text-center mb-4">
-      <a href="{{ route('survey-provider.start', $cpxProvider->slug) }}" target="_blank" class="text-muted" style="font-size:12px;">
-        সার্ভে না দেখালে এখানে ক্লিক করুন (নতুন ট্যাবে খুলবে)
+    {{-- The embedded "Script Tag" iframe widget below is cramped/broken on
+         mobile (confined to a small in-page box, page content and floating
+         buttons still visible around it -- not an actual full page). The
+         real full-page survey wall is this direct link to CPX's own
+         hosted page, so it's the prominent, primary action here instead of
+         small grey text under the widget. DISPLAY ONLY either way: the
+         wallet is still credited exclusively by the server-side postback
+         in SurveyProviderController, never by the widget's client-side
+         callbacks. --}}
+    <div class="text-center mb-3">
+      <a href="{{ route('survey-provider.start', $cpxProvider->slug) }}" target="_blank" class="btn btn-success w-100" style="font-weight:900;max-width:950px;">
+        ফুল পেজে সার্ভে দেখুন (নতুন ট্যাবে খুলবে)
       </a>
     </div>
+
+    <div id="cpx-fullscreen" style="max-width:950px;margin:auto;min-height:40px;" class="mb-2"></div>
   @endif
 
   @if($otherProviders->count())
