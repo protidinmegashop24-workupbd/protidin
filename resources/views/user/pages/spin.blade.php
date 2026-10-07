@@ -285,7 +285,11 @@ var shareWindowTimer = null;
 
 function startShareFlow() {
     var code = document.getElementById('shareCodeInput').value;
-    var shareUrl = "https://earnsocials.com/?pme_share=" + encodeURIComponent(code);
+    // Using a URL fragment (#) instead of a query string (?) -- the
+    // fragment never leaves the browser (it's not sent to the server at
+    // all), so it can't be blocked by any server-side security/cache rule
+    // the way a query string was on earnsocials.com.
+    var shareUrl = "https://earnsocials.com/#pme_share=" + encodeURIComponent(code);
 
     shareWindow = window.open(shareUrl, "earnSocialsShare", "width=700,height=650");
 
