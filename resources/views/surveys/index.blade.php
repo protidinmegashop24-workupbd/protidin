@@ -5,6 +5,11 @@
 <style>
   .survey-card{border-radius:14px;border:1px solid rgba(0,0,0,.12)}
   .survey-title{font-weight:900}
+  .sv-rules{background:#eef7ff;border:1px solid #cfe3f7;border-radius:14px;padding:16px 18px;}
+  .sv-rules h6{font-weight:900;margin-bottom:10px;}
+  .sv-rules ol{margin-bottom:0;padding-left:20px;}
+  .sv-rules li{margin-bottom:6px;font-weight:700;font-size:14.5px;}
+  .sv-rules .sv-sub{font-weight:800;color:#0d6efd;margin-top:10px;margin-bottom:4px;font-size:14px;}
 </style>
 @endsection
 
@@ -17,6 +22,24 @@
     <span class="badge rounded-pill bg-primary">
       Verify left today: {{ $leftToday ?? 20 }} (Used: {{ $usedToday ?? 0 }}/20)
     </span>
+  </div>
+
+  <div class="sv-rules mb-4">
+    <h6>📋 সার্ভে করার নিয়ম</h6>
+    <div class="sv-sub">১) CPX Research (উপরের সবুজ বাটন)</div>
+    <ol start="1">
+      <li>"ফুল পেজে সার্ভে দেখুন" বাটনে চাপুন, একটা তালিকা থেকে যেকোনো একটা সার্ভে বেছে নিয়ে শেষ করুন।</li>
+      <li>সম্পূর্ণ করলেই <strong>অটোমেটিক</strong> টাকা আপনার earning balance-এ যোগ হয়ে যাবে — কোনো কোড বা ভেরিফাই করার দরকার নেই।</li>
+    </ol>
+    <div class="sv-sub">২) নিচের কার্ডের সার্ভেগুলো (নিজস্ব প্রশ্নোত্তর)</div>
+    <ol start="1">
+      <li>যেকোনো একটা সার্ভে কার্ডে "Start Survey" চাপুন।</li>
+      <li>একের পর এক প্রশ্নের উত্তর দিয়ে "Next" চাপুন, শেষ প্রশ্নে "Finish & Get Code" চাপুন।</li>
+      <li>শেষ হলে একটা <strong>ইউনিক কোড</strong> পাবেন এবং কত টাকা আয় হয়েছে তা দেখাবে — কিন্তু এই টাকা তখনো আপনার ব্যালেন্সে যোগ হয়নি।</li>
+      <li>কোডটা কপি করে <strong>"Verify Code"</strong> বাটনে চাপুন (অথবা মেনু থেকে Verify পেজে গিয়ে কোডটা বসান) — তবেই টাকা ব্যালেন্সে যোগ হবে।</li>
+      <li>⚠️ দিনে সর্বোচ্চ <strong>২০টা কোড ভেরিফাই</strong> করা যাবে (উপরের ব্যাজে কতটা বাকি আছে দেখা যাচ্ছে)। এর বেশি কোড জমা হলেও, পরের ভেরিফাই কালকে করতে হবে।</li>
+      <li>একই সার্ভে দিনে একবারই করা যাবে — আজকে করা সার্ভে আজ আর তালিকায় দেখাবে না, কাল আবার আসবে।</li>
+    </ol>
   </div>
 
   @if(session('success'))
