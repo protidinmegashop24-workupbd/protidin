@@ -660,6 +660,12 @@
         <span>Telegram Broadcast</span>
     </a>
 </li>
+<li>
+    <a href="{{ route('admin.live-chat') }}">
+        <i class="fas fa-comments"></i>
+        <span>Live Chat</span>
+    </a>
+</li>
 
             @if (Auth::user()->role_id == 1)
                 <li class="nav-item">

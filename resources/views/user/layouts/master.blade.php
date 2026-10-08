@@ -284,5 +284,6 @@
         // });
     </script>
     @include('partials.site-moved-notice')
+    @include('user.layouts.partials.chat-widget')
 </body>
 </html>

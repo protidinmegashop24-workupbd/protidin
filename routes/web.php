@@ -355,6 +355,13 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('telegram-broadcast', [\App\Http\Controllers\TelegramController::class, 'broadcastForm'])->name('telegram-broadcast');
     Route::post('telegram-broadcast-send', [\App\Http\Controllers\TelegramController::class, 'broadcastSend'])->name('telegram-broadcast.send');
 
+    // Live chat admin dashboard -- plain view, all logic is client-side
+    // against Firebase Realtime Database (see resources/views/partials/
+    // firebase-chat-config.blade.php for the credentials to fill in).
+    Route::get('live-chat', function () {
+        return view('backend.pages.chat.dashboard');
+    })->name('live-chat');
+
     // Surveys
     Route::get('/surveys', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'index'])->name('surveys.index');
     Route::get('/surveys/create', [\App\Http\Controllers\Admin\AdminSurveyController::class, 'create'])->name('surveys.create');
