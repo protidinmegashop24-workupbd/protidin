@@ -356,6 +356,39 @@ class WithdrawController extends Controller
         ]);
     }
 
+    /**
+     * Gives one account a clean slate on the duplicate-device check --
+     * clears its registration-time device/IP snapshot and deletes its
+     * entire login_logs history, so past matches (device fingerprint,
+     * brand+model, IP) stop being held against it. Used after the admin
+     * has warned a user and they've promised to stop using a shared
+     * device; if they keep doing it, fresh logins will just rebuild the
+     * same evidence from scratch. Does not touch balance, bans, or any
+     * other account's data.
+     */
+    public function resetDeviceHistory($userId)
+    {
+        $user = User::find($userId);
+        if (!$user) {
+            return redirect()->back()->with('error', 'User not found.');
+        }
+
+        $user->ip_address = null;
+        $user->device_name = null;
+        $user->device_brand = null;
+        $user->device_model = null;
+        if (Schema::hasColumn('users', 'device_fingerprint')) {
+            $user->device_fingerprint = null;
+        }
+        $user->save();
+
+        if (Schema::hasTable('login_logs')) {
+            LoginLog::where('user_id', $userId)->delete();
+        }
+
+        return redirect()->back()->with('message', 'এই অ্যাকাউন্টের ডিভাইস/আইপি হিস্ট্রি রিসেট করা হয়েছে -- পরের লগইন থেকে নতুন করে ট্র্যাকিং শুরু হবে (কোড: ' . $user->code . ')');
+    }
+
     public function withdraw_request_approved(Request $request, $id)
     {
         $withdraw = Withdraw::find($id);

@@ -166,11 +166,19 @@
                         return;
                     }
 
+                    var hasDeviceHistory = (d.duplicate_device_accounts && d.duplicate_device_accounts.length > 0)
+                        || (d.duplicate_medium_accounts && d.duplicate_medium_accounts.length > 0)
+                        || (d.duplicate_ip_only_accounts && d.duplicate_ip_only_accounts.length > 0);
+
                     var flagsHtml = '';
                     if (d.flags.length > 0) {
                         flagsHtml = '<div class="alert alert-danger mb-2"><strong>⚠️ সমস্যা পাওয়া গেছে:</strong><ul class="mb-0">';
                         d.flags.forEach(function(f) { flagsHtml += '<li>' + f + '</li>'; });
-                        flagsHtml += '</ul></div>';
+                        flagsHtml += '</ul>';
+                        if (hasDeviceHistory) {
+                            flagsHtml += '<button type="button" class="btn btn-warning btn-sm mt-2" onclick="resetDeviceHistory(' + userId + ', \'' + targetId + '\')">🔄 এই ইউজারের ডিভাইস/আইপি হিস্ট্রি রিসেট করুন</button>';
+                        }
+                        flagsHtml += '</div>';
                     } else {
                         flagsHtml = '<div class="alert alert-success mb-2">✅ কোনো সমস্যা পাওয়া যায়নি — পেমেন্ট করা যেতে পারে।</div>';
                     }
@@ -191,6 +199,31 @@
                 })
                 .catch(function() {
                     box.innerHTML = '<div class="alert alert-danger">চেক করতে ব্যর্থ হয়েছে, আবার চেষ্টা করুন।</div>';
+                });
+        }
+
+        // Clears one account's device/IP history (registration snapshot +
+        // all login_logs rows) so the duplicate check stops holding past
+        // matches against it -- for after an admin has warned the user and
+        // they've promised to stop sharing a device. Re-checks the same
+        // user afterward so the box updates immediately.
+        function resetDeviceHistory(userId, targetId) {
+            if (!confirm('এই ইউজারের ডিভাইস/আইপি হিস্ট্রি রিসেট করবেন? এর ফলে আগের সব ডিভাইস/আইপি মিল মুছে যাবে, নতুন লগইন থেকে আবার ট্র্যাকিং শুরু হবে।')) {
+                return;
+            }
+
+            fetch('/admin/withdraw-user-reset-device/' + userId, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                }
+            })
+                .then(function() {
+                    checkWithdrawUser(userId, targetId);
+                })
+                .catch(function() {
+                    alert('রিসেট করতে ব্যর্থ হয়েছে, আবার চেষ্টা করুন।');
                 });
         }
 
