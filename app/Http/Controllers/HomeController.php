@@ -79,14 +79,35 @@ class HomeController extends Controller
             ->get(['withdraws.amount', 'withdraws.charge', 'withdraws.account_type', 'withdraws.account_no', 'withdraws.updated_at', 'users.name']);
 
         // User-submitted, admin-approved star rating + comment -- shown as
-        // testimonials near the bottom of the homepage.
-        $reviews = \Illuminate\Support\Facades\Schema::hasTable('site_reviews')
-            ? \App\Models\SiteReview::with('user')
+        // testimonials near the bottom of the homepage. Pinned reviews
+        // (admin's picks) always show, regardless of approval date; the
+        // remaining slots fill with the latest-approved reviews as before.
+        if (\Illuminate\Support\Facades\Schema::hasTable('site_reviews')) {
+            $hasPinnedColumn = \Illuminate\Support\Facades\Schema::hasColumn('site_reviews', 'pinned');
+
+            $pinnedReviews = $hasPinnedColumn
+                ? \App\Models\SiteReview::with('user')
+                    ->where('status', 'approved')
+                    ->where('pinned', true)
+                    ->latest('approved_at')
+                    ->get()
+                : collect();
+
+            $remainingSlots = max(0, 9 - $pinnedReviews->count());
+
+            $latestReviews = \App\Models\SiteReview::with('user')
                 ->where('status', 'approved')
+                ->when($hasPinnedColumn, function ($q) {
+                    $q->where('pinned', false);
+                })
                 ->latest('approved_at')
-                ->take(9)
-                ->get()
-            : collect();
+                ->take($remainingSlots)
+                ->get();
+
+            $reviews = $pinnedReviews->merge($latestReviews);
+        } else {
+            $reviews = collect();
+        }
 
         return view('frontend.pages.home', compact('slider', 'website', 'aboutus', 'clients','services', 'p_categorys', 'jobs', 'recentPayouts', 'reviews'));
     }

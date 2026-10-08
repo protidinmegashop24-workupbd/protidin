@@ -449,6 +449,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'a
     Route::get('reviews-rejected', [SiteReviewController::class, 'rejectedList'])->name('reviews-rejected');
     Route::get('review-approve-{id}', [SiteReviewController::class, 'approve'])->name('review-approve');
     Route::get('review-reject-{id}', [SiteReviewController::class, 'reject'])->name('review-reject');
+    Route::get('review-toggle-pin-{id}', [SiteReviewController::class, 'togglePin'])->name('review-toggle-pin');
     Route::get('reviews-bonus-tiers', [SiteReviewController::class, 'bonusTiers'])->name('reviews-bonus-tiers');
     Route::post('reviews-bonus-tiers-update', [SiteReviewController::class, 'updateBonusTiers'])->name('reviews-bonus-tiers.update');
 
@@ -3240,4 +3241,22 @@ Route::get('/system-test-earnsocials-api/{token}', function ($token) {
         'successful' => $response->successful(),
         'raw_body' => $response->body(),
     ]);
+});
+
+// One-off: adds a `pinned` flag to site_reviews, so the admin can keep a
+// specific good review permanently in the homepage's 9-review carousel
+// instead of it rotating out as newer reviews get approved.
+Route::get('/system-add-review-pinned-column/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('site_reviews', 'pinned')) {
+        \Illuminate\Support\Facades\Schema::table('site_reviews', function ($table) {
+            $table->boolean('pinned')->default(false)->after('status');
+        });
+        return response()->json(['message' => 'Added pinned column to site_reviews.']);
+    }
+
+    return response()->json(['message' => 'pinned column already exists on site_reviews.']);
 });

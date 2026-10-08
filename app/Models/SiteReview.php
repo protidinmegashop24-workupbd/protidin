@@ -14,11 +14,13 @@ class SiteReview extends Model
         'comment',
         'status',
         'approved_at',
+        'pinned',
     ];
 
     protected $casts = [
         'rating' => 'integer',
         'approved_at' => 'datetime',
+        'pinned' => 'boolean',
     ];
 
     public function user()

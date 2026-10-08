@@ -70,6 +70,12 @@
                                                     </form>
                                                 @elseif($data->status == 'approved')
                                                     <span class="badge bg-success p-2">Approved</span>
+                                                    @if($data->pinned)
+                                                        <span class="badge bg-warning p-2">📌 Pinned</span>
+                                                    @endif
+                                                    <form action="{{ route('admin.review-toggle-pin', $data->id) }}" method="GET" style="display:inline-block;">
+                                                        <button type="submit" class="btn btn-{{ $data->pinned ? 'secondary' : 'warning' }} btn-sm">{{ $data->pinned ? 'Unpin' : 'Pin to homepage' }}</button>
+                                                    </form>
                                                     <form action="{{ route('admin.review-reject', $data->id) }}" method="GET" style="display:inline-block;">
                                                         <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Reject this already-approved review? It will be removed from the homepage.');">Reject</button>
                                                     </form>

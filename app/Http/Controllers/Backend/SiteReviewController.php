@@ -50,6 +50,25 @@ class SiteReviewController extends Controller
         return redirect()->back()->with('message', 'Review rejected.');
     }
 
+    /**
+     * Pinned reviews always show in the homepage's 9-review carousel
+     * (HomeController::index), regardless of how recently they were
+     * approved -- the remaining slots fill with the latest approved
+     * reviews as usual. Unpinning just lets it rotate out normally again.
+     */
+    public function togglePin($id)
+    {
+        $review = SiteReview::find($id);
+        if (!$review) {
+            return redirect()->back()->with('message', 'Review not found.');
+        }
+
+        $review->pinned = !$review->pinned;
+        $review->save();
+
+        return redirect()->back()->with('message', $review->pinned ? 'Review pinned -- it will always show on the homepage.' : 'Review unpinned.');
+    }
+
     public function bonusTiers()
     {
         $title = 'Daily Login Bonus Schedule';
