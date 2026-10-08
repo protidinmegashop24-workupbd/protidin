@@ -24,6 +24,13 @@
     .pme-chat-main-footer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #e2e8f0; }
     .pme-chat-main-footer input { flex: 1; border: 1px solid #dce7f2; border-radius: 10px; padding: 10px 14px; }
     .pme-chat-main-footer button { background: #22ab59; color: #fff; border: none; border-radius: 10px; padding: 0 18px; font-weight: 700; }
+
+    @media (max-width: 767px) {
+        .pme-admin-chat { flex-direction: column; height: auto; }
+        .pme-session-list { width: 100%; max-height: 180px; border-right: none; border-bottom: 1px solid #e2e8f0; }
+        .pme-chat-main { height: 60vh; }
+        .pme-amsg { max-width: 88%; }
+    }
 </style>
 
 <div class="container-fluid mt-3">
