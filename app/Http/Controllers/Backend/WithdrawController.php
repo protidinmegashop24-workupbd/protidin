@@ -1,0 +1,495 @@
+<?php
+
+namespace App\Http\Controllers\Backend;
+
+use App\Http\Controllers\Controller;
+use App\Models\Admin\MainWallet;
+use App\Models\Admin\Website;
+use App\Models\User;
+use App\Models\Admin\UserMessage;
+use App\Models\Withdraw;
+use App\Models\Job;
+use App\Models\JobWork;
+use App\Models\ptc_earn_history;
+use App\Models\SurveySubmission;
+use App\Models\LoginLog;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\Request;
+
+class WithdrawController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        $datas = Withdraw::latest()->get();
+        $this->attachDuplicateAlert($datas);
+        $website = Website::latest()->first();
+        $title = 'Withdraw Request';
+        return view('backend.pages.system-setting.withdraw', compact('title', 'datas', 'website'));
+    }
+
+    public function pending_withdraw_request()
+    {
+        $datas = Withdraw::where('approval', 0)->latest()->get();
+        $this->attachDuplicateAlert($datas);
+        $website = Website::latest()->first();
+        $title = 'Pending Withdraw Request';
+        return view('backend.pages.system-setting.withdraw', compact('title', 'datas', 'website'));
+    }
+
+    /**
+     * Flags every withdraw row whose user shares a device or IP with
+     * another account, so the admin sees the warning directly in the list
+     * instead of having to click "Check This User" on every single row.
+     */
+    private function attachDuplicateAlert($withdraws)
+    {
+        foreach ($withdraws as $withdraw) {
+            $user = User::find($withdraw->user_id);
+            $withdraw->has_duplicate_alert = $user ? $this->duplicateDeviceCodes($user)->count() > 0 : false;
+        }
+    }
+
+    /**
+     * All duplicate-account codes (device match OR IP-only match)
+     * combined, for the simple list-page badge where the distinction
+     * doesn't matter -- just "worth a look or not".
+     *
+     * @return \Illuminate\Support\Collection of user codes
+     */
+    private function duplicateDeviceCodes($user)
+    {
+        $matches = $this->duplicateMatches($user);
+        return $matches['device']->merge($matches['medium'])->merge($matches['ip_only'])->unique()->values();
+    }
+
+    /**
+     * Returns each matched user's code, falling back to "#<id>" when the
+     * code column is empty/null so the admin can still locate the account
+     * instead of seeing a blank entry in the flag text.
+     */
+    private function userCodes($query)
+    {
+        return $query->get(['id', 'code'])->map(function ($u) {
+            return ($u->code !== null && $u->code !== '') ? $u->code : ('#' . $u->id);
+        });
+    }
+
+    /**
+     * Same-device / same-IP account matches for a user, split into three
+     * separate signals instead of one combined list, because they carry
+     * very different weight:
+     *   - 'device': the other account matches on exact phone brand AND
+     *     model -- strong evidence of the same real person, regardless of
+     *     IP (mobile data IPs change constantly).
+     *   - 'medium': the other account shares the same IP AND the same
+     *     generic device type (e.g. both "smartphone"), but the exact
+     *     brand/model isn't known for one or both -- this is common for
+     *     budget Android phones that DeviceDetector can't identify
+     *     precisely. Weaker than 'device' but still meaningful, since IP
+     *     + device type matching together by pure coincidence is unlikely.
+     *   - 'ip_only': the other account only shares an IP address, with no
+     *     device-type match either -- much weaker evidence, since a shared
+     *     home/office WiFi puts unrelated people on the same IP.
+     *
+     * Combines two sources: the one-time registration snapshot
+     * (users.ip_address + device_name/brand/model) and every login
+     * recorded since login_logs started being tracked.
+     *
+     * @return array{device: \Illuminate\Support\Collection, medium: \Illuminate\Support\Collection, ip_only: \Illuminate\Support\Collection}
+     */
+    private function duplicateMatches($user)
+    {
+        $deviceCodes = collect();
+        $mediumCodes = collect();
+        $ipCodes = collect();
+
+        // The persistent registration-time cookie (see
+        // EnsureDeviceFingerprint) survives across browsers/UA changes on
+        // the same phone, so an exact match here is the strongest possible
+        // signal -- stronger even than brand+model, which only identifies
+        // "same phone model", not "same physical phone". Checked against
+        // every fingerprint this user's OWN login history has ever shown
+        // (not just their registration-time one), so this also catches
+        // someone who registered separate accounts on separate devices
+        // but later logs into all of them from one shared device --
+        // that shared device's fingerprint shows up in every account's
+        // login_logs, linking them even though they registered clean.
+        $myFingerprints = collect([$user->device_fingerprint])->filter()->unique()->values();
+
+        if ($myFingerprints->count() > 0 && Schema::hasColumn('users', 'device_fingerprint')) {
+            $deviceCodes = $deviceCodes->merge($this->userCodes(
+                User::where('id', '!=', $user->id)
+                    ->whereIn('device_fingerprint', $myFingerprints)
+            ));
+        }
+
+        // Brand + model must BOTH be known for this to be a real device
+        // fingerprint. device_name alone ("smartphone"/"desktop") is far
+        // too generic -- thousands of unrelated users share it because
+        // their phone's exact brand/model simply couldn't be detected,
+        // which was causing mass false-positive duplicate-account flags.
+        $hasDeviceSignature = !empty($user->device_brand) && !empty($user->device_model);
+
+        if ($hasDeviceSignature) {
+            $deviceCodes = $deviceCodes->merge($this->userCodes(
+                User::where('id', '!=', $user->id)
+                    ->where('device_name', $user->device_name)
+                    ->where('device_brand', $user->device_brand)
+                    ->where('device_model', $user->device_model)
+                    ->whereNotNull('device_name')
+            ));
+        }
+
+        if (!empty($user->ip_address) && !empty($user->device_name)) {
+            $mediumCodes = $mediumCodes->merge($this->userCodes(
+                User::where('id', '!=', $user->id)
+                    ->where('ip_address', $user->ip_address)
+                    ->where('device_name', $user->device_name)
+            ));
+        }
+
+        if (!empty($user->ip_address)) {
+            $ipCodes = $ipCodes->merge($this->userCodes(
+                User::where('id', '!=', $user->id)
+                    ->where('ip_address', $user->ip_address)
+            ));
+        }
+
+        if (Schema::hasTable('login_logs')) {
+            $myLogins = LoginLog::where('user_id', $user->id)->get();
+
+            if ($myLogins->count() > 0) {
+                if (Schema::hasColumn('login_logs', 'device_fingerprint')) {
+                    $myFingerprints = $myFingerprints
+                        ->merge($myLogins->pluck('device_fingerprint')->filter())
+                        ->unique()->values();
+                }
+
+                if ($myFingerprints->count() > 0) {
+                    $matchingFingerprintUserIds = collect();
+
+                    if (Schema::hasColumn('users', 'device_fingerprint')) {
+                        $matchingFingerprintUserIds = $matchingFingerprintUserIds->merge(
+                            User::where('id', '!=', $user->id)
+                                ->whereIn('device_fingerprint', $myFingerprints)
+                                ->pluck('id')
+                        );
+                    }
+
+                    if (Schema::hasColumn('login_logs', 'device_fingerprint')) {
+                        $matchingFingerprintUserIds = $matchingFingerprintUserIds->merge(
+                            LoginLog::where('user_id', '!=', $user->id)
+                                ->whereIn('device_fingerprint', $myFingerprints)
+                                ->pluck('user_id')
+                        );
+                    }
+
+                    $matchingFingerprintUserIds = $matchingFingerprintUserIds->unique()->values();
+
+                    if ($matchingFingerprintUserIds->count() > 0) {
+                        $deviceCodes = $deviceCodes->merge($this->userCodes(User::whereIn('id', $matchingFingerprintUserIds)));
+                    }
+                }
+
+                $ips = $myLogins->pluck('ip_address')->filter()->unique()->values();
+                $deviceCombos = $myLogins->filter(function ($l) {
+                    return $l->device_name && $l->device_brand && $l->device_model;
+                })->map(function ($l) {
+                    return $l->device_name . '|' . $l->device_brand . '|' . $l->device_model;
+                })->unique()->values();
+                $ipDeviceCombos = $myLogins->filter(function ($l) {
+                    return $l->ip_address && $l->device_name;
+                })->map(function ($l) {
+                    return $l->ip_address . '|' . $l->device_name;
+                })->unique()->values();
+
+                if ($deviceCombos->count() > 0) {
+                    $placeholders = implode(',', array_fill(0, $deviceCombos->count(), '?'));
+                    $matchingDeviceUserIds = LoginLog::where('user_id', '!=', $user->id)
+                        ->whereRaw("CONCAT(device_name, '|', device_brand, '|', device_model) IN ($placeholders)", $deviceCombos->all())
+                        ->pluck('user_id')
+                        ->unique();
+
+                    if ($matchingDeviceUserIds->count() > 0) {
+                        $deviceCodes = $deviceCodes->merge($this->userCodes(User::whereIn('id', $matchingDeviceUserIds)));
+                    }
+                }
+
+                if ($ipDeviceCombos->count() > 0) {
+                    $placeholders = implode(',', array_fill(0, $ipDeviceCombos->count(), '?'));
+                    $matchingMediumUserIds = LoginLog::where('user_id', '!=', $user->id)
+                        ->whereRaw("CONCAT(ip_address, '|', device_name) IN ($placeholders)", $ipDeviceCombos->all())
+                        ->pluck('user_id')
+                        ->unique();
+
+                    if ($matchingMediumUserIds->count() > 0) {
+                        $mediumCodes = $mediumCodes->merge($this->userCodes(User::whereIn('id', $matchingMediumUserIds)));
+                    }
+                }
+
+                if ($ips->count() > 0) {
+                    $matchingIpUserIds = LoginLog::where('user_id', '!=', $user->id)
+                        ->whereIn('ip_address', $ips)
+                        ->pluck('user_id')
+                        ->unique();
+
+                    if ($matchingIpUserIds->count() > 0) {
+                        $ipCodes = $ipCodes->merge($this->userCodes(User::whereIn('id', $matchingIpUserIds)));
+                    }
+                }
+            }
+        }
+
+        $deviceCodes = $deviceCodes->unique()->values();
+        $mediumCodes = $mediumCodes->unique()->diff($deviceCodes)->values();
+        $ipOnlyCodes = $ipCodes->unique()->diff($deviceCodes)->diff($mediumCodes)->values();
+
+        return ['device' => $deviceCodes, 'medium' => $mediumCodes, 'ip_only' => $ipOnlyCodes];
+    }
+
+    /**
+     * A before-you-pay trust summary for a withdrawing user: account
+     * standing (ban/suspend/duplicate-device), how their earnings were
+     * actually made, and any rejected/reported work -- so the admin can
+     * see whether this account "caused any problem anywhere" before
+     * approving the payout, without having to click through half a
+     * dozen separate admin pages by hand.
+     */
+    public function userCheck($userId)
+    {
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json(['error' => 'User not found.'], 404);
+        }
+
+        $approvedJobs = JobWork::where('user_id', $userId)->where('status', 1)->count();
+        $rejectedJobs = JobWork::where('user_id', $userId)->where('status', 2)->count();
+        $reportedJobs = JobWork::where('user_id', $userId)->where('status', 3)->count();
+        $pendingJobs = JobWork::where('user_id', $userId)->where('status', 0)->count();
+
+        $ptcClicks = ptc_earn_history::where('ptc_worker_id', $userId)->count();
+        $ptcEarned = (float) ptc_earn_history::where('ptc_worker_id', $userId)
+            ->join('ptc_job', 'ptc_earn_history.ptc_job_id', '=', 'ptc_job.id')
+            ->sum('ptc_job.ptc_each_earn');
+
+        $surveysVerified = SurveySubmission::where('user_id', $userId)->where('code_status', 'used')->count();
+        $surveyEarned = (float) SurveySubmission::where('user_id', $userId)->where('code_status', 'used')->sum('earned_usd');
+
+        $jobEarned = (float) JobWork::where('job_works.user_id', $userId)->where('job_works.status', 1)
+            ->join('jobs', 'job_works.job_id', '=', 'jobs.id')
+            ->sum('jobs.each_worker_earn');
+
+        $duplicateMatches = $this->duplicateMatches($user);
+        $duplicateDeviceCodes = $duplicateMatches['device'];
+        $duplicateMediumCodes = $duplicateMatches['medium'];
+        $duplicateIpOnlyCodes = $duplicateMatches['ip_only'];
+
+        $referredCount = User::where('rfered_by', $userId)->count();
+
+        $flags = [];
+        if ($user->is_ban) {
+            $flags[] = 'অ্যাকাউন্ট ব্যান করা আছে';
+        }
+        if ($user->is_suspended) {
+            $flags[] = 'অ্যাকাউন্ট সাসপেন্ড করা আছে';
+        }
+        if (!$user->hasVerifiedEmail()) {
+            $flags[] = 'ইমেইল ভেরিফাই করা নেই';
+        }
+        if ($duplicateDeviceCodes->count() > 0) {
+            $flags[] = '🔴 একই ডিভাইস (ফোনের ইউনিক ফিঙ্গারপ্রিন্ট বা ব্র্যান্ড+মডেল মিলেছে) থেকে আরও ' . $duplicateDeviceCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateDeviceCodes->implode(', ') . ') -- শক্তিশালী প্রমাণ, সম্ভবত একই মানুষ';
+        }
+        if ($duplicateMediumCodes->count() > 0) {
+            $flags[] = '🟠 একই আইপি এবং একই ধরনের ডিভাইস (যেমন স্মার্টফোন) থেকে আরও ' . $duplicateMediumCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateMediumCodes->implode(', ') . ') -- মাঝারি প্রমাণ, ফোনের ব্র্যান্ড/মডেল শনাক্ত হয়নি কিন্তু আইপি+ডিভাইসের ধরন দুটোই মিলেছে, সম্ভবত একই মানুষ';
+        }
+        if ($duplicateIpOnlyCodes->count() > 0) {
+            $flags[] = '🟡 শুধু একই আইপি/নেটওয়ার্ক (যেমন ওয়াইফাই) থেকে আরও ' . $duplicateIpOnlyCodes->count() . 'টা অ্যাকাউন্ট আছে (কোড: ' . $duplicateIpOnlyCodes->implode(', ') . ') -- ডিভাইস মেলেনি, তাই পরিবার/অফিস/শেয়ার করা ওয়াইফাই হতে পারে, এটা একা প্রমাণ না';
+        }
+        if ($rejectedJobs > 0 && $approvedJobs > 0 && $rejectedJobs >= $approvedJobs) {
+            $flags[] = "Approved-এর চেয়ে Rejected job বেশি বা সমান ({$rejectedJobs} rejected vs {$approvedJobs} approved)";
+        }
+        if ($reportedJobs > 0) {
+            $flags[] = "{$reportedJobs}টা কাজ Reported হয়েছে";
+        }
+
+        $referralCommission = (float) $user->deposit_commision_from_refer + (float) $user->earning_commision_from_refer;
+        $totalTrackedEarned = $jobEarned + $ptcEarned + $surveyEarned + $referralCommission;
+
+        // A balance well above everything we can trace to a real earning
+        // event usually means a manual admin balance edit happened -- not
+        // necessarily wrong, but worth the admin's attention before payout.
+        if ($user->earning_balance > $totalTrackedEarned + 0.01) {
+            $flags[] = 'ব্যালেন্স ($' . number_format($user->earning_balance, 4) . ') ট্র্যাক-করা মোট ইনকামের ($' . number_format($totalTrackedEarned, 4) . ') চেয়ে বেশি -- সম্ভবত ম্যানুয়াল অ্যাডজাস্টমেন্ট হয়েছে, একবার দেখে নাও';
+        }
+
+        return response()->json([
+            'name' => $user->name,
+            'code' => $user->code,
+            'email' => $user->email,
+            'email_verified' => $user->hasVerifiedEmail(),
+            'joined_at' => optional($user->created_at)->format('d/m/Y'),
+            'is_ban' => (bool) $user->is_ban,
+            'is_suspended' => (bool) $user->is_suspended,
+            'earning_balance' => (float) $user->earning_balance,
+            'approved_jobs' => $approvedJobs,
+            'job_earned' => $jobEarned,
+            'rejected_jobs' => $rejectedJobs,
+            'reported_jobs' => $reportedJobs,
+            'pending_jobs' => $pendingJobs,
+            'ptc_clicks' => $ptcClicks,
+            'ptc_earned' => $ptcEarned,
+            'surveys_verified' => $surveysVerified,
+            'survey_earned' => $surveyEarned,
+            'referral_commission' => $referralCommission,
+            'total_referrals' => $referredCount,
+            'total_tracked_earned' => $totalTrackedEarned,
+            'duplicate_device_accounts' => $duplicateDeviceCodes->values(),
+            'duplicate_medium_accounts' => $duplicateMediumCodes->values(),
+            'duplicate_ip_only_accounts' => $duplicateIpOnlyCodes->values(),
+            'flags' => $flags,
+            'looks_clean' => count($flags) === 0,
+        ]);
+    }
+
+    /**
+     * Gives one account a clean slate on the duplicate-device check --
+     * clears its registration-time device/IP snapshot and deletes its
+     * entire login_logs history, so past matches (device fingerprint,
+     * brand+model, IP) stop being held against it. Used after the admin
+     * has warned a user and they've promised to stop using a shared
+     * device; if they keep doing it, fresh logins will just rebuild the
+     * same evidence from scratch. Does not touch balance, bans, or any
+     * other account's data.
+     */
+    public function resetDeviceHistory($userId)
+    {
+        $user = User::find($userId);
+        if (!$user) {
+            return redirect()->back()->with('error', 'User not found.');
+        }
+
+        $user->ip_address = null;
+        $user->device_name = null;
+        $user->device_brand = null;
+        $user->device_model = null;
+        if (Schema::hasColumn('users', 'device_fingerprint')) {
+            $user->device_fingerprint = null;
+        }
+        $user->save();
+
+        if (Schema::hasTable('login_logs')) {
+            LoginLog::where('user_id', $userId)->delete();
+        }
+
+        return redirect()->back()->with('message', 'এই অ্যাকাউন্টের ডিভাইস/আইপি হিস্ট্রি রিসেট করা হয়েছে -- পরের লগইন থেকে নতুন করে ট্র্যাকিং শুরু হবে (কোড: ' . $user->code . ')');
+    }
+
+    public function withdraw_request_approved(Request $request, $id)
+    {
+        $withdraw = Withdraw::find($id);
+        $msg_user_id = $withdraw->user_id;
+
+        if($request->approval == 1){
+            $payable = $withdraw->amount - $withdraw->charge;
+
+            $main_wallet = MainWallet::latest()->first();
+            $main_wallet->amount = $main_wallet->amount - $payable;
+            $main_wallet->save();
+
+        }elseif($request->approval == 2){
+            $user = User::find($withdraw->user_id);
+            $user->earning_balance = $user->earning_balance + $withdraw->amount;
+            $user->save();
+
+            $main_wallet = MainWallet::latest()->first();
+            $main_wallet->amount = $main_wallet->amount - $withdraw->amount;
+            $main_wallet->save();
+        }
+
+        $withdraw->approval = $request->approval;
+        $withdraw->reason = $request->reason;
+        $withdraw->save();
+        
+        $data = new UserMessage();
+        $data->user_id = $msg_user_id;
+        $data->message_title = 'Withdraw';
+        $data->message = 'Your withdraw request approved.';
+        $data->save();
+
+        return redirect()->back()->with('message','Successfully approved this deposit!');
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        //
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        $withdraw = Withdraw::find($id);
+        $withdraw->delete();
+
+        return redirect()->back()->with('message','Successfully deleted this withdraw request!');
+    }
+}
