@@ -1575,6 +1575,72 @@ if (!function_exists('earn_socials_share_code')) {
     }
 }
 
+if (!function_exists('smm_get_services')) {
+    /**
+     * Flat list of SMM services from every enabled SmmProvider row, used
+     * directly by the boost-package create form and the admin boost-manage
+     * views. Each provider's own `category` text is replaced with our own
+     * SmmProvider::name (e.g. "Telegram") so the user only ever sees the 3
+     * categories the admin configured, not the provider's own (often huge)
+     * category list. `service` is "{provider_id}:{native id}" so 2
+     * providers can never collide on the same posted value, even though
+     * they both number their own services starting at 1.
+     *
+     * Each provider's own service list is cached for 15 minutes so the
+     * create-order page doesn't call out to all 3 external APIs on every
+     * page load; saving a provider in Admin > SMM Panel Providers clears
+     * its cache immediately (see SmmProviderController::update()).
+     */
+    function smm_get_services(): array
+    {
+        $providers = \App\Models\SmmProvider::where('enabled', true)
+            ->whereNotNull('api_url')
+            ->whereNotNull('api_key')
+            ->where('api_url', '!=', '')
+            ->where('api_key', '!=', '')
+            ->get();
+
+        $all = [];
+
+        foreach ($providers as $provider) {
+            $services = \Illuminate\Support\Facades\Cache::remember(
+                'smm_services_provider_' . $provider->id,
+                900,
+                function () use ($provider) {
+                    try {
+                        $client = new \App\Library\SmmPanel($provider->api_url, $provider->api_key);
+                        return $client->services();
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('smm-services-fetch-failed', [
+                            'provider' => $provider->slug,
+                            'error' => $e->getMessage(),
+                        ]);
+                        return [];
+                    }
+                }
+            );
+
+            foreach ($services as $s) {
+                if (!isset($s['service'])) {
+                    continue;
+                }
+
+                $all[] = [
+                    'service' => $provider->id . ':' . $s['service'],
+                    'name' => $s['name'] ?? ('Service ' . $s['service']),
+                    'category' => $provider->name,
+                    'rate' => $s['rate'] ?? 0,
+                    'min' => $s['min'] ?? 1,
+                    'max' => $s['max'] ?? 0,
+                    'provider_id' => $provider->id,
+                    'native_service_id' => $s['service'],
+                ];
+            }
+        }
+
+        return $all;
+    }
+}
 
 
 

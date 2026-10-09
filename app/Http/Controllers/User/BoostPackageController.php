@@ -51,27 +51,50 @@ class BoostPackageController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'category_id' => 'required',
-            'sub_category' => 'required',
-            'work_need' => 'required',
-            'cost' => 'required',
+            'service_id' => 'required',
+            'link' => 'required',
+            'work_need' => 'required|integer|min:1',
         ]);
 
-        $website = Website::latest()->first();
-
-        $cost = $request->cost;
-        if(Auth::user()->deposit_balance < $cost){
-            return redirect()->back()->with('error','You have no sufficient balance for job.');
-        }else{
-            $user_balance = User::find(Auth::user()->id);
-            $user_balance->deposit_balance = $user_balance->deposit_balance - $cost;
-            $user_balance->save();
-
-            $check_main_wallet = MainWallet::latest()->first();
-            $main_wallet = MainWallet::find($check_main_wallet->id);
-            $main_wallet->amount = $main_wallet->amount + $cost;
-            $main_wallet->save();
+        $service = null;
+        foreach (smm_get_services() as $s) {
+            if ($s['service'] === $request->service_id) {
+                $service = $s;
+                break;
+            }
         }
+
+        if (!$service) {
+            return redirect()->back()->with('error', 'Selected service is no longer available. Please choose again.');
+        }
+
+        $quantity = (int) $request->work_need;
+        $min = (int) $service['min'];
+        $max = (int) $service['max'];
+        if ($quantity < $min || ($max > 0 && $quantity > $max)) {
+            return redirect()->back()->with('error', 'Quantity must be between ' . $min . ' and ' . $max . '.');
+        }
+
+        // Cost is always recomputed server-side from the provider's own
+        // rate -- the client-submitted 'cost'/'base_cost'/'unit_cost' fields
+        // are only there so the form's JS can preview the charge, never
+        // trusted for the actual deduction.
+        $unitCost = ((float) $service['rate']) / 1000;
+        $baseCost = round($unitCost * $quantity, 4);
+        $cost = round($baseCost * 1.03, 4);
+
+        if (Auth::user()->deposit_balance < $cost) {
+            return redirect()->back()->with('error', 'You have no sufficient balance for job.');
+        }
+
+        $user_balance = User::find(Auth::user()->id);
+        $user_balance->deposit_balance = $user_balance->deposit_balance - $cost;
+        $user_balance->save();
+
+        $check_main_wallet = MainWallet::latest()->first();
+        $main_wallet = MainWallet::find($check_main_wallet->id);
+        $main_wallet->amount = $main_wallet->amount + $cost;
+        $main_wallet->save();
 
         $last_ac = UserBoostPackage::select('id')->latest()->first();
         if (isset($last_ac)) {
@@ -84,14 +107,51 @@ class BoostPackageController extends Controller
         $boost_package->code = $code;
         $boost_package->description = $request->description;
         $boost_package->link = $request->link;
-        $boost_package->category_id = $request->category_id;
-        $boost_package->sub_category = $request->sub_category;
-        $boost_package->base_cost = $request->base_cost;
-        $boost_package->unit_cost = $request->unit_cost;
-        $boost_package->work_need = $request->work_need;
-        $boost_package->cost = $request->cost;
+        $boost_package->category_id = 0;
+        $boost_package->sub_category = 0;
+        $boost_package->category = $service['category'];
+        $boost_package->service_id = $request->service_id;
+        $boost_package->name = $service['name'];
+        $boost_package->base_cost = $baseCost;
+        $boost_package->unit_cost = $unitCost;
+        $boost_package->work_need = $quantity;
+        $boost_package->order_qty = $quantity;
+        $boost_package->cost = $cost;
+        $boost_package->order_charge = $cost;
         $boost_package->user_id = Auth::user()->id;
+        $boost_package->provider_id = $service['provider_id'];
+        $boost_package->status = 0;
         $boost_package->save();
+
+        // Auto-place the order with the real SMM provider -- this is the
+        // part that makes the order actually get delivered once the admin
+        // has pasted real API keys into Admin > SMM Panel Providers. If
+        // this fails for any reason, the order stays as a normal pending
+        // (status 0) request the admin can still see and handle by hand;
+        // the user's balance was already deducted above either way.
+        $provider = \App\Models\SmmProvider::find($service['provider_id']);
+        if ($provider && $provider->api_url && $provider->api_key) {
+            try {
+                $client = new \App\Library\SmmPanel($provider->api_url, $provider->api_key);
+                $result = $client->addOrder($service['native_service_id'], $request->link, $quantity);
+
+                if (isset($result['order'])) {
+                    $boost_package->provider_order_id = $result['order'];
+                    $boost_package->provider_status = 'Pending';
+                    $boost_package->status = 1;
+                } else {
+                    $boost_package->provider_message = json_encode($result);
+                }
+            } catch (\Throwable $e) {
+                $boost_package->provider_message = $e->getMessage();
+                \Illuminate\Support\Facades\Log::warning('smm-order-place-failed', [
+                    'boost_package_id' => $boost_package->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            $boost_package->save();
+        }
 
         return redirect()->back()->with('message','Boost Package added successfully');
     }

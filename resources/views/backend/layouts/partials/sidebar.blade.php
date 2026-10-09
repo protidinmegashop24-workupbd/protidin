@@ -119,6 +119,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.smm-providers') }}" class="nav-link {{ Route::is('admin.smm-providers*') ? 'active' : '' }}">
+                        <i class="fa fa-bullhorn" aria-hidden="true"></i>
+                        <p>&nbsp;SMM Panel Providers</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.reviews') }}" class="nav-link {{ Route::is('admin.reviews*') || Route::is('admin.review-*') ? 'active' : '' }}">
                         <i class="fa fa-star" aria-hidden="true"></i>
                         <p>&nbsp;Reviews</p>

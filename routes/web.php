@@ -11,6 +11,7 @@ use App\Http\Controllers\Backend\CommunityReportController;
 use App\Http\Controllers\Backend\CommunityTopicController;
 use App\Http\Controllers\Backend\SurveyProviderController as AdminSurveyProviderController;
 use App\Http\Controllers\Backend\OfferWallController as AdminOfferWallController;
+use App\Http\Controllers\Backend\SmmProviderController as AdminSmmProviderController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\SiteReviewController;
@@ -326,6 +327,9 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::get('offer-wall-providers', [AdminOfferWallController::class, 'index'])->name('offer-wall-providers');
     Route::post('offer-wall-providers-update-{id}', [AdminOfferWallController::class, 'update'])->name('offer-wall-providers.update');
     Route::get('offer-wall-providers-conversions', [AdminOfferWallController::class, 'conversions'])->name('offer-wall-providers.conversions');
+
+    Route::get('smm-providers', [AdminSmmProviderController::class, 'index'])->name('smm-providers');
+    Route::post('smm-providers-update-{id}', [AdminSmmProviderController::class, 'update'])->name('smm-providers.update');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -2425,6 +2429,152 @@ Route::get('/system-add-offerwall-providers/{token}', function ($token) {
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: SMM Panel automation. Adds smm_providers (one row per category:
+// Telegram -> smmmain.com, YouTube -> JustAnotherPanel, Facebook ->
+// NapiPanel) so the admin can just paste each provider's API URL + API key
+// into Admin > SMM Panel Providers, plus every column smm_get_services()
+// (app/helpers.php), the create-order form, and the admin/user order list
+// views already expected but never had on user_boost_packages (service_id,
+// name, category, order_qty, order_charge, reason, provider_id,
+// provider_order_id, provider_status, provider_message). Safe to run more
+// than once.
+Route::get('/system-add-smm-panel/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('smm_providers')) {
+        \Illuminate\Support\Facades\Schema::create('smm_providers', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->boolean('enabled')->default(false);
+            $table->string('api_url')->nullable();
+            $table->string('api_key')->nullable();
+            $table->timestamps();
+        });
+        $log[] = 'Created smm_providers table.';
+    } else {
+        $log[] = 'smm_providers table already exists.';
+    }
+
+    $seeds = [
+        ['name' => 'Telegram', 'slug' => 'smmmain'],
+        ['name' => 'YouTube', 'slug' => 'jap'],
+        ['name' => 'Facebook', 'slug' => 'napipanel'],
+    ];
+    foreach ($seeds as $seed) {
+        if (!\Illuminate\Support\Facades\DB::table('smm_providers')->where('slug', $seed['slug'])->exists()) {
+            \Illuminate\Support\Facades\DB::table('smm_providers')->insert([
+                'name' => $seed['name'],
+                'slug' => $seed['slug'],
+                'enabled' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $log[] = 'Seeded ' . $seed['name'] . ' (' . $seed['slug'] . ') provider row (disabled).';
+        }
+    }
+
+    $columns = [
+        'service_id' => function ($table) { $table->string('service_id')->nullable(); },
+        'name' => function ($table) { $table->string('name')->nullable(); },
+        'category' => function ($table) { $table->string('category')->nullable(); },
+        'order_qty' => function ($table) { $table->integer('order_qty')->nullable(); },
+        'order_charge' => function ($table) { $table->decimal('order_charge', 10, 4)->nullable(); },
+        'reason' => function ($table) { $table->text('reason')->nullable(); },
+        'provider_id' => function ($table) { $table->unsignedBigInteger('provider_id')->nullable(); },
+        'provider_order_id' => function ($table) { $table->string('provider_order_id')->nullable(); },
+        'provider_status' => function ($table) { $table->string('provider_status')->nullable(); },
+        'provider_message' => function ($table) { $table->text('provider_message')->nullable(); },
+    ];
+
+    foreach ($columns as $column => $definer) {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('user_boost_packages', $column)) {
+            \Illuminate\Support\Facades\Schema::table('user_boost_packages', function ($table) use ($definer) {
+                $definer($table);
+            });
+            $log[] = 'Added user_boost_packages.' . $column . ' column.';
+        } else {
+            $log[] = 'user_boost_packages.' . $column . ' column already exists.';
+        }
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// Cron (set up once as a real cPanel Cron Job -- cPanel > Cron Jobs > Add
+// New Cron Job, command: wget -q -O /dev/null "https://protidinmegashop.com/cron-smm-order-sync/<token>",
+// every 30 minutes; no SSH/artisan scheduler access on this host so this
+// is the only way to run it on a timer). Checks every placed SMM order
+// that isn't finished yet against its provider's action=status, marks it
+// Complete once the provider does, and refunds the user back to
+// deposit_balance (same math as Backend\UserBoostPackageController::reject())
+// the first time the provider reports Canceled/Refunded -- provider_status
+// is updated in the same write, so a later run never refunds the same
+// order twice.
+Route::get('/cron-smm-order-sync/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    $orders = \App\Models\UserBoostPackage::whereNotNull('provider_order_id')
+        ->whereNotIn('provider_status', ['Completed', 'Canceled', 'Refunded'])
+        ->get();
+
+    foreach ($orders as $order) {
+        $provider = \App\Models\SmmProvider::find($order->provider_id);
+        if (!$provider || !$provider->api_url || !$provider->api_key) {
+            continue;
+        }
+
+        try {
+            $client = new \App\Library\SmmPanel($provider->api_url, $provider->api_key);
+            $result = $client->status($order->provider_order_id);
+        } catch (\Throwable $e) {
+            $log[] = 'Order ' . $order->id . ': status check failed -- ' . $e->getMessage();
+            continue;
+        }
+
+        $status = $result['status'] ?? null;
+        if (!$status) {
+            $log[] = 'Order ' . $order->id . ': no status in provider response.';
+            continue;
+        }
+
+        $order->provider_status = $status;
+
+        if ($status === 'Completed') {
+            $order->status = 4;
+        } elseif (in_array($status, ['Canceled', 'Refunded'])) {
+            $user = \App\Models\User::find($order->user_id);
+            if ($user) {
+                $user->deposit_balance = (float) $user->deposit_balance + (float) $order->order_charge;
+                $user->save();
+
+                $mainWallet = \App\Models\Admin\MainWallet::latest()->first();
+                if ($mainWallet) {
+                    $mainWallet->amount = (float) $mainWallet->amount - (float) $order->order_charge;
+                    $mainWallet->save();
+                }
+            }
+            $order->status = 3;
+            $order->reason = 'Provider reported: ' . $status;
+        } else {
+            $order->status = 2;
+        }
+
+        $order->save();
+        $log[] = 'Order ' . $order->id . ': provider status "' . $status . '" synced.';
+    }
+
+    return response()->json(['result' => $log, 'checked' => $orders->count(), 'ran_at' => (string) now()]);
 });
 
 // One-off: Reels/video-ad system, Phase 1 (schema only).
