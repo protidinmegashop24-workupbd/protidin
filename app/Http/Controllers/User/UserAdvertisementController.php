@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Advertisement;
 use App\Models\Admin\MainWallet;
+use App\Models\Admin\PaidAdRate;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,15 +54,29 @@ class UserAdvertisementController extends Controller
         ]);
 
         $days = $request->days;
-        if(Auth::user()->deposit_balance < $days){
+
+        // The real price is whatever admin set for this duration in Paid Ad
+        // Rates -- never the client-submitted 'amount' field (easy to tamper
+        // with devtools) and never the raw day-count itself (a bug this
+        // replaced: the balance check/deduction used to compare against
+        // $days, e.g. "30", as if it were a dollar amount, instead of the
+        // actual rate for 30 days -- that made ads with a cheap rate but a
+        // long duration wrongly report "insufficient balance").
+        $adRate = PaidAdRate::where('duration', $days)->first();
+        if (!$adRate) {
+            return redirect()->back()->with('error', 'Selected duration is not available. Please choose again.');
+        }
+        $cost = (float) $adRate->rate;
+
+        if(Auth::user()->deposit_balance < $cost){
             return redirect()->back()->with('error','You have no sufficient balance for ad.');
         }else{
             $user_balance = User::find(Auth::user()->id);
-            $user_balance->deposit_balance = $user_balance->deposit_balance - $days;
+            $user_balance->deposit_balance = $user_balance->deposit_balance - $cost;
             $user_balance->save();
 
             $main_wallet = MainWallet::latest()->first();
-            $main_wallet->amount = $main_wallet->amount + $days;
+            $main_wallet->amount = $main_wallet->amount + $cost;
             $main_wallet->save();
         }
 
@@ -84,7 +99,7 @@ class UserAdvertisementController extends Controller
         $category->image = $image_url;
         $category->exp_date = $exp_date;
         $category->duration = $days;
-        $category->cost = $days;
+        $category->cost = $cost;
         $category->user_id = Auth::user()->id;
         $category->save();
 
