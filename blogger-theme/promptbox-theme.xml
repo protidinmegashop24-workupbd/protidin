@@ -1,0 +1,985 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html>
+<html b:css='false' b:defaultwidgetversion='2' b:layoutsVersion='3' b:responsive='true' b:templateVersion='1.0.0' expr:dir='data:blog.languageDirection' expr:lang='data:blog.localeUnderscoreDelimited' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+<!--
+╔══════════════════════════════════════════════════════════════════════╗
+║  PromptBox Neo — Blogger থিম  (v1.0)                                  ║
+║  ▼▼▼  সব এডিট এই PB_CONFIG ব্লকে — নম্বর, পেমেন্ট, ভেরিফাই অ্যাডস, মেনু ▼▼▼ ║
+╚══════════════════════════════════════════════════════════════════════╝
+-->
+<script>
+//<![CDATA[
+window.PB_CONFIG = {
+  /* ---------- ব্র্যান্ড ---------- */
+  siteName   : "PromptBox",
+  tagline    : "প্রিমিয়াম AI প্রম্পট ও কোড মার্কেটপ্লেস",
+  logoUrl    : "",                       // খালি থাকলে বিল্ট-ইন লোগো দেখাবে। PNG/SVG লিংক দিলে সেটা দেখাবে
+  whatsapp   : "8801XXXXXXXXX",          // এডমিনের WhatsApp নম্বর (কান্ট্রি কোডসহ, + ছাড়া)
+  email      : "you@example.com",
+
+  /* ---------- হেডার মেনু ---------- */
+  menu : [
+    { text: "হোম",       url: "/" },
+    { text: "প্রম্পট",    url: "/search/label/Prompt" },
+    { text: "কোড",       url: "/search/label/Code" },
+    { text: "প্রিমিয়াম",  url: "/search/label/lock" }
+  ],
+  courseLink : { text: "কোর্স", url: "/p/course.html" },
+  aiLabText  : "AI Test Lab",
+
+  /* ---------- পেমেন্ট মেথড (লক স্ক্রিনে দেখাবে) ---------- */
+  payments : [
+    { name: "bKash",   number: "01XXXXXXXXX", type: "Send Money (Personal)", color: "#e2136e" },
+    { name: "Nagad",   number: "01XXXXXXXXX", type: "Send Money (Personal)", color: "#f6921e" },
+    { name: "Binance", number: "Pay ID: 000000000", type: "USDT (Binance Pay)", color: "#f0b90b" }
+  ],
+
+  /* ---------- লক / প্রিমিয়াম ---------- */
+  lock : {
+    defaultPrice : "৳99",               // পোস্টে <span data-price="৳199"></span> দিলে সেটা আগে ধরবে
+    masterPin    : "",                  // সব লকড পোস্টের কমন PIN (খালি = বন্ধ)
+    pins         : { /* "পোস্ট-আইডি": "1234" */ },
+    title        : "এটি একটি প্রিমিয়াম কনটেন্ট",
+    note         : "পেমেন্ট করে নিচের ফর্ম পূরণ করুন। ভেরিফাই হলে WhatsApp-এ আনলক PIN পাঠানো হবে।"
+  },
+
+  /* ---------- ভেরিফাই (Human Verification / Task Gate) ---------- */
+  verify : {
+    seconds : 10,                         // অ্যাড দেখানোর কাউন্টডাউন (সেকেন্ড)
+    tasks : [
+      { text: "আমাদের YouTube চ্যানেল সাবস্ক্রাইব করুন", url: "https://youtube.com/" },
+      { text: "Telegram চ্যানেলে জয়েন করুন",          url: "https://t.me/" }
+    ],
+    adHTML : '<a href="#" target="_blank" rel="nofollow sponsored" style="display:block;padding:22px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;text-align:center;font-weight:700">এখানে আপনার বিজ্ঞাপন (CONFIG.verify.adHTML)</a>'
+  },
+
+  /* ---------- অ্যাড স্লট (AdSense কোডও বসানো যাবে) ---------- */
+  ads : {
+    header     : "",                      // হেডারের নিচে
+    inPostTop  : "",                      // পোস্টের শুরুতে
+    inPostEnd  : "",                      // পোস্টের শেষে
+    sidebar    : ""                       // সাইডবারে
+  },
+
+  /* ---------- হোমপেজ ---------- */
+  postsPerPage  : 6,
+  premiumLabels : ["lock", "Lock", "LOCK"],
+
+  /* ---------- ভিউ/কপি কাউন্টার ----------
+     api দিলে সব ভিজিটরের সম্মিলিত কাউন্ট (counterapi.dev, ফ্রি)। খালি দিলে শুধু ঐ ব্রাউজারের লোকাল কাউন্ট। */
+  counter : { api: "https://api.counterapi.dev/v1", namespace: "" },
+
+  /* ---------- সাইডবার ---------- */
+  trust : [
+    { icon: "🛡️", title: "নিরাপদ পেমেন্ট", text: "bKash · Nagad · Binance" },
+    { icon: "⚡", title: "দ্রুত ডেলিভারি",  text: "ভেরিফাইয়ের পর মিনিটেই" },
+    { icon: "💬", title: "২৪/৭ সাপোর্ট",   text: "WhatsApp-এ সরাসরি" }
+  ],
+  reviews : [
+    { name: "রাকিব হাসান", stars: 5, text: "প্রম্পটগুলো সত্যিই কাজের, আউটপুট অনেক ভালো আসে।" },
+    { name: "নুসরাত জাহান", stars: 5, text: "পেমেন্টের ৫ মিনিটের মধ্যেই PIN পেয়েছি।" },
+    { name: "Arif Khan",   stars: 4, text: "Clean code, ready to use. Recommended!" }
+  ],
+
+  /* ---------- PWA (অ্যাপ ইনস্টল) ---------- */
+  pwa : {
+    shortName  : "PromptBox",
+    themeColor : "#070910",
+    icon192    : "",                      // 192x192 PNG লিংক (খালি = বিল্ট-ইন SVG)
+    icon512    : ""                       // 512x512 PNG লিংক
+  },
+
+  footerText : "© {year} PromptBox — সর্বস্বত্ব সংরক্ষিত।"
+};
+//]]>
+</script>
+<!-- ▲▲▲ কনফিগ শেষ ▲▲▲ -->
+
+<meta charset='UTF-8'/>
+<meta content='width=device-width, initial-scale=1, viewport-fit=cover' name='viewport'/>
+<b:include data='blog' name='all-head-content'/>
+<title><b:if cond='data:view.isHomepage'><data:blog.title.escaped/><b:else/><data:view.title.escaped/> | <data:blog.title.escaped/></b:if></title>
+<b:if cond='data:view.description'>
+<meta expr:content='data:view.description.escaped' name='description'/>
+</b:if>
+<meta content='index, follow, max-image-preview:large' name='robots'/>
+<meta content='#070910' name='theme-color'/>
+<meta content='yes' name='mobile-web-app-capable'/>
+<meta content='yes' name='apple-mobile-web-app-capable'/>
+<meta content='black-translucent' name='apple-mobile-web-app-status-bar-style'/>
+<!-- Favicon (বিল্ট-ইন SVG লোগো) — নিজের দিতে চাইলে href বদলান বা Layout > Favicon থেকে আপলোড করুন -->
+<link href='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%237c3aed%22/%3E%3Cstop offset=%221%22 stop-color=%22%2306b6d4%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22url(%23g)%22/%3E%3Cpath d=%22M22 46V18h12a9 9 0 0 1 0 18h-6v10z%22 fill=%22%23fff%22/%3E%3C/svg%3E' rel='icon' type='image/svg+xml'/>
+<meta expr:content='data:blog.title.escaped' property='og:site_name'/>
+<meta content='summary_large_image' name='twitter:card'/>
+<meta expr:content='data:view.title.escaped' name='twitter:title'/>
+<b:if cond='data:view.description'><meta expr:content='data:view.description.escaped' name='twitter:description'/></b:if>
+<b:if cond='data:view.featuredImage'><meta expr:content='data:view.featuredImage' name='twitter:image'/></b:if>
+<link href='https://fonts.googleapis.com' rel='preconnect'/>
+<link crossorigin='anonymous' href='https://fonts.gstatic.com' rel='preconnect'/>
+<link href='https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Sora:wght@500;600;700;800&amp;display=swap' rel='stylesheet'/>
+<script>
+//<![CDATA[
+(function(){try{var t=localStorage.getItem("pb-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}document.documentElement.className+=" js";})();
+//]]>
+</script>
+<noscript><style>.pb-post-body{opacity:1!important}</style></noscript>
+
+<b:skin version='1.0.0'><![CDATA[
+/*
+  Theme Name : PromptBox Neo
+  Type       : Blogger XML (Layouts v3)
+*/
+:root{
+  --bg:#070910;--bg2:#0c0f1a;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.07);
+  --line:rgba(255,255,255,.09);--text:#e8ecf6;--muted:#97a0b8;--head:#ffffff;
+  --p1:#7c3aed;--p2:#06b6d4;--p3:#ec4899;--ok:#22c55e;--warn:#f59e0b;
+  --grad:linear-gradient(135deg,var(--p1),var(--p2));
+  --glow:0 0 0 1px rgba(124,58,237,.35),0 10px 40px -10px rgba(124,58,237,.55);
+  --blur:saturate(160%) blur(16px);--r:18px;--hdr:rgba(7,9,16,.72);
+  --f-en:'Plus Jakarta Sans','Hind Siliguri',system-ui,sans-serif;
+  --f-head:'Sora','Hind Siliguri',system-ui,sans-serif;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fc;--bg2:#ffffff;--card:rgba(255,255,255,.85);--card2:#ffffff;
+  --line:rgba(15,23,42,.10);--text:#1e2433;--muted:#5b6478;--head:#0b1020;
+  --glow:0 0 0 1px rgba(124,58,237,.18),0 10px 30px -12px rgba(124,58,237,.35);
+  --hdr:rgba(255,255,255,.78);color-scheme:light;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--f-en);font-size:16px;line-height:1.7;overflow-x:hidden;transition:background .3s,color .3s}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(600px 400px at 10% -5%,rgba(124,58,237,.22),transparent 60%),
+             radial-gradient(500px 380px at 95% 10%,rgba(6,182,212,.16),transparent 60%),
+             radial-gradient(500px 400px at 50% 110%,rgba(236,72,153,.10),transparent 60%)}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;height:auto}
+h1,h2,h3,h4{font-family:var(--f-head);color:var(--head);line-height:1.3;margin:0 0 .6em}
+button,input,select,textarea{font:inherit;color:inherit}
+.pb-wrap{width:100%;max-width:1240px;margin:0 auto;padding:0 16px}
+.pb-grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pb-glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.pb-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:12px;border:0;cursor:pointer;font-weight:700;font-size:14px;background:var(--grad);color:#fff;box-shadow:0 8px 24px -8px rgba(124,58,237,.7);transition:transform .2s,box-shadow .2s,filter .2s;white-space:nowrap}
+.pb-btn:hover{transform:translateY(-2px);filter:brightness(1.1);box-shadow:0 12px 30px -8px rgba(6,182,212,.7)}
+.pb-btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--line);box-shadow:none}
+.pb-btn-sm{padding:7px 14px;font-size:13px;border-radius:10px}
+.pb-btn-wa{background:linear-gradient(135deg,#16a34a,#22c55e)}
+.pb-btn[disabled]{opacity:.45;pointer-events:none}
+
+/* ===== Header ===== */
+.pb-header{position:sticky;top:0;z-index:50;background:var(--hdr);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-bottom:1px solid var(--line)}
+.pb-hrow{display:flex;align-items:center;gap:14px;height:68px}
+.pb-logo{display:flex;align-items:center;gap:10px;font-family:var(--f-head);font-weight:800;font-size:20px;color:var(--head)}
+.pb-logo img{height:36px;width:auto}
+.pb-logo-mark{width:36px;height:36px;border-radius:11px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:800;box-shadow:0 0 22px rgba(124,58,237,.6)}
+.pb-nav{display:flex;align-items:center;gap:4px;margin-left:14px}
+.pb-nav a,.pb-nav button{padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px;color:var(--muted);background:none;border:0;cursor:pointer;transition:.2s}
+.pb-nav a:hover,.pb-nav button:hover,.pb-nav a.on{color:var(--head);background:var(--card2)}
+.pb-lab-tab{position:relative;color:var(--head)!important;border:1px solid rgba(6,182,212,.4)!important}
+.pb-lab-tab::after{content:"NEW";position:absolute;top:-7px;right:-6px;font-size:9px;padding:1px 5px;border-radius:6px;background:var(--p3);color:#fff}
+.pb-hact{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pb-icon-btn{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--card2);border:1px solid var(--line);cursor:pointer;font-size:17px}
+.pb-burger{display:none}
+.pb-mob-only{display:none!important}
+@media (max-width:1024px){
+  .pb-nav{position:fixed;top:68px;left:0;right:0;flex-direction:column;align-items:stretch;margin:0;padding:12px 16px 20px;background:var(--bg2);border-bottom:1px solid var(--line);transform:translateY(-130%);visibility:hidden;transition:transform .3s,visibility .3s;max-height:calc(100vh - 68px);overflow:auto}
+  .pb-nav.open{transform:none;visibility:visible}
+  .pb-nav a,.pb-nav button{text-align:left;padding:12px 14px;font-size:15px}
+  .pb-burger{display:grid}
+  .pb-mob-only{display:block!important}
+  .pb-hide-m{display:none!important}
+}
+
+/* ===== Hero ===== */
+.pb-hero{padding:56px 0 34px;text-align:center}
+.pb-pill{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;border-radius:99px;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
+.pb-pill i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.pb-hero h1{font-size:clamp(30px,5.4vw,58px);font-weight:800;margin:18px auto 14px;max-width:900px;letter-spacing:-.02em}
+.pb-hero p{color:var(--muted);max-width:640px;margin:0 auto 26px;font-size:17px}
+.pb-search{display:flex;max-width:620px;margin:0 auto;padding:6px;border-radius:16px;gap:6px}
+.pb-search input{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:10px 14px;font-size:15px}
+.pb-hero-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:26px}
+.pb-hero-stats div{padding:10px 18px;border-radius:14px;font-size:13px;color:var(--muted)}
+.pb-hero-stats b{display:block;font-family:var(--f-head);font-size:20px;color:var(--head)}
+
+/* ===== Layout ===== */
+.pb-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;padding:20px 0 50px}
+@media (max-width:1024px){.pb-layout{grid-template-columns:minmax(0,1fr)}}
+.pb-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 16px}
+.pb-sec-head h2{font-size:22px;margin:0;display:flex;align-items:center;gap:10px}
+.pb-sec-head h2::before{content:"";width:6px;height:22px;border-radius:4px;background:var(--grad)}
+.pb-sec-head a{font-size:13px;color:var(--p2);font-weight:700}
+.pb-block{margin-bottom:34px}
+
+/* ===== Cards ===== */
+.pb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media (max-width:1180px){.pb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.pb-grid{grid-template-columns:minmax(0,1fr)}}
+.pb-card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.pb-card:hover{transform:translateY(-5px);box-shadow:var(--glow);border-color:rgba(124,58,237,.45)}
+.pb-thumb{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:linear-gradient(135deg,#1b1336,#0b2a3a)}
+.pb-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.pb-card:hover .pb-thumb img{transform:scale(1.06)}
+.pb-noimg{position:absolute;inset:0;display:grid;place-items:center;font-size:42px;color:rgba(255,255,255,.5)}
+.pb-badges{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap}
+.pb-badge{font-size:11px;font-weight:800;padding:4px 9px;border-radius:8px;color:#fff;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);letter-spacing:.02em}
+.pb-badge.lock{background:linear-gradient(135deg,#f59e0b,#ef4444)}
+.pb-badge.dl{background:linear-gradient(135deg,#06b6d4,#3b82f6)}
+.pb-badge.vf{background:linear-gradient(135deg,#22c55e,#14b8a6)}
+.pb-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;flex:1}
+.pb-card-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;min-height:22px}
+.pb-cat{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:7px;color:var(--p2);background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25)}
+.pb-card-title{font-size:16px;margin:0 0 12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pb-card-title a:hover{color:var(--p2)}
+.pb-card-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px;border-top:1px dashed var(--line)}
+.pb-stats{display:flex;gap:12px;font-size:12.5px;color:var(--muted)}
+.pb-stats b{color:var(--text);font-weight:700}
+.pb-skel{height:290px;border-radius:var(--r);background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:pbsk 1.2s infinite}
+@keyframes pbsk{to{background-position:-200% 0}}
+.pb-pager{display:flex;justify-content:center;gap:10px;margin:26px 0 0}
+.pb-empty{padding:40px;text-align:center;color:var(--muted)}
+
+/* ===== Post ===== */
+.pb-post{padding:26px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+@media (max-width:560px){.pb-post{padding:18px 14px}}
+.pb-crumb{font-size:13px;color:var(--muted);margin-bottom:12px}
+.pb-crumb a{color:var(--p2)}
+.pb-post-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pb-post-title{font-size:clamp(24px,3.6vw,36px);font-weight:800}
+.pb-post-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:13.5px;color:var(--muted);padding-bottom:16px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.pb-post-meta b{color:var(--text)}
+.pb-post-body{opacity:0;transition:opacity .35s;font-size:16.5px;overflow-wrap:anywhere}
+.pb-post.pb-ready .pb-post-body{opacity:1}
+.pb-post-body img{border-radius:14px}
+.pb-post-body a{color:var(--p2);text-decoration:underline}
+.pb-post-body pre{background:#0b0e18;color:#d7e3ff;padding:16px;border-radius:12px;overflow:auto;font-size:14px}
+.pb-post-body blockquote{margin:16px 0;padding:12px 18px;border-left:4px solid var(--p1);background:var(--card2);border-radius:0 12px 12px 0}
+.pb-post-body table{width:100%;border-collapse:collapse;display:block;overflow:auto}
+.pb-post-body td,.pb-post-body th{border:1px solid var(--line);padding:8px}
+.pb-hidden{display:none!important}
+.pb-share{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+.pb-share a,.pb-share button{padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700;background:var(--card2);border:1px solid var(--line);cursor:pointer}
+.pb-ad:empty{display:none}
+.pb-ad{margin:16px 0;text-align:center}
+.pb-comments{margin-top:26px}
+
+/* ===== Neon Code Box ===== */
+.pb-neon{position:relative;margin:22px 0;padding:2px;border-radius:16px;background:linear-gradient(90deg,#ff0040,#ff8a00,#ffe600,#00ff6a,#00e1ff,#7c3aed,#ff00c8,#ff0040);background-size:400% 100%;animation:pbrain 6s linear infinite;box-shadow:0 0 28px -6px rgba(124,58,237,.6)}
+@keyframes pbrain{to{background-position:400% 0}}
+.pb-neon-in{border-radius:14px;background:#090b14;overflow:hidden}
+.pb-neon-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0f1322;border-bottom:1px solid rgba(255,255,255,.07);flex-wrap:wrap}
+.pb-dots{display:flex;gap:6px}.pb-dots i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.pb-dots i:nth-child(2){background:#febc2e}.pb-dots i:nth-child(3){background:#28c840}
+.pb-neon-name{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#8b95b5}
+.pb-neon-act{margin-left:auto;display:flex;gap:6px}
+.pb-neon-act button{padding:6px 12px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#e8ecf6;font-size:12.5px;font-weight:700;cursor:pointer;transition:.2s}
+.pb-neon-act button:hover{background:var(--grad);border-color:transparent}
+.pb-neon-act button.ok{background:#16a34a;border-color:#16a34a}
+.pb-neon pre,.pb-post-body .pb-neon pre{margin:0;padding:18px;max-height:520px;overflow:auto;background:transparent!important;color:#c9f7ff;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;text-shadow:0 0 6px rgba(0,225,255,.35);border-radius:0}
+
+/* ===== Lock (tbp-root) ===== */
+.tbp-root{position:relative;padding:26px;border-radius:20px;background:linear-gradient(160deg,rgba(124,58,237,.16),rgba(6,182,212,.08));border:1px solid rgba(124,58,237,.4);box-shadow:var(--glow);margin:6px 0 20px}
+@media (max-width:560px){.tbp-root{padding:18px 14px}}
+.tbp-head{text-align:center}
+.tbp-lock{width:70px;height:70px;margin:0 auto 12px;border-radius:22px;display:grid;place-items:center;font-size:32px;background:var(--grad);box-shadow:0 0 34px rgba(124,58,237,.7);animation:tbpPulse 2.4s infinite}
+@keyframes tbpPulse{50%{box-shadow:0 0 50px rgba(6,182,212,.8)}}
+.tbp-head p{color:var(--muted);margin:0 auto;max-width:520px}
+.tbp-price{display:inline-block;margin:14px 0 4px;padding:6px 18px;border-radius:12px;font-family:var(--f-head);font-weight:800;font-size:26px;background:rgba(0,0,0,.25);border:1px solid var(--line)}
+.tbp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:20px 0}
+.tbp-steps div{padding:10px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:13px;text-align:center}
+.tbp-steps b{display:block;color:var(--p2);font-family:var(--f-head)}
+.tbp-pay{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.tbp-pm{padding:14px;border-radius:14px;background:var(--card2);border:1px solid var(--line);border-top:3px solid var(--c)}
+.tbp-pm h4{margin:0;font-size:16px;color:var(--c)}
+.tbp-pm small{color:var(--muted);display:block}
+.tbp-num{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-weight:700}
+.tbp-num button{padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:12px}
+.tbp-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.tbp-form .full{grid-column:1/-1}
+@media (max-width:560px){.tbp-form,.tbp-steps{grid-template-columns:1fr}}
+.pb-in{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--line);background:var(--card2);outline:0;transition:border-color .2s}
+.pb-in:focus{border-color:var(--p2);box-shadow:0 0 0 3px rgba(6,182,212,.15)}
+label.pb-lbl{font-size:12.5px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600}
+.tbp-pin{display:flex;gap:8px;margin-top:18px;padding-top:18px;border-top:1px dashed var(--line)}
+.tbp-pin input{flex:1;min-width:0;letter-spacing:.3em;text-align:center;font-weight:800}
+.tbp-msg{min-height:20px;font-size:13px;margin-top:8px;text-align:center}
+.tbp-msg.err{color:#f87171}.tbp-msg.ok{color:var(--ok)}
+
+/* ===== Modal ===== */
+.pb-modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(3,5,10,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pb-modal.open{display:flex;animation:pbfade .25s}
+@keyframes pbfade{from{opacity:0}}
+.pb-mbox{position:relative;width:100%;max-width:560px;max-height:calc(100vh - 32px);overflow:auto;padding:24px;border-radius:20px;background:var(--bg2);border:1px solid var(--line);box-shadow:var(--glow)}
+.pb-mbox h3{font-size:21px;margin-bottom:4px}
+.pb-mbox .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+.pb-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--card2);cursor:pointer;font-size:16px}
+.pb-fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pb-fgrid .full{grid-column:1/-1}
+@media (max-width:520px){.pb-fgrid{grid-template-columns:1fr}}
+.pb-vstep{padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--card);margin-bottom:10px}
+.pb-vstep.done{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08)}
+.pb-vstep h4{font-size:15px;margin:0 0 8px}
+.pb-task{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:14px}
+.pb-task.done span::before{content:"✅ "}
+.pb-captcha{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pb-captcha input{width:90px}
+.pb-count{font-family:var(--f-head);font-weight:800;font-size:22px;color:var(--p2)}
+.pb-lab-out{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pb-lab-meta{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+/* ===== Sidebar ===== */
+.pb-side{display:flex;flex-direction:column;gap:20px}
+.pb-side .widget,.pb-sbox{padding:18px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.pb-wt{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.pb-trust{display:grid;gap:10px}
+.pb-trust div{display:flex;gap:12px;align-items:center;padding:10px;border-radius:12px;background:var(--card2)}
+.pb-trust span{font-size:22px}
+.pb-trust b{display:block;font-size:14px;color:var(--head)}
+.pb-trust small{color:var(--muted);font-size:12.5px}
+.pb-cats{display:flex;flex-direction:column;gap:6px}
+.pb-catlink{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:11px;background:var(--card2);font-size:14px;font-weight:600;transition:.2s}
+.pb-catlink:hover{transform:translateX(4px);color:var(--p2)}
+.pb-catlink em{font-style:normal;font-size:12px;padding:1px 8px;border-radius:7px;background:rgba(124,58,237,.18);color:var(--head)}
+.pb-review{padding:12px;border-radius:12px;background:var(--card2);margin-bottom:10px;font-size:14px}
+.pb-review .st{color:#fbbf24;letter-spacing:2px;font-size:13px}
+.pb-review b{color:var(--head)}
+.pb-review p{margin:4px 0 0;color:var(--muted)}
+.pb-sell-cta{text-align:center;background:linear-gradient(160deg,rgba(124,58,237,.25),rgba(6,182,212,.12))!important}
+
+/* ===== Footer & floating ===== */
+.pb-footer{border-top:1px solid var(--line);padding:34px 0 90px;color:var(--muted);font-size:14px}
+.pb-fcols{display:grid;grid-template-columns:2fr 1fr 1fr;gap:24px}
+@media (max-width:760px){.pb-fcols{grid-template-columns:1fr}}
+.pb-footer h4{font-size:15px}
+.pb-footer ul{list-style:none;padding:0;margin:0}
+.pb-footer li{margin:6px 0}
+.pb-footer a:hover{color:var(--p2)}
+.pb-copy{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);text-align:center;font-size:13px}
+.pb-fab{position:fixed;right:16px;bottom:18px;z-index:60;display:flex;flex-direction:column;gap:10px}
+.pb-fab a,.pb-fab button{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;border:0;cursor:pointer;font-size:22px;color:#fff;box-shadow:0 10px 26px -8px rgba(0,0,0,.6)}
+.pb-fab .wa{background:linear-gradient(135deg,#16a34a,#22c55e)}
+.pb-fab .top{background:var(--grad);opacity:0;pointer-events:none;transition:.3s}
+.pb-fab .top.show{opacity:1;pointer-events:auto}
+.pb-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);z-index:200;padding:11px 18px;border-radius:12px;background:#111827;color:#fff;font-size:14px;font-weight:600;transition:transform .3s;box-shadow:var(--glow)}
+.pb-toast.show{transform:translateX(-50%) translateY(0)}
+.pb-404{text-align:center;padding:60px 16px}
+.pb-404 h1{font-size:80px;margin:0}
+.section,.widget{margin:0}
+.pb-side .widget-content{margin:0}
+]]></b:skin>
+</head>
+
+<body expr:class='"pb-body " + data:blog.pageType'>
+
+<!-- ================= HEADER ================= -->
+<header class='pb-header'>
+  <div class='pb-wrap pb-hrow'>
+    <button aria-label='Menu' class='pb-icon-btn pb-burger' id='pb-burger' type='button'>☰</button>
+    <a class='pb-logo' expr:href='data:blog.homepageUrl' id='pb-logo'><span class='pb-logo-mark'>P</span><span id='pb-logo-text'><data:blog.title/></span></a>
+    <nav class='pb-nav' id='pb-nav'>
+      <span id='pb-menu'></span>
+      <button class='pb-lab-tab' data-open='pb-lab' id='pb-lab-btn' type='button'>🧪 AI Test Lab</button>
+      <a href='/p/course.html' id='pb-course'>🎓 কোর্স</a>
+      <button class='pb-mob-only' data-open='pb-sell' type='button'>💰 কোড / প্রম্পট বিক্রি করুন</button>
+    </nav>
+    <div class='pb-hact'>
+      <button aria-label='Install App' class='pb-icon-btn' id='pb-install' title='অ্যাপ ইনস্টল করুন' type='button'>📲</button>
+      <button aria-label='Theme' class='pb-icon-btn' id='pb-theme' title='ডার্ক / লাইট মোড' type='button'>🌙</button>
+      <button class='pb-btn pb-btn-sm pb-hide-m' data-open='pb-sell' type='button'>💰 আপনার কোড বা প্রম্পট বিক্রি করুন</button>
+    </div>
+  </div>
+</header>
+<div class='pb-wrap'><div class='pb-ad' data-ad='header'></div></div>
+
+<!-- ================= HERO (শুধু হোমপেজ) ================= -->
+<b:if cond='data:view.isHomepage'>
+<section class='pb-hero'>
+  <div class='pb-wrap'>
+    <span class='pb-pill'><i></i> নতুন প্রম্পট প্রতিদিন যোগ হচ্ছে</span>
+    <h1>সেরা <span class='pb-grad-text'>AI প্রম্পট ও কোড</span> এক জায়গায়</h1>
+    <p id='pb-tagline'>ChatGPT, Gemini, Midjourney, Claude — সবকিছুর জন্য রেডি-টু-ইউজ প্রম্পট, টেমপ্লেট এবং প্রিমিয়াম সোর্স কোড।</p>
+    <form action='/search' class='pb-search pb-glass' method='get' role='search'>
+      <input aria-label='Search' name='q' placeholder='প্রম্পট বা কোড খুঁজুন…' type='search'/>
+      <button class='pb-btn' type='submit'>🔍 খুঁজুন</button>
+    </form>
+    <div class='pb-hero-stats'>
+      <div class='pb-glass'><b id='pb-stat-posts'>—</b>প্রম্পট ও কোড</div>
+      <div class='pb-glass'><b id='pb-stat-prem'>—</b>প্রিমিয়াম</div>
+      <div class='pb-glass'><b>24/7</b>সাপোর্ট</div>
+    </div>
+  </div>
+</section>
+</b:if>
+
+<!-- ================= MAIN ================= -->
+<div class='pb-wrap pb-layout'>
+  <main class='pb-main' id='pb-main'>
+
+    <b:if cond='data:view.isHomepage'>
+      <div class='pb-block' id='pb-premium-block'>
+        <div class='pb-sec-head'><h2>💎 Premium পোস্ট</h2><a href='/search/label/lock'>সব দেখুন →</a></div>
+        <div class='pb-grid' id='pb-premium-grid'><div class='pb-skel'></div><div class='pb-skel'></div><div class='pb-skel'></div></div>
+      </div>
+    </b:if>
+
+    <b:section class='pb-home-sec' id='home-popular' maxwidgets='1' name='Popular (Home)' showaddelement='no'>
+      <b:widget id='PopularPosts1' locked='false' title='🔥 জনপ্রিয় পোস্ট' type='PopularPosts' version='2' visible='true'>
+        <b:widget-settings>
+          <b:widget-setting name='numItemsToShow'>6</b:widget-setting>
+          <b:widget-setting name='showThumbnails'>true</b:widget-setting>
+          <b:widget-setting name='showSnippets'>false</b:widget-setting>
+          <b:widget-setting name='timeRange'>ALL_TIME</b:widget-setting>
+        </b:widget-settings>
+        <b:includable id='main'>
+          <b:if cond='data:view.isHomepage'>
+          <div class='pb-block'>
+            <div class='pb-sec-head'><h2><data:title/></h2></div>
+            <div class='pb-grid pb-pop-grid'>
+              <b:loop values='data:posts' var='post'>
+                <article class='pb-card' expr:data-url='data:post.url'>
+                  <a class='pb-thumb' expr:href='data:post.url'>
+                    <b:if cond='data:post.featuredImage'>
+                      <img expr:alt='data:post.title' expr:src='resizeImage(data:post.featuredImage, 640, &quot;16:10&quot;)' height='400' loading='lazy' width='640'/>
+                    <b:else/>
+                      <span class='pb-noimg'>✦</span>
+                    </b:if>
+                    <span class='pb-badges'><span class='pb-badge'>🔥 Popular</span></span>
+                  </a>
+                  <div class='pb-card-body'>
+                    <h3 class='pb-card-title'><a expr:href='data:post.url'><data:post.title/></a></h3>
+                    <div class='pb-card-foot'>
+                      <div class='pb-stats'><span>👁 <b class='pb-views'>…</b></span><span>⧉ <b class='pb-copies'>…</b></span></div>
+                      <a class='pb-btn pb-btn-sm' expr:href='data:post.url'>View →</a>
+                    </div>
+                  </div>
+                </article>
+              </b:loop>
+            </div>
+          </div>
+          </b:if>
+        </b:includable>
+      </b:widget>
+    </b:section>
+
+    <b:section class='pb-main-sec' id='main' maxwidgets='1' name='Main Posts' showaddelement='no'>
+      <b:widget id='Blog1' locked='true' title='Blog Posts' type='Blog' version='2' visible='true'>
+        <b:includable id='main'>
+          <b:if cond='data:view.isError'>
+            <div class='pb-404 pb-glass'>
+              <h1 class='pb-grad-text'>404</h1>
+              <p>দুঃখিত, পেজটি খুঁজে পাওয়া যায়নি।</p>
+              <a class='pb-btn' expr:href='data:blog.homepageUrl'>হোমে ফিরুন</a>
+            </div>
+          <b:elseif cond='data:view.isMultipleItems'/>
+            <div class='pb-block'>
+              <div class='pb-sec-head'>
+                <h2>
+                  <b:if cond='data:view.isLabelSearch'>🏷️ <data:view.search.label/>
+                  <b:elseif cond='data:view.isSearch'/>🔍 সার্চ রেজাল্ট
+                  <b:else/>⚡ সর্বশেষ প্রম্পট ও কোড</b:if>
+                </h2>
+              </div>
+              <b:if cond='data:posts.empty'>
+                <div class='pb-empty pb-glass'>কোনো পোস্ট পাওয়া যায়নি।</div>
+              <b:else/>
+                <div class='pb-grid' id='pb-main-grid'>
+                  <b:loop values='data:posts' var='post'>
+                    <b:include data='post' name='pbCard'/>
+                  </b:loop>
+                </div>
+              </b:if>
+              <div class='pb-pager' id='pb-pager'>
+                <b:if cond='data:newerPageUrl'><a class='pb-btn pb-btn-ghost' expr:href='data:newerPageUrl' id='pb-newer'>← নতুন</a></b:if>
+                <b:if cond='data:olderPageUrl'><a class='pb-btn' expr:href='data:olderPageUrl' id='pb-older'>আরও দেখুন →</a></b:if>
+              </div>
+            </div>
+          <b:else/>
+            <b:loop values='data:posts' var='post'>
+              <b:include data='post' name='pbPost'/>
+            </b:loop>
+          </b:if>
+        </b:includable>
+
+        <b:includable id='pbCard' var='post'>
+          <article class='pb-card' expr:data-id='data:post.id' expr:data-ts='data:post.date.iso8601' expr:data-url='data:post.url'>
+            <a class='pb-thumb' expr:aria-label='data:post.title' expr:href='data:post.url'>
+              <b:if cond='data:post.featuredImage'>
+                <img expr:alt='data:post.title' expr:src='resizeImage(data:post.featuredImage, 640, &quot;16:10&quot;)' height='400' loading='lazy' width='640'/>
+              <b:else/>
+                <span class='pb-noimg'>✦</span>
+              </b:if>
+              <span class='pb-badges'></span>
+            </a>
+            <div class='pb-card-body'>
+              <div class='pb-card-cats'>
+                <b:loop values='data:post.labels' var='label'>
+                  <a class='pb-cat' expr:href='data:label.url'><data:label.name/></a>
+                </b:loop>
+              </div>
+              <h3 class='pb-card-title'><a expr:href='data:post.url'><data:post.title/></a></h3>
+              <div class='pb-card-foot'>
+                <div class='pb-stats'><span title='Views'>👁 <b class='pb-views'>…</b></span><span title='Copies'>⧉ <b class='pb-copies'>…</b></span></div>
+                <a class='pb-btn pb-btn-sm' expr:href='data:post.url'>View →</a>
+              </div>
+            </div>
+          </article>
+        </b:includable>
+
+        <b:includable id='pbPost' var='post'>
+          <article class='pb-post' expr:data-id='data:post.id' expr:data-url='data:post.url' id='pb-post'>
+            <nav class='pb-crumb'><a expr:href='data:blog.homepageUrl'>হোম</a>
+              <b:loop index='i' values='data:post.labels' var='label'><b:if cond='data:i == 0'> › <a expr:href='data:label.url'><data:label.name/></a></b:if></b:loop>
+            </nav>
+            <div class='pb-post-tags'>
+              <b:loop values='data:post.labels' var='label'>
+                <a class='pb-cat pb-tag' expr:href='data:label.url' rel='tag'><data:label.name/></a>
+              </b:loop>
+            </div>
+            <h1 class='pb-post-title'><data:post.title/></h1>
+            <div class='pb-post-meta'>
+              <span>✍️ <b><data:post.author.name/></b></span>
+              <b:if cond='data:post.date'><span>📅 <time expr:datetime='data:post.date.iso8601'><data:post.date/></time></span></b:if>
+              <span>👁 <b class='pb-views'>…</b> ভিউ</span>
+              <span>⧉ <b class='pb-copies'>…</b> কপি</span>
+            </div>
+            <div class='pb-ad' data-ad='inPostTop'></div>
+            <div class='pb-gate'></div>
+            <div class='pb-post-body post-body entry-content' id='pb-post-body'><data:post.body/></div>
+            <div class='pb-ad' data-ad='inPostEnd'></div>
+            <div class='pb-share' id='pb-share'></div>
+            <div class='pb-comments'>
+              <b:include cond='data:view.isSingleItem' data='post' name='commentPicker'/>
+            </div>
+          </article>
+        </b:includable>
+      </b:widget>
+    </b:section>
+  </main>
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class='pb-side' id='pb-side'>
+    <div class='pb-sbox'><h3 class='pb-wt'>🛡️ কেন আমাদের বিশ্বাস করবেন</h3><div class='pb-trust' id='pb-trust'></div></div>
+    <div class='pb-sbox pb-sell-cta'>
+      <h3 class='pb-wt' style='justify-content:center'>💰 আয় করুন</h3>
+      <p style='color:var(--muted);font-size:14px;margin:0 0 12px'>আপনার তৈরি প্রম্পট বা কোড আমাদের মার্কেটপ্লেসে বিক্রি করুন।</p>
+      <button class='pb-btn' data-open='pb-sell' style='width:100%' type='button'>আপনার কোড বা প্রম্পট বিক্রি করুন</button>
+    </div>
+    <div class='pb-ad' data-ad='sidebar'></div>
+    <b:section class='pb-side-sec' id='sidebar' name='Sidebar' showaddelement='yes'>
+      <b:widget id='Label1' locked='false' title='📂 ক্যাটাগরি' type='Label' version='2' visible='true'>
+        <b:widget-settings>
+          <b:widget-setting name='sorting'>ALPHA</b:widget-setting>
+          <b:widget-setting name='display'>LIST</b:widget-setting>
+          <b:widget-setting name='selectedLabelsList'/>
+          <b:widget-setting name='showType'>ALL</b:widget-setting>
+          <b:widget-setting name='showFreqNumbers'>true</b:widget-setting>
+        </b:widget-settings>
+        <b:includable id='main'>
+          <h3 class='pb-wt'><data:title/></h3>
+          <div class='pb-cats'>
+            <b:loop values='data:labels' var='label'>
+              <a class='pb-catlink' expr:href='data:label.url'><span><data:label.name/></span><em><data:label.count/></em></a>
+            </b:loop>
+          </div>
+        </b:includable>
+      </b:widget>
+    </b:section>
+    <div class='pb-sbox'><h3 class='pb-wt'>⭐ গ্রাহকদের রিভিউ</h3><div id='pb-reviews'></div></div>
+  </aside>
+</div>
+
+<!-- ================= FOOTER ================= -->
+<footer class='pb-footer'>
+  <div class='pb-wrap'>
+    <div class='pb-fcols'>
+      <div>
+        <a class='pb-logo' expr:href='data:blog.homepageUrl'><span class='pb-logo-mark'>P</span><span><data:blog.title/></span></a>
+        <p id='pb-foot-tag'>প্রিমিয়াম AI প্রম্পট ও কোড মার্কেটপ্লেস</p>
+      </div>
+      <div><h4>লিংক</h4><ul id='pb-foot-menu'></ul></div>
+      <div><h4>সাপোর্ট</h4><ul>
+        <li><a href='#' id='pb-foot-wa' rel='noopener' target='_blank'>💬 WhatsApp</a></li>
+        <li><a href='#' id='pb-foot-mail'>✉️ Email</a></li>
+        <li><a data-open='pb-sell' href='#'>💰 বিক্রি করুন</a></li>
+      </ul></div>
+    </div>
+    <div class='pb-copy' id='pb-copy'></div>
+  </div>
+</footer>
+
+<div class='pb-fab'>
+  <a aria-label='WhatsApp' class='wa' href='#' id='pb-fab-wa' rel='noopener' target='_blank'>💬</a>
+  <button aria-label='Top' class='top' id='pb-top' type='button'>↑</button>
+</div>
+<div class='pb-toast' id='pb-toast'></div>
+
+<!-- ================= MODAL: SELL ================= -->
+<div aria-modal='true' class='pb-modal' id='pb-sell' role='dialog'>
+  <div class='pb-mbox'>
+    <button aria-label='Close' class='pb-x' data-close='' type='button'>✕</button>
+    <h3>💰 আপনার কোড বা প্রম্পট বিক্রি করুন</h3>
+    <p class='sub'>তথ্য দিয়ে সাবমিট করুন — সরাসরি WhatsApp-এ এডমিনের কাছে চলে যাবে।</p>
+    <form class='pb-fgrid' id='pb-sell-form'>
+      <div><label class='pb-lbl'>আপনার নাম *</label><input class='pb-in' name='name' required='required'/></div>
+      <div><label class='pb-lbl'>WhatsApp নম্বর *</label><input class='pb-in' inputmode='tel' name='phone' required='required'/></div>
+      <div><label class='pb-lbl'>ধরন</label><select class='pb-in' name='type'><option>AI Prompt</option><option>Source Code</option><option>Template / Theme</option><option>অন্যান্য</option></select></div>
+      <div><label class='pb-lbl'>দাম (৳) *</label><input class='pb-in' inputmode='numeric' name='price' required='required'/></div>
+      <div class='full'><label class='pb-lbl'>টাইটেল *</label><input class='pb-in' name='title' required='required'/></div>
+      <div class='full'><label class='pb-lbl'>বিবরণ *</label><textarea class='pb-in' name='desc' required='required' rows='4'></textarea></div>
+      <div class='full'><label class='pb-lbl'>ডেমো / প্রিভিউ লিংক</label><input class='pb-in' name='demo' type='url'/></div>
+      <div><label class='pb-lbl'>পেমেন্ট নেবেন</label><select class='pb-in' name='pm'><option>bKash</option><option>Nagad</option><option>Rocket</option><option>Binance</option></select></div>
+      <div><label class='pb-lbl'>একাউন্ট নম্বর *</label><input class='pb-in' name='acc' required='required'/></div>
+      <div class='full'><button class='pb-btn pb-btn-wa' style='width:100%' type='submit'>📤 WhatsApp-এ সাবমিট করুন</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: AI TEST LAB ================= -->
+<div aria-modal='true' class='pb-modal' id='pb-lab' role='dialog'>
+  <div class='pb-mbox'>
+    <button aria-label='Close' class='pb-x' data-close='' type='button'>✕</button>
+    <h3>🧪 AI Test Lab</h3>
+    <p class='sub'>প্রম্পট পেস্ট করুন, তারপর এক ক্লিকে যেকোনো AI-তে টেস্ট করুন।</p>
+    <textarea class='pb-in' id='pb-lab-text' placeholder='এখানে আপনার প্রম্পট লিখুন বা পেস্ট করুন…' rows='7'></textarea>
+    <div class='pb-lab-meta' id='pb-lab-meta'>0 অক্ষর · 0 শব্দ · ~0 টোকেন</div>
+    <div class='pb-lab-out'>
+      <button class='pb-btn pb-btn-sm' data-ai='chatgpt' type='button'>ChatGPT</button>
+      <button class='pb-btn pb-btn-sm' data-ai='claude' type='button'>Claude</button>
+      <button class='pb-btn pb-btn-sm' data-ai='perplexity' type='button'>Perplexity</button>
+      <button class='pb-btn pb-btn-sm' data-ai='gemini' type='button'>Gemini</button>
+      <button class='pb-btn pb-btn-sm pb-btn-ghost' data-ai='copy' type='button'>⧉ কপি</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: VERIFY ================= -->
+<div aria-modal='true' class='pb-modal' id='pb-verify' role='dialog'>
+  <div class='pb-mbox'>
+    <h3>🤖 মানব যাচাইকরণ</h3>
+    <p class='sub'>কনটেন্ট দেখতে নিচের ধাপগুলো সম্পন্ন করুন।</p>
+    <div class='pb-vstep' id='pb-v1'>
+      <h4>ধাপ ১ · আপনি কি মানুষ?</h4>
+      <div class='pb-captcha'><span id='pb-cap-q'></span><input class='pb-in' id='pb-cap-a' inputmode='numeric'/><button class='pb-btn pb-btn-sm' id='pb-cap-btn' type='button'>যাচাই</button></div>
+    </div>
+    <div class='pb-vstep' id='pb-v2'><h4>ধাপ ২ · টাস্ক সম্পন্ন করুন</h4><div id='pb-tasks'></div></div>
+    <div class='pb-vstep' id='pb-v3'>
+      <h4>ধাপ ৩ · স্পনসর <span class='pb-count' id='pb-vcount'></span></h4>
+      <div id='pb-vad'></div>
+    </div>
+    <button class='pb-btn' disabled='disabled' id='pb-v-done' style='width:100%' type='button'>🔓 কনটেন্ট দেখুন</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: INSTALL HELP ================= -->
+<div aria-modal='true' class='pb-modal' id='pb-install-help' role='dialog'>
+  <div class='pb-mbox'>
+    <button aria-label='Close' class='pb-x' data-close='' type='button'>✕</button>
+    <h3>📲 অ্যাপ ইনস্টল করুন</h3>
+    <p class='sub'>Android (Chrome): উপরের ⋮ মেনু → <b>Install app</b> / <b>Add to Home screen</b>।<br/>iPhone (Safari): নিচের Share বাটন → <b>Add to Home Screen</b>।</p>
+    <button class='pb-btn' data-close='' style='width:100%' type='button'>ঠিক আছে</button>
+  </div>
+</div>
+
+<script>
+//<![CDATA[
+(function(){
+"use strict";
+var C = window.PB_CONFIG || {};
+var $ = function(s,r){return (r||document).querySelector(s);};
+var $$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+var ls = {get:function(k,d){try{var v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
+          set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+var ss = {get:function(k){try{return sessionStorage.getItem(k);}catch(e){return null;}},
+          set:function(k,v){try{sessionStorage.setItem(k,v);}catch(e){}}};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function toast(m){var t=$("#pb-toast");if(!t)return;t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove("show");},2200);}
+function wa(text){return "https://wa.me/"+String(C.whatsapp||"").replace(/\D/g,"")+"?text="+encodeURIComponent(text);}
+function fmt(n){n=+n||0;return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n);}
+function copyText(txt){
+  if(navigator.clipboard&&window.isSecureContext){return navigator.clipboard.writeText(txt);}
+  return new Promise(function(res,rej){var ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="position:fixed;opacity:0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");res();}catch(e){rej(e);}ta.remove();});
+}
+function setHTML(el,html){ /* স্ক্রিপ্টসহ HTML বসায় (AdSense ইত্যাদির জন্য) */
+  el.innerHTML=html;
+  $$("script",el).forEach(function(old){var s=document.createElement("script");for(var i=0;i<old.attributes.length;i++)s.setAttribute(old.attributes[i].name,old.attributes[i].value);s.text=old.text;old.parentNode.replaceChild(s,old);});
+}
+var CTRL = ["lock","verify","download"];
+function isCtrl(n){return CTRL.indexOf(String(n).trim().toLowerCase())>-1;}
+
+/* ---------- Theme toggle ---------- */
+var root=document.documentElement;
+function syncThemeIcon(){$("#pb-theme").textContent=root.getAttribute("data-theme")==="light"?"🌙":"☀️";}
+$("#pb-theme").addEventListener("click",function(){var n=root.getAttribute("data-theme")==="light"?"dark":"light";root.setAttribute("data-theme",n);try{localStorage.setItem("pb-theme",n);}catch(e){}syncThemeIcon();});
+syncThemeIcon();
+
+/* ---------- Header / menu / branding ---------- */
+if(C.logoUrl){$$(".pb-logo-mark").forEach(function(m){m.outerHTML='<img alt="'+esc(C.siteName)+'" src="'+esc(C.logoUrl)+'"/>';});}
+var menuHTML=(C.menu||[]).map(function(m){var on=(location.pathname===m.url||location.pathname+location.search===m.url)?" class=\"on\"":"";return '<a href="'+esc(m.url)+'"'+on+'>'+esc(m.text)+'</a>';}).join("");
+var mEl=$("#pb-menu");if(mEl)mEl.outerHTML=menuHTML;
+$("#pb-foot-menu").innerHTML=(C.menu||[]).map(function(m){return '<li><a href="'+esc(m.url)+'">'+esc(m.text)+'</a></li>';}).join("");
+if(C.courseLink){var cl=$("#pb-course");cl.href=C.courseLink.url;cl.textContent="🎓 "+C.courseLink.text;}
+if(C.aiLabText)$("#pb-lab-btn").textContent="🧪 "+C.aiLabText;
+$("#pb-burger").addEventListener("click",function(){$("#pb-nav").classList.toggle("open");});
+if(C.tagline){var tg=$("#pb-foot-tag");if(tg)tg.textContent=C.tagline;}
+$("#pb-copy").textContent=String(C.footerText||"").replace("{year}",new Date().getFullYear());
+var waLink=wa("আসসালামু আলাইকুম, "+(C.siteName||"")+" সম্পর্কে জানতে চাই।");
+$("#pb-fab-wa").href=waLink;$("#pb-foot-wa").href=waLink;$("#pb-foot-mail").href="mailto:"+(C.email||"");
+var topBtn=$("#pb-top");
+window.addEventListener("scroll",function(){topBtn.classList.toggle("show",window.scrollY>600);},{passive:true});
+topBtn.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"});});
+
+/* ---------- Ads ---------- */
+$$("[data-ad]").forEach(function(el){var h=(C.ads||{})[el.getAttribute("data-ad")];if(h)setHTML(el,h);});
+
+/* ---------- Modals ---------- */
+function openM(id){var m=document.getElementById(id);if(m){m.classList.add("open");document.body.style.overflow="hidden";}}
+function closeM(m){m.classList.remove("open");if(!$(".pb-modal.open"))document.body.style.overflow="";}
+document.addEventListener("click",function(e){
+  var o=e.target.closest("[data-open]");if(o){e.preventDefault();openM(o.getAttribute("data-open"));$("#pb-nav").classList.remove("open");return;}
+  var c=e.target.closest("[data-close]");if(c){closeM(c.closest(".pb-modal"));return;}
+  if(e.target.classList.contains("pb-modal")&&e.target.id!=="pb-verify")closeM(e.target);
+});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")$$(".pb-modal.open").forEach(function(m){if(m.id!=="pb-verify")closeM(m);});});
+
+/* ---------- Sell form → WhatsApp ---------- */
+$("#pb-sell-form").addEventListener("submit",function(e){
+  e.preventDefault();var f=new FormData(this),g=function(k){return (f.get(k)||"").toString().trim();};
+  var msg="🛒 *নতুন বিক্রির আবেদন*\n\n👤 নাম: "+g("name")+"\n📱 WhatsApp: "+g("phone")+"\n📦 ধরন: "+g("type")+"\n🏷️ টাইটেল: "+g("title")+"\n💵 দাম: ৳"+g("price")+"\n📝 বিবরণ: "+g("desc")+(g("demo")?"\n🔗 ডেমো: "+g("demo"):"")+"\n💳 পেমেন্ট: "+g("pm")+" — "+g("acc")+"\n\n🌐 "+location.hostname;
+  window.open(wa(msg),"_blank");toast("WhatsApp খুলছে…");
+});
+
+/* ---------- AI Test Lab ---------- */
+var labT=$("#pb-lab-text");
+function labMeta(){var v=labT.value,w=v.trim()?v.trim().split(/\s+/).length:0;$("#pb-lab-meta").textContent=v.length+" অক্ষর · "+w+" শব্দ · ~"+Math.ceil(v.length/4)+" টোকেন";}
+labT.addEventListener("input",labMeta);
+var AI={chatgpt:"https://chatgpt.com/?q=",claude:"https://claude.ai/new?q=",perplexity:"https://www.perplexity.ai/search?q=",gemini:"https://gemini.google.com/app"};
+$$("[data-ai]").forEach(function(b){b.addEventListener("click",function(){
+  var k=b.getAttribute("data-ai"),v=labT.value.trim();if(!v){toast("আগে প্রম্পট লিখুন");return;}
+  if(k==="copy"){copyText(v).then(function(){toast("কপি হয়েছে ✓");});return;}
+  if(k==="gemini"){copyText(v).then(function(){toast("কপি হয়েছে — Gemini-তে পেস্ট করুন");});window.open(AI.gemini,"_blank");return;}
+  window.open(AI[k]+encodeURIComponent(v),"_blank");
+});});
+window.PBLab=function(text){labT.value=text||"";labMeta();openM("pb-lab");};
+
+/* ---------- Counters (views / copies) ---------- */
+var NS=(C.counter&&C.counter.namespace)||location.hostname.replace(/[^a-z0-9]/gi,"-");
+function counter(kind,id,inc){
+  var key="pb-c-"+kind+"-"+id,local=ls.get(key,0);
+  if(inc){local++;ls.set(key,local);}
+  var api=C.counter&&C.counter.api;
+  if(!api||!id)return Promise.resolve(local);
+  var url=api.replace(/\/$/,"")+"/"+encodeURIComponent(NS)+"/"+kind+"-"+id+(inc?"/up":"");
+  return fetch(url).then(function(r){return r.ok?r.json():{count:0};}).then(function(j){return Math.max(+j.count||0,local);}).catch(function(){return local;});
+}
+function idFromUrl(u){return (u||"").replace(/^https?:\/\/[^/]+/,"").replace(/\.html.*$/,"").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(-60);}
+function fillStats(scope,id,incView){
+  counter("v",id,incView).then(function(n){$$(".pb-views",scope).forEach(function(b){b.textContent=fmt(n);});});
+  counter("c",id,false).then(function(n){$$(".pb-copies",scope).forEach(function(b){b.textContent=fmt(n);});});
+}
+
+/* ---------- Card decoration ---------- */
+function decorateCard(card){
+  var labels=$$(".pb-cat",card).map(function(a){return a.textContent.trim();});
+  var low=labels.map(function(l){return l.toLowerCase();}),bd=$(".pb-badges",card);
+  if(bd){
+    if(low.indexOf("lock")>-1)bd.insertAdjacentHTML("beforeend",'<span class="pb-badge lock">🔒 Premium</span>');
+    if(low.indexOf("download")>-1)bd.insertAdjacentHTML("beforeend",'<span class="pb-badge dl">⬇ Download</span>');
+    if(low.indexOf("verify")>-1)bd.insertAdjacentHTML("beforeend",'<span class="pb-badge vf">✓ Verify</span>');
+  }
+  var shown=0;$$(".pb-cat",card).forEach(function(a){if(isCtrl(a.textContent)||shown>=2)a.remove();else shown++;});
+  fillStats(card,idFromUrl(card.getAttribute("data-url")),false);
+}
+$$(".pb-card").forEach(decorateCard);
+
+/* ---------- প্রতি পেজে ৬টি পোস্ট ---------- */
+var PER=C.postsPerPage||6;
+function addMax(u){if(!u||/max-results=/.test(u))return u;return u+(u.indexOf("?")>-1?"&":"?")+"max-results="+PER;}
+$$('a[href*="/search/label/"]').forEach(function(a){a.href=addMax(a.getAttribute("href"));});
+$$('form[action="/search"]').forEach(function(f){if(!$('input[name="max-results"]',f))f.insertAdjacentHTML("beforeend",'<input type="hidden" name="max-results" value="'+PER+'"/>');});
+(function(){
+  var grid=$("#pb-main-grid");if(!grid)return;
+  var cards=$$(".pb-card",grid),older=$("#pb-older"),newer=$("#pb-newer");
+  if(newer)newer.href=addMax(newer.getAttribute("href"));
+  if(cards.length>PER){
+    cards.slice(PER).forEach(function(c){c.remove();});
+    var ts=cards[PER-1].getAttribute("data-ts"),p=location.pathname,base=/^\/search\/label\//.test(p)?p:"/search";
+    var q=new URLSearchParams(location.search).get("q");
+    var href=base+"?"+(q?"q="+encodeURIComponent(q)+"&":"")+"updated-max="+encodeURIComponent(ts)+"&max-results="+PER;
+    if(older)older.href=href;else $("#pb-pager").insertAdjacentHTML("beforeend",'<a class="pb-btn" id="pb-older" href="'+esc(href)+'">আরও দেখুন →</a>');
+  }else if(older){older.href=addMax(older.getAttribute("href"));}
+})();
+
+/* ---------- Feed helpers (Premium গ্রিড ও হিরো স্ট্যাটস) ---------- */
+function feed(path){return fetch(path).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
+function entryToCard(e){
+  var link=((e.link||[]).filter(function(l){return l.rel==="alternate";})[0]||{}).href||"#";
+  var img=e.media$thumbnail?e.media$thumbnail.url.replace(/\/s72(-c)?\//,"/w640-h400-c/").replace(/=s72(-c)?$/,"=w640-h400-c"):"";
+  var cats=(e.category||[]).map(function(c){return c.term;}).filter(function(t){return !isCtrl(t);}).slice(0,2);
+  var t=esc(e.title.$t);
+  return '<article class="pb-card" data-url="'+esc(link)+'"><a class="pb-thumb" href="'+esc(link)+'">'+(img?'<img loading="lazy" alt="'+t+'" src="'+esc(img)+'"/>':'<span class="pb-noimg">✦</span>')+
+    '<span class="pb-badges"><span class="pb-badge lock">🔒 Premium</span></span></a><div class="pb-card-body"><div class="pb-card-cats">'+
+    cats.map(function(c){return '<a class="pb-cat" href="'+addMax("/search/label/"+encodeURIComponent(c))+'">'+esc(c)+'</a>';}).join("")+
+    '</div><h3 class="pb-card-title"><a href="'+esc(link)+'">'+t+'</a></h3><div class="pb-card-foot"><div class="pb-stats"><span>👁 <b class="pb-views">…</b></span><span>⧉ <b class="pb-copies">…</b></span></div><a class="pb-btn pb-btn-sm" href="'+esc(link)+'">View →</a></div></div></article>';
+}
+var pg=$("#pb-premium-grid");
+if(pg){
+  var labs=C.premiumLabels||["lock"];
+  Promise.all(labs.map(function(l){return feed("/feeds/posts/summary/-/"+encodeURIComponent(l)+"?alt=json&max-results=6");})).then(function(rs){
+    var seen={},list=[],total=0;
+    rs.forEach(function(r){if(!r||!r.feed)return;total=Math.max(total,+((r.feed.openSearch$totalResults||{}).$t||0));(r.feed.entry||[]).forEach(function(e){if(!seen[e.id.$t]){seen[e.id.$t]=1;list.push(e);}});});
+    list.sort(function(a,b){return a.published.$t<b.published.$t?1:-1;});
+    var sp=$("#pb-stat-prem");if(sp)sp.textContent=fmt(total)+"+";
+    if(!list.length){$("#pb-premium-block").remove();return;}
+    pg.innerHTML=list.slice(0,6).map(entryToCard).join("");
+    $$(".pb-card",pg).forEach(function(c){fillStats(c,idFromUrl(c.getAttribute("data-url")),false);});
+  });
+}
+if($("#pb-stat-posts"))feed("/feeds/posts/summary?alt=json&max-results=0").then(function(r){if(r&&r.feed)$("#pb-stat-posts").textContent=fmt(r.feed.openSearch$totalResults.$t)+"+";});
+
+/* ---------- Sidebar: trust & reviews ---------- */
+var tr=$("#pb-trust");if(tr)tr.innerHTML=(C.trust||[]).map(function(t){return '<div><span>'+esc(t.icon)+'</span><p style="margin:0"><b>'+esc(t.title)+'</b><small>'+esc(t.text)+'</small></p></div>';}).join("");
+var rv=$("#pb-reviews");if(rv)rv.innerHTML=(C.reviews||[]).map(function(r){var s=Math.max(0,Math.min(5,r.stars|0));return '<div class="pb-review"><span class="st">'+"★★★★★".slice(0,s)+"☆☆☆☆☆".slice(0,5-s)+'</span><br/><b>'+esc(r.name)+'</b><p>'+esc(r.text)+'</p></div>';}).join("");
+
+/* ---------- PWA: manifest generator + install ---------- */
+(function(){
+  var P=C.pwa||{},svg=$('link[rel="icon"][type="image/svg+xml"]'),icons=[];
+  if(P.icon192)icons.push({src:P.icon192,sizes:"192x192",type:"image/png",purpose:"any maskable"});
+  if(P.icon512)icons.push({src:P.icon512,sizes:"512x512",type:"image/png",purpose:"any maskable"});
+  if(!icons.length&&svg)icons.push({src:svg.href,sizes:"any",type:"image/svg+xml"});
+  var origin=location.origin+"/";
+  var man={name:C.siteName||document.title,short_name:P.shortName||C.siteName,description:C.tagline||"",start_url:origin,scope:origin,id:origin,display:"standalone",orientation:"portrait",background_color:"#070910",theme_color:P.themeColor||"#070910",icons:icons};
+  var l=document.createElement("link");l.rel="manifest";l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));document.head.appendChild(l);
+  if(P.icon192){var a=document.createElement("link");a.rel="apple-touch-icon";a.href=P.icon192;document.head.appendChild(a);}
+  var deferred=null,btn=$("#pb-install");
+  window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferred=e;btn.style.boxShadow="0 0 18px rgba(6,182,212,.8)";});
+  window.addEventListener("appinstalled",function(){toast("অ্যাপ ইনস্টল হয়েছে ✓");btn.remove();});
+  if(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)btn.remove();
+  btn.addEventListener("click",function(){if(deferred){deferred.prompt();deferred.userChoice.then(function(){deferred=null;});}else openM("pb-install-help");});
+})();
+
+/* =================== POST PAGE =================== */
+var post=$("#pb-post");
+if(post){
+  var body=$("#pb-post-body"),pid=post.getAttribute("data-id"),purl=post.getAttribute("data-url")||location.href.split("?")[0],sid=idFromUrl(purl);
+  var title=($(".pb-post-title",post)||{}).textContent||document.title;
+  var labels=$$(".pb-tag",post).map(function(a){return a.textContent.trim().toLowerCase();});
+  var has=function(l){return labels.indexOf(l)>-1;};
+  $$(".pb-tag",post).forEach(function(a){if(isCtrl(a.textContent))a.remove();});
+  var vKey="pb-viewed-"+sid,inc=!ss.get(vKey);ss.set(vKey,"1");
+  fillStats(post,sid,inc);
+
+  function bumpCopy(){counter("c",sid,true).then(function(n){$$(".pb-copies",post).forEach(function(b){b.textContent=fmt(n);});});}
+  function reveal(){post.classList.add("pb-ready");}
+
+  /* ---- Neon Code Box (download লেবেল) ---- */
+  function slug(s){return (s||"file").toLowerCase().replace(/[^a-z0-9ঀ-৿]+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"file";}
+  function neonBox(text,idx){
+    var w=document.createElement("div");w.className="pb-neon";
+    var name=slug(title)+(idx?"-"+(idx+1):"")+".txt";
+    w.innerHTML='<div class="pb-neon-in"><div class="pb-neon-bar"><span class="pb-dots"><i></i><i></i><i></i></span><span class="pb-neon-name">'+esc(name)+'</span><div class="pb-neon-act"><button type="button" data-a="lab">🧪 Test</button><button type="button" data-a="copy">⧉ Copy</button><button type="button" data-a="dl">⬇ Download</button></div></div><pre></pre></div>';
+    $("pre",w).textContent=text;
+    w.addEventListener("click",function(e){
+      var b=e.target.closest("button[data-a]");if(!b)return;var a=b.getAttribute("data-a");
+      if(a==="copy"){copyText(text).then(function(){b.textContent="✓ Copied!";b.classList.add("ok");bumpCopy();setTimeout(function(){b.textContent="⧉ Copy";b.classList.remove("ok");},1800);});}
+      else if(a==="dl"){var u=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));var d=document.createElement("a");d.href=u;d.download=name;document.body.appendChild(d);d.click();d.remove();setTimeout(function(){URL.revokeObjectURL(u);},1500);bumpCopy();toast("ডাউনলোড শুরু হয়েছে ⬇");}
+      else if(a==="lab"){window.PBLab(text);}
+    });
+    return w;
+  }
+  function buildNeon(){
+    var pres=$$("pre",body);
+    if(pres.length){pres.forEach(function(p,i){p.parentNode.replaceChild(neonBox(p.innerText.replace(/\n$/,""),i),p);});}
+    else{
+      $$("[data-price],[data-pin]",body).forEach(function(x){x.remove();});
+      var txt=(body.innerText||"").trim();if(!txt)return;
+      var imgs=$$("img",body).map(function(i){return i.closest("a")||i;});
+      body.innerHTML="";imgs.slice(0,1).forEach(function(i){body.appendChild(i);});
+      body.appendChild(neonBox(txt,0));
+    }
+  }
+
+  /* ---- Premium Lock (tbp-root) ---- */
+  var gate=$(".pb-gate",post);
+  function pinOk(v){
+    v=String(v||"").trim();if(!v)return false;
+    var el=$("[data-pin]",body),L=C.lock||{};
+    return (el&&el.getAttribute("data-pin")===v)||((L.pins||{})[pid]===v)||(!!L.masterPin&&L.masterPin===v);
+  }
+  function showLock(){
+    var L=C.lock||{},pe=$("[data-price]",body),price=pe?pe.getAttribute("data-price"):(L.defaultPrice||"");
+    body.classList.add("pb-hidden");
+    var pays=(C.payments||[]).map(function(p,i){return '<div class="tbp-pm" style="--c:'+esc(p.color||"#7c3aed")+'"><h4>'+esc(p.name)+'</h4><small>'+esc(p.type||"")+'</small><div class="tbp-num"><span>'+esc(p.number)+'</span><button type="button" data-cp="'+i+'">Copy</button></div></div>';}).join("");
+    var opts=(C.payments||[]).map(function(p){return '<option>'+esc(p.name)+'</option>';}).join("");
+    gate.innerHTML='<div class="tbp-root" id="tbp-root"><div class="tbp-head"><div class="tbp-lock">🔒</div><h3>'+esc(L.title||"Premium")+'</h3><p>'+esc(L.note||"")+'</p>'+(price?'<div class="tbp-price pb-grad-text">'+esc(price)+'</div>':'')+'</div>'+
+      '<div class="tbp-steps"><div><b>০১</b>পেমেন্ট করুন</div><div><b>০২</b>ফর্ম পূরণ করুন</div><div><b>০৩</b>PIN দিয়ে আনলক</div></div>'+
+      '<div class="tbp-pay">'+pays+'</div>'+
+      '<form class="tbp-form" id="tbp-form"><div><label class="pb-lbl">আপনার নাম *</label><input class="pb-in" name="n" required></div><div><label class="pb-lbl">পেমেন্ট মেথড</label><select class="pb-in" name="m">'+opts+'</select></div>'+
+      '<div><label class="pb-lbl">যে নম্বর/ID থেকে পাঠিয়েছেন *</label><input class="pb-in" name="s" required></div><div><label class="pb-lbl">Transaction ID *</label><input class="pb-in" name="t" required></div>'+
+      '<div class="full"><button class="pb-btn pb-btn-wa" style="width:100%" type="submit">📤 পেমেন্ট ইনফো WhatsApp-এ পাঠান</button></div></form>'+
+      '<div class="tbp-pin"><input class="pb-in" id="tbp-pin" placeholder="PIN" inputmode="numeric" autocomplete="off"><button class="pb-btn" id="tbp-unlock" type="button">🔓 আনলক</button></div><div class="tbp-msg" id="tbp-msg"></div></div>';
+    gate.addEventListener("click",function(e){var b=e.target.closest("[data-cp]");if(!b)return;copyText(C.payments[+b.getAttribute("data-cp")].number.replace(/^[^:]*:\s*/,"")).then(function(){toast("নম্বর কপি হয়েছে ✓");});});
+    $("#tbp-form").addEventListener("submit",function(e){
+      e.preventDefault();var f=new FormData(this);
+      var msg="💳 *পেমেন্ট ভেরিফিকেশন*\n\n📄 পোস্ট: "+title.trim()+"\n🔗 "+purl+"\n💵 দাম: "+price+"\n\n👤 নাম: "+f.get("n")+"\n🏦 মেথড: "+f.get("m")+"\n📱 সেন্ডার: "+f.get("s")+"\n🧾 TrxID: "+f.get("t")+"\n\nআনলক PIN দিন, ধন্যবাদ।";
+      window.open(wa(msg),"_blank");var m=$("#tbp-msg");m.className="tbp-msg ok";m.textContent="WhatsApp-এ পাঠানো হচ্ছে… ভেরিফাই হলে PIN পাবেন।";
+    });
+    function tryPin(){var v=$("#tbp-pin").value,m=$("#tbp-msg");
+      if(pinOk(v)){ls.set("pb-unlock-"+sid,1);m.className="tbp-msg ok";m.textContent="✅ আনলক সফল!";setTimeout(unlock,500);}
+      else{m.className="tbp-msg err";m.textContent="❌ ভুল PIN, আবার চেষ্টা করুন।";}}
+    $("#tbp-unlock").addEventListener("click",tryPin);
+    $("#tbp-pin").addEventListener("keydown",function(e){if(e.key==="Enter")tryPin();});
+    reveal();
+  }
+  function unlock(){gate.innerHTML="";body.classList.remove("pb-hidden");$$("[data-pin],[data-price]",body).forEach(function(x){x.remove();});reveal();toast("কনটেন্ট আনলক হয়েছে 🎉");}
+
+  /* ---- Human Verification / Task Gate ---- */
+  function runVerify(done){
+    if(ss.get("pb-verified-"+sid)){done();return;}
+    var V=C.verify||{},st={cap:false,tasks:false,ad:false},btn=$("#pb-v-done");
+    function check(){btn.disabled=!(st.cap&&st.tasks&&st.ad);}
+    var a=2+Math.floor(Math.random()*8),b=1+Math.floor(Math.random()*9);
+    $("#pb-cap-q").textContent=a+" + "+b+" = ?";
+    $("#pb-cap-btn").addEventListener("click",function(){if(+$("#pb-cap-a").value===a+b){st.cap=true;$("#pb-v1").classList.add("done");this.disabled=true;check();startAd();}else toast("ভুল উত্তর, আবার চেষ্টা করুন");});
+    var tasks=V.tasks||[],left=tasks.length;
+    $("#pb-tasks").innerHTML=tasks.map(function(t,i){return '<div class="pb-task" data-i="'+i+'"><span>'+esc(t.text)+'</span><a class="pb-btn pb-btn-sm" target="_blank" rel="noopener" href="'+esc(t.url)+'">যান →</a></div>';}).join("")||"<small>কোনো টাস্ক নেই</small>";
+    if(!left){st.tasks=true;$("#pb-v2").classList.add("done");}
+    $$("#pb-tasks .pb-task a").forEach(function(l){l.addEventListener("click",function(){var r=l.parentNode;if(r.classList.contains("done"))return;setTimeout(function(){r.classList.add("done");l.textContent="✓";if(--left<=0){st.tasks=true;$("#pb-v2").classList.add("done");check();}},1500);});});
+    setHTML($("#pb-vad"),V.adHTML||"");
+    var started=false;
+    function startAd(){if(started)return;started=true;var s=+V.seconds||0,c=$("#pb-vcount");
+      (function tick(){c.textContent=s>0?s+"s":"✓";if(s<=0){st.ad=true;$("#pb-v3").classList.add("done");check();return;}s--;setTimeout(tick,1000);})();}
+    btn.addEventListener("click",function(){ss.set("pb-verified-"+sid,"1");closeM($("#pb-verify"));done();});
+    check();openM("pb-verify");
+  }
+
+  /* ---- ফ্লো: verify → lock → download ---- */
+  try{
+    if(has("download"))buildNeon();
+    var afterVerify=function(){if(has("lock")&&!ls.get("pb-unlock-"+sid,0))showLock();else{$$("[data-pin],[data-price]",body).forEach(function(x){x.remove();});reveal();}};
+    if(has("verify")){body.classList.add("pb-hidden");reveal();runVerify(function(){body.classList.remove("pb-hidden");afterVerify();});}
+    else afterVerify();
+  }catch(err){reveal();if(window.console)console.error(err);}
+
+  /* ---- Share ---- */
+  var su=encodeURIComponent(purl),st2=encodeURIComponent(title.trim());
+  $("#pb-share").innerHTML='<a target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u='+su+'">Facebook</a><a target="_blank" rel="noopener" href="https://wa.me/?text='+st2+"%20"+su+'">WhatsApp</a><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+su+'&text='+st2+'">Telegram</a><a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?url='+su+'&text='+st2+'">X</a><button type="button" id="pb-cplink">🔗 লিংক কপি</button>';
+  $("#pb-cplink").addEventListener("click",function(){copyText(purl).then(function(){toast("লিংক কপি হয়েছে ✓");});});
+
+  /* ---- SEO: BlogPosting structured data ---- */
+  var img=$("img",body)||{},tm=$("time",post);
+  var ld={"@context":"https://schema.org","@type":"BlogPosting",headline:title.trim().slice(0,110),url:purl,mainEntityOfPage:purl,
+    author:{"@type":"Person",name:(($(".pb-post-meta b",post)||{}).textContent||C.siteName)},publisher:{"@type":"Organization",name:C.siteName},
+    image:img.src?[img.src]:undefined,datePublished:tm?tm.getAttribute("datetime"):undefined,isAccessibleForFree:!has("lock")};
+  if(has("lock"))ld.hasPart={"@type":"WebPageElement",isAccessibleForFree:false,cssSelector:".pb-post-body"};
+  var sc=document.createElement("script");sc.type="application/ld+json";sc.text=JSON.stringify(ld);document.head.appendChild(sc);
+}else{
+  var ws=document.createElement("script");ws.type="application/ld+json";
+  ws.text=JSON.stringify({"@context":"https://schema.org","@type":"WebSite",name:C.siteName,url:location.origin+"/",potentialAction:{"@type":"SearchAction",target:location.origin+"/search?q={q}","query-input":"required name=q"}});
+  document.head.appendChild(ws);
+}
+})();
+//]]>
+</script>
+</body>
+</html>
