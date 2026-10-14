@@ -19,12 +19,10 @@ window.PB_CONFIG = {
   email      : "you@example.com",
 
   /* ---------- হেডার মেনু ---------- */
-  menu : [
-    { text: "হোম",       url: "/" },
-    { text: "প্রম্পট",    url: "/search/label/Prompt" },
-    { text: "কোড",       url: "/search/label/Code" },
-    { text: "প্রিমিয়াম",  url: "/search/label/lock" }
+  menu : [                               // হেডারের সাধারণ মেনু (বেশি দিলে ছোট স্ক্রিনে ☰ মেনুতে চলে যাবে)
+    { text: "Home", url: "/" }
   ],
+  heroTitle  : "এক ক্লিকে আপনার প্রিমিয়াম AI প্রম্পট ও টুলস",
   courseLink : { text: "কোর্স", url: "/p/course.html" },
   aiLabText  : "AI Test Lab",
 
@@ -189,36 +187,51 @@ window.PB_CONFIG = {
   Theme Name : PromptBox Neo
   Type       : Blogger XML (Layouts v3)
 */
+/* ============ রং: ডার্ক (ডিফল্ট) ও লাইট — এখানে বদলালেই পুরো সাইটের রং বদলাবে ============ */
 :root{
-  --bg:#070910;--bg2:#0c0f1a;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.07);
-  --line:rgba(255,255,255,.09);--text:#e8ecf6;--muted:#97a0b8;--head:#ffffff;
+  --bg:#0a0b1c;--bg2:#12142b;--card:rgba(255,255,255,.035);--card2:rgba(255,255,255,.065);
+  --line:rgba(255,255,255,.085);--text:#e4e6f6;--muted:#9aa0c6;--head:#ffffff;
   --p1:#7c3aed;--p2:#06b6d4;--p3:#ec4899;--ok:#22c55e;--warn:#f59e0b;
   --grad:linear-gradient(135deg,var(--p1),var(--p2));
   --glow:0 0 0 1px rgba(124,58,237,.35),0 10px 40px -10px rgba(124,58,237,.55);
-  --blur:saturate(160%) blur(16px);--r:18px;--hdr:rgba(7,9,16,.72);
+  --blur:saturate(160%) blur(16px);--r:20px;--hdr:rgba(16,17,40,.72);--grid:rgba(255,255,255,.035);
+  --g1:rgba(124,58,237,.30);--g2:rgba(236,72,153,.14);--g3:rgba(6,182,212,.10);
+  /* হেডার পিল-বাটনের রং */
+  --nav-on-bg:linear-gradient(135deg,#8b5cf6,#a855f7);--nav-on-tx:#fff;
+  --nav-app-bg:rgba(6,182,212,.12);--nav-app-tx:#22d3ee;
+  --nav-w2a-bg:linear-gradient(90deg,#8b5cf6,#22d3ee);
+  --nav-crs-bg:rgba(139,92,246,.16);--nav-crs-tx:#a78bfa;
+  --nav-sell-bg:rgba(245,158,11,.13);--nav-sell-tx:#fbbf24;
   --f-en:'Plus Jakarta Sans','Hind Siliguri',system-ui,sans-serif;
   --f-head:'Sora','Hind Siliguri',system-ui,sans-serif;
   color-scheme:dark;
 }
 :root[data-theme="light"]{
-  --bg:#f5f7fc;--bg2:#ffffff;--card:rgba(255,255,255,.85);--card2:#ffffff;
-  --line:rgba(15,23,42,.10);--text:#1e2433;--muted:#5b6478;--head:#0b1020;
-  --glow:0 0 0 1px rgba(124,58,237,.18),0 10px 30px -12px rgba(124,58,237,.35);
-  --hdr:rgba(255,255,255,.78);color-scheme:light;
+  --bg:#cdc5f2;--bg2:#ece8fd;--card:rgba(255,255,255,.36);--card2:rgba(255,255,255,.6);
+  --line:rgba(91,70,190,.20);--text:#2a2459;--muted:#544e86;--head:#1b1446;
+  --glow:0 0 0 1px rgba(124,58,237,.22),0 12px 30px -12px rgba(91,70,190,.45);
+  --hdr:rgba(236,232,253,.62);--grid:rgba(80,60,180,.075);
+  --g1:rgba(168,85,247,.28);--g2:rgba(236,72,153,.16);--g3:rgba(99,102,241,.16);
+  --nav-on-bg:linear-gradient(135deg,#7c3aed,#9333ea);--nav-on-tx:#fff;
+  --nav-app-bg:rgba(14,116,144,.14);--nav-app-tx:#0e7490;
+  --nav-w2a-bg:linear-gradient(90deg,#8b5cf6,#38bdf8);
+  --nav-crs-bg:rgba(124,58,237,.14);--nav-crs-tx:#6d28d9;
+  --nav-sell-bg:rgba(180,83,9,.14);--nav-sell-tx:#9a3412;
+  color-scheme:light;
 }
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--f-en);font-size:16px;line-height:1.7;overflow-x:hidden;transition:background .3s,color .3s}
+body{margin:0;background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:56px 56px;color:var(--text);font-family:var(--f-en);font-size:16px;line-height:1.7;overflow-x:hidden;transition:background .3s,color .3s}
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(600px 400px at 10% -5%,rgba(124,58,237,.22),transparent 60%),
-             radial-gradient(500px 380px at 95% 10%,rgba(6,182,212,.16),transparent 60%),
-             radial-gradient(500px 400px at 50% 110%,rgba(236,72,153,.10),transparent 60%)}
+  background:radial-gradient(700px 480px at 12% -8%,var(--g1),transparent 62%),
+             radial-gradient(600px 420px at 96% 0%,var(--g2),transparent 60%),
+             radial-gradient(600px 460px at 50% 115%,var(--g3),transparent 60%)}
 a{color:inherit;text-decoration:none}
 img{max-width:100%;height:auto}
 h1,h2,h3,h4{font-family:var(--f-head);color:var(--head);line-height:1.3;margin:0 0 .6em}
 button,input,select,textarea{font:inherit;color:inherit}
-.pb-wrap{width:100%;max-width:1240px;margin:0 auto;padding:0 16px}
+.pb-wrap{width:100%;max-width:1480px;margin:0 auto;padding:0 16px}
 .pb-grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .pb-glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
 .pb-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:12px;border:0;cursor:pointer;font-weight:700;font-size:14px;background:var(--grad);color:#fff;box-shadow:0 8px 24px -8px rgba(124,58,237,.7);transition:transform .2s,box-shadow .2s,filter .2s;white-space:nowrap}
@@ -228,49 +241,70 @@ button,input,select,textarea{font:inherit;color:inherit}
 .pb-btn-wa{background:linear-gradient(135deg,#16a34a,#22c55e)}
 .pb-btn[disabled]{opacity:.45;pointer-events:none}
 
-/* ===== Header ===== */
-.pb-header{position:sticky;top:0;z-index:50;background:var(--hdr);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-bottom:1px solid var(--line)}
-.pb-hrow{display:flex;align-items:center;gap:14px;height:68px}
-.pb-logo{display:flex;align-items:center;gap:10px;font-family:var(--f-head);font-weight:800;font-size:20px;color:var(--head)}
-.pb-logo img{height:36px;width:auto}
-.pb-logo-mark{width:36px;height:36px;border-radius:11px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:800;box-shadow:0 0 22px rgba(124,58,237,.6)}
-.pb-nav{display:flex;align-items:center;gap:4px;margin-left:14px}
-.pb-nav a,.pb-nav button{padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px;color:var(--muted);background:none;border:0;cursor:pointer;transition:.2s}
-.pb-nav a:hover,.pb-nav button:hover,.pb-nav a.on{color:var(--head);background:var(--card2)}
-.pb-lab-tab{color:var(--head)!important;border:1px solid rgba(6,182,212,.4)!important}
-.pb-w2a-tab{position:relative;color:#fff!important;background:var(--grad)!important;box-shadow:0 0 18px -4px rgba(6,182,212,.7)}
-.pb-w2a-tab::after{content:"NEW";position:absolute;top:-7px;right:-6px;font-size:9px;padding:1px 5px;border-radius:6px;background:var(--p3);color:#fff}
-.pb-hact{margin-left:auto;display:flex;align-items:center;gap:8px}
-.pb-icon-btn{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--card2);border:1px solid var(--line);cursor:pointer;font-size:17px}
+/* ===== Header (ভাসমান পিল-বার) ===== */
+.pb-header{position:sticky;top:0;z-index:50;padding:14px 0 6px}
+.pb-hwrap{max-width:1480px}
+.pb-hrow{position:relative;display:flex;align-items:center;gap:14px;min-height:78px;padding:0 16px 0 20px;border-radius:24px;background:var(--hdr);border:1px solid var(--line);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:0 12px 40px -18px rgba(0,0,0,.45)}
+.pb-logo{display:flex;align-items:center;gap:12px;font-family:var(--f-en);font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--head);white-space:nowrap}
+.pb-logo img{height:44px;width:auto}
+.pb-logo-mark{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#8b5cf6,#c084fc);display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;box-shadow:0 8px 22px -6px rgba(139,92,246,.75)}
+.pb-nav{display:flex;align-items:center;gap:8px;margin:0 auto}
+.pb-nav>a,.pb-nav>button{display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 20px;border-radius:99px;border:1px solid transparent;font-family:var(--f-en);font-weight:800;font-size:15.5px;letter-spacing:.01em;white-space:nowrap;cursor:pointer;background:none;color:var(--muted);transition:transform .2s,filter .2s,box-shadow .2s}
+.pb-nav>a:hover,.pb-nav>button:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.pb-nav svg{width:18px;height:18px;flex:0 0 18px}
+.pb-nav .pb-nl{color:var(--text)}
+.pb-nav .pb-nl.on{background:var(--nav-on-bg);color:var(--nav-on-tx);box-shadow:0 8px 22px -8px rgba(139,92,246,.8)}
+.pb-nav .pb-nav-app{background:var(--nav-app-bg);color:var(--nav-app-tx);text-transform:uppercase}
+.pb-nav .pb-nav-app.on{border-color:var(--nav-app-tx)}
+.pb-nav .pb-w2a-tab{background:var(--nav-w2a-bg);color:#fff;text-transform:uppercase;border:1px solid rgba(255,255,255,.25);box-shadow:0 0 0 3px rgba(139,92,246,.18),0 10px 26px -8px rgba(34,211,238,.6)}
+.pb-new{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:#ef4444;color:#fff;letter-spacing:.04em}
+.pb-nav .pb-nav-crs{background:var(--nav-crs-bg);color:var(--nav-crs-tx)}
+.pb-nav .pb-nav-sell{background:var(--nav-sell-bg);color:var(--nav-sell-tx)}
+.pb-nav .pb-lab-tab{display:none}
+.pb-hact{display:flex;align-items:center;gap:8px;margin-left:auto}
+.pb-icon-btn{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:var(--card2);border:1px solid var(--line);cursor:pointer;font-size:17px;color:var(--head)}
+.pb-icon-btn svg{width:20px;height:20px}
 .pb-burger{display:none}
 .pb-mob-only{display:none!important}
-@media (max-width:1280px){
-  .pb-nav{position:fixed;top:68px;left:0;right:0;flex-direction:column;align-items:stretch;margin:0;padding:12px 16px 20px;background:var(--bg2);border-bottom:1px solid var(--line);transform:translateY(-130%);visibility:hidden;transition:transform .3s,visibility .3s;max-height:calc(100vh - 68px);overflow:auto}
-  .pb-nav.open{transform:none;visibility:visible}
-  .pb-nav a,.pb-nav button{text-align:left;padding:12px 14px;font-size:15px}
+.pb-hide-m{display:none!important}
+@media (max-width:1300px){
+  .pb-hrow{min-height:68px;padding:0 10px 0 12px;gap:10px}
+  .pb-nav{position:absolute;top:calc(100% + 10px);left:0;right:0;flex-direction:column;align-items:stretch;gap:8px;margin:0;padding:14px;border-radius:22px;background:var(--bg2);border:1px solid var(--line);box-shadow:0 24px 50px -20px rgba(0,0,0,.5);transform:translateY(-12px);opacity:0;visibility:hidden;transition:transform .25s,opacity .25s,visibility .25s;max-height:calc(100vh - 110px);overflow:auto}
+  .pb-nav.open{transform:none;opacity:1;visibility:visible}
+  .pb-nav>a,.pb-nav>button{justify-content:flex-start;height:50px;font-size:15px}
+  .pb-nav .pb-lab-tab{display:inline-flex;background:rgba(236,72,153,.12);color:#f472b6}
   .pb-burger{display:grid}
-  .pb-mob-only{display:block!important}
-  .pb-hide-m{display:none!important}
+  .pb-hact .pb-lab-ic{display:none}
+  .pb-logo{font-size:19px}.pb-logo-mark{width:38px;height:38px;font-size:19px}
 }
 
 /* ===== Hero ===== */
-.pb-hero{padding:56px 0 34px;text-align:center}
-.pb-pill{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;border-radius:99px;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
-.pb-pill i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.pb-hero h1{font-size:clamp(30px,5.4vw,58px);font-weight:800;margin:18px auto 14px;max-width:900px;letter-spacing:-.02em}
-.pb-hero p{color:var(--muted);max-width:640px;margin:0 auto 26px;font-size:17px}
-.pb-search{display:flex;max-width:620px;margin:0 auto;padding:6px;border-radius:16px;gap:6px}
-.pb-search input{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:10px 14px;font-size:15px}
-.pb-hero-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:26px}
-.pb-hero-stats div{padding:10px 18px;border-radius:14px;font-size:13px;color:var(--muted)}
-.pb-hero-stats b{display:block;font-family:var(--f-head);font-size:20px;color:var(--head)}
+.pb-hero{padding:70px 0 30px}
+.pb-hero h1{font-size:clamp(34px,6.2vw,84px);font-weight:800;line-height:1.12;letter-spacing:-.03em;margin:0 0 34px;max-width:1180px;color:var(--head)}
+.pb-hero p{color:var(--muted);max-width:640px;margin:-18px 0 26px;font-size:17px}
+.pb-hero p:empty{display:none}
+.pb-search{display:flex;align-items:center;max-width:800px;padding:7px 7px 7px 22px;border-radius:99px;gap:10px;background:var(--card);border:1px solid var(--line);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:0 12px 40px -20px rgba(0,0,0,.5)}
+.pb-search svg{flex:0 0 20px;color:var(--muted)}
+.pb-search input{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:10px 0;font-size:17px;color:var(--text)}
+.pb-search input::placeholder{color:var(--muted)}
+.pb-search .pb-btn{border-radius:99px;padding:14px 30px;font-size:17px;background:linear-gradient(135deg,#8b5cf6,#c084fc)}
+.pb-hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:60px}
+@media (max-width:760px){.pb-hero{padding:36px 0 20px}.pb-hero-stats{grid-template-columns:minmax(0,1fr);margin-top:30px}.pb-search .pb-btn{padding:12px 20px}}
+.pb-stat{display:flex;align-items:center;gap:18px;padding:22px;border-radius:20px;background:var(--card);border:1px solid var(--line);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);transition:transform .2s,box-shadow .2s}
+a.pb-stat:hover{transform:translateY(-3px);box-shadow:var(--glow)}
+.pb-stat-ic{flex:0 0 56px;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:rgba(124,58,237,.18);color:#8b5cf6}
+.pb-stat-ic svg{width:26px;height:26px}
+.pb-stat-ic.gold{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#3b2300}
+.pb-stat b{display:block;font-family:var(--f-en);font-size:22px;font-weight:800;color:var(--head);line-height:1.2}
+.pb-stat small{color:var(--muted);font-size:14.5px}
 
 /* ===== Layout ===== */
 .pb-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;padding:20px 16px 50px}
 @media (max-width:1024px){.pb-layout{grid-template-columns:minmax(0,1fr)}}
 .pb-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 16px}
-.pb-sec-head h2{font-size:22px;margin:0;display:flex;align-items:center;gap:10px}
-.pb-sec-head h2::before{content:"";width:6px;height:22px;border-radius:4px;background:var(--grad)}
+.pb-sec-head h2{flex:1;font-size:26px;margin:0;display:flex;align-items:center;gap:14px}
+.pb-sec-head h2::before{content:"";flex:0 0 12px;width:12px;height:12px;border-radius:50%;background:#8b5cf6;box-shadow:0 0 0 5px rgba(139,92,246,.18)}
+.pb-sec-head h2::after{content:"";flex:1;height:1px;background:var(--line)}
 .pb-sec-head a{font-size:13px;color:var(--p2);font-weight:700}
 .pb-block{margin-bottom:34px}
 
@@ -278,9 +312,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .pb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 @media (max-width:1180px){.pb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.pb-grid{grid-template-columns:minmax(0,1fr)}}
-.pb-card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.pb-card{display:flex;flex-direction:column;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
 .pb-card:hover{transform:translateY(-5px);box-shadow:var(--glow);border-color:rgba(124,58,237,.45)}
-.pb-thumb{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:linear-gradient(135deg,#1b1336,#0b2a3a)}
+.pb-thumb{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;border-radius:16px;background:linear-gradient(135deg,#1b1336,#0b2a3a)}
 .pb-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
 .pb-card:hover .pb-thumb img{transform:scale(1.06)}
 .pb-noimg{position:absolute;inset:0;display:grid;place-items:center;font-size:42px;color:rgba(255,255,255,.5)}
@@ -289,7 +323,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .pb-badge.lock{background:linear-gradient(135deg,#f59e0b,#ef4444)}
 .pb-badge.dl{background:linear-gradient(135deg,#06b6d4,#3b82f6)}
 .pb-badge.vf{background:linear-gradient(135deg,#22c55e,#14b8a6)}
-.pb-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;flex:1}
+.pb-card-body{padding:14px 8px 6px;display:flex;flex-direction:column;flex:1}
 .pb-card-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;min-height:22px}
 .pb-cat{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:7px;color:var(--p2);background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25)}
 .pb-card-title{font-size:16px;margin:0 0 12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -399,7 +433,13 @@ label.pb-lbl{font-size:12.5px;color:var(--muted);display:block;margin-bottom:4px
 .pb-trust b{display:block;font-size:14px;color:var(--head)}
 .pb-trust small{color:var(--muted);font-size:12.5px}
 .pb-cats{display:flex;flex-direction:column;gap:6px}
-.pb-catlink{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:11px;background:var(--card2);font-size:14px;font-weight:600;transition:.2s}
+.pb-side .widget,.pb-sbox{border-radius:28px;padding:24px}
+.pb-wt{font-size:19px}
+.pb-catlink::before{content:"";flex:0 0 40px;height:40px;border-radius:12px;background:rgba(124,58,237,.16) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238b5cf6'%3E%3Cpath d='M4 4h11a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3H9l-4 3v-3.2A3 3 0 0 1 2 12V6a2 2 0 0 1 2-2zm16 5a2 2 0 0 1 2 2v5a3 3 0 0 1-2 2.8V21l-3.5-2.6H11a2 2 0 0 1-1.7-1H15a5 5 0 0 0 5-5z'/%3E%3C/svg%3E") center/20px no-repeat}
+.pb-catlink span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-catlink::after{content:"›";font-size:22px;line-height:1;color:var(--muted)}
+.pb-catlink{display:flex;align-items:center;border-radius:14px;gap:14px;padding:10px 12px;background:transparent!important;font-size:15.5px;color:var(--text)}
+.pb-catlink:hover{background:var(--card2)!important}
 .pb-catlink:hover{transform:translateX(4px);color:var(--p2)}
 .pb-catlink em{font-style:normal;font-size:12px;padding:1px 8px;border-radius:7px;background:rgba(124,58,237,.18);color:var(--head)}
 .pb-review{padding:12px;border-radius:12px;background:var(--card2);margin-bottom:10px;font-size:14px}
@@ -461,7 +501,7 @@ details.pb-adv{margin-top:2px}
 details.pb-adv summary{cursor:pointer;font-size:13px;color:var(--p2);font-weight:700}
 
 /* ===== Action gate (Human Verification ধাপ) ===== */
-.pb-ag{max-width:520px;padding:2px;border-radius:28px;background:linear-gradient(160deg,#a855f7,#1e1b3a 45%,#1e1b3a 70%,#22d3ee)}
+.pb-ag{max-width:520px;padding:2px;border-radius:28px;background:linear-gradient(160deg,#a855f7,var(--bg2) 45%,var(--bg2) 70%,#22d3ee)}
 .pb-ag-in{border-radius:26px;background:var(--bg2);padding:26px}
 @media (max-width:480px){.pb-ag-in{padding:18px}}
 .pb-ag-head{display:flex;gap:16px;align-items:center}
@@ -550,23 +590,23 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
 
 <!-- ================= HEADER ================= -->
 <header class='pb-header'>
-  <div class='pb-wrap pb-hrow'>
-    <button aria-label='Menu' class='pb-icon-btn pb-burger' id='pb-burger' type='button'>☰</button>
+  <div class='pb-wrap pb-hwrap'><div class='pb-hrow'>
+    <button aria-label='Menu' class='pb-icon-btn pb-burger' id='pb-burger' type='button'><svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-width='2.4' viewBox='0 0 24 24'><path d='M4 7h16M4 12h16M4 17h16'/></svg></button>
     <a class='pb-logo' expr:href='data:blog.homepageUrl' id='pb-logo'><span class='pb-logo-mark'>P</span><span id='pb-logo-text'><data:blog.title/></span></a>
     <nav class='pb-nav' id='pb-nav'>
       <span id='pb-menu'></span>
-      <a href='/search/label/app' id='pb-apps-link'>📱 Apps Store</a>
-      <button class='pb-w2a-tab' data-open='pb-w2a' type='button'>🪄 Website to App</button>
-      <button class='pb-lab-tab' data-open='pb-lab' id='pb-lab-btn' type='button'>🧪 AI Test Lab</button>
-      <a href='/p/course.html' id='pb-course'>🎓 কোর্স</a>
-      <button class='pb-mob-only' data-open='pb-sell' type='button'>💰 কোড / প্রম্পট বিক্রি করুন</button>
+      <a class='pb-nav-app' href='/search/label/app' id='pb-apps-link'><svg fill='none' stroke='currentColor' stroke-width='2.2' viewBox='0 0 24 24'><rect height='20' rx='3' width='12' x='6' y='2'/><path d='M11 18h2' stroke-linecap='round'/></svg><span>Apps Store</span></a>
+      <button class='pb-w2a-tab' data-open='pb-w2a' type='button'><span class='pb-new'>NEW</span><svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-width='2.2' viewBox='0 0 24 24'><path d='M4 20 15 9M13.5 7.5l3 3M18 3v3M16.5 4.5h3M20.5 9v2M19.5 10h2M9 3v2M8 4h2'/></svg><span>Website to App</span></button>
+      <a class='pb-nav-crs' href='/p/course.html' id='pb-course'><svg fill='currentColor' viewBox='0 0 24 24'><path d='M12 3 1 8.5l11 5.5 9-4.5V16h2V8.5L12 3zm-6 9.6V16c0 1.9 2.7 3.5 6 3.5s6-1.6 6-3.5v-3.4l-6 3-6-3z'/></svg><span class='t'>কোর্স</span></a>
+      <button class='pb-lab-tab' data-open='pb-lab' id='pb-lab-btn' type='button'><svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.2' viewBox='0 0 24 24'><path d='M9 3h6M10 3v6L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9V3M7.5 15h9'/></svg><span class='t'>AI Test Lab</span></button>
+      <button class='pb-nav-sell' data-open='pb-sell' type='button'><svg fill='currentColor' viewBox='0 0 24 24'><path d='M4 4h16l1.5 5a3 3 0 0 1-5.2 2.4A3 3 0 0 1 12 12a3 3 0 0 1-4.3-.6A3 3 0 0 1 2.5 9L4 4zm1 9.4A4.9 4.9 0 0 0 8 13.9V20h8v-6.1a4.9 4.9 0 0 0 3 .5V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7.6z'/></svg><span>আপনার কোড বা প্রম্পট বিক্রি করুন</span></button>
     </nav>
     <div class='pb-hact'>
-      <button aria-label='Install App' class='pb-icon-btn' id='pb-install' title='অ্যাপ ইনস্টল করুন' type='button'>📲</button>
-      <button aria-label='Theme' class='pb-icon-btn' id='pb-theme' title='ডার্ক / লাইট মোড' type='button'>🌙</button>
-      <button class='pb-btn pb-btn-sm pb-hide-m' data-open='pb-sell' type='button'>💰 আপনার কোড বা প্রম্পট বিক্রি করুন</button>
+      <button aria-label='AI Test Lab' class='pb-icon-btn pb-lab-ic' data-open='pb-lab' title='AI Test Lab' type='button'><svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.2' viewBox='0 0 24 24'><path d='M9 3h6M10 3v6L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9V3M7.5 15h9'/></svg></button>
+      <button aria-label='Install App' class='pb-icon-btn' id='pb-install' title='অ্যাপ ইনস্টল করুন' type='button'><svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.2' viewBox='0 0 24 24'><path d='M12 3v12m0 0-5-5m5 5 5-5M4 19h16'/></svg></button>
+      <button aria-label='Theme' class='pb-icon-btn' id='pb-theme' title='ডার্ক / লাইট মোড' type='button'></button>
     </div>
-  </div>
+  </div></div>
 </header>
 <div class='pb-wrap'><div class='pb-ad' data-ad='header'></div></div>
 
@@ -574,17 +614,17 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
 <b:if cond='data:view.isHomepage'>
 <section class='pb-hero'>
   <div class='pb-wrap'>
-    <span class='pb-pill'><i></i> নতুন প্রম্পট প্রতিদিন যোগ হচ্ছে</span>
-    <h1>সেরা <span class='pb-grad-text'>AI প্রম্পট ও কোড</span> এক জায়গায়</h1>
-    <p id='pb-tagline'>ChatGPT, Gemini, Midjourney, Claude — সবকিছুর জন্য রেডি-টু-ইউজ প্রম্পট, টেমপ্লেট এবং প্রিমিয়াম সোর্স কোড।</p>
-    <form action='/search' class='pb-search pb-glass' method='get' role='search'>
-      <input aria-label='Search' name='q' placeholder='প্রম্পট বা কোড খুঁজুন…' type='search'/>
-      <button class='pb-btn' type='submit'>🔍 খুঁজুন</button>
+    <h1 id='pb-hero-title'>এক ক্লিকে আপনার প্রিমিয়াম AI প্রম্পট ও টুলস</h1>
+    <p id='pb-tagline'></p>
+    <form action='/search' class='pb-search' method='get' role='search'>
+      <svg fill='none' height='20' stroke='currentColor' stroke-linecap='round' stroke-width='2.4' viewBox='0 0 24 24' width='20'><circle cx='11' cy='11' r='7'/><path d='m20 20-3.5-3.5'/></svg>
+      <input aria-label='Search' name='q' placeholder='প্রম্পট বা কোড খুঁজুন… (যেমন: ChatGPT, Image)' type='search'/>
+      <button class='pb-btn' type='submit'>খুঁজুন</button>
     </form>
     <div class='pb-hero-stats'>
-      <div class='pb-glass'><b id='pb-stat-posts'>—</b>প্রম্পট ও কোড</div>
-      <div class='pb-glass'><b id='pb-stat-prem'>—</b>প্রিমিয়াম</div>
-      <div class='pb-glass'><b>24/7</b>সাপোর্ট</div>
+      <div class='pb-stat'><span class='pb-stat-ic'><svg fill='currentColor' viewBox='0 0 24 24'><path d='m12 2 10 5-10 5L2 7l10-5zm-7.6 8.8L12 14.6l7.6-3.8L22 12l-10 5-10-5 2.4-1.2zm0 5L12 19.6l7.6-3.8L22 17l-10 5-10-5 2.4-1.2z'/></svg></span><div><b id='pb-stat-posts'>—</b><small>মোট পোস্ট</small></div></div>
+      <div class='pb-stat'><span class='pb-stat-ic gold'><svg fill='currentColor' viewBox='0 0 24 24'><path d='M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7zm2 13h14v2H5v-2z'/></svg></span><div><b id='pb-stat-prem'>—</b><small>Premium কন্টেন্ট</small></div></div>
+      <a class='pb-stat' href='#' id='pb-stat-wa' rel='noopener' target='_blank'><span class='pb-stat-ic'><svg fill='currentColor' viewBox='0 0 24 24'><path d='M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.2 14.8l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4zm-3.3 4c-.2 0-.5 0-.8.4-.3.3-1 1-1 2.5s1 2.9 1.2 3.1c.2.2 2 3.2 5 4.3 2.4.9 2.9.8 3.4.7.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.4l-1.9-.9c-.3-.1-.5-.1-.7.2l-.9 1.1c-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.6.3-.5v-.5l-.9-2.2c-.2-.5-.4-.5-.6-.5h-.6z'/></svg></span><div><b>সরাসরি সাপোর্ট</b><small>WhatsApp এ যোগাযোগ</small></div></a>
     </div>
   </div>
 </section>
@@ -655,7 +695,7 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
                 <h2>
                   <b:if cond='data:view.isLabelSearch'>🏷️ <data:view.search.label/>
                   <b:elseif cond='data:view.isSearch'/>🔍 সার্চ রেজাল্ট
-                  <b:else/>⚡ সর্বশেষ প্রম্পট ও কোড</b:if>
+                  <b:else/>সর্বশেষ প্রম্পট</b:if>
                 </h2>
               </div>
               <b:if cond='data:posts.empty'>
@@ -745,7 +785,7 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
     </div>
     <div class='pb-ad' data-ad='sidebar'></div>
     <b:section class='pb-side-sec' id='sidebar' name='Sidebar' showaddelement='yes'>
-      <b:widget id='Label1' locked='false' title='📂 ক্যাটাগরি' type='Label' version='2' visible='true'>
+      <b:widget id='Label1' locked='false' title='Trending categories' type='Label' version='2' visible='true'>
         <b:widget-settings>
           <b:widget-setting name='sorting'>ALPHA</b:widget-setting>
           <b:widget-setting name='display'>LIST</b:widget-setting>
@@ -965,22 +1005,25 @@ function isCtrl(n){return CTRL.indexOf(String(n).trim().toLowerCase())>-1;}
 
 /* ---------- Theme toggle ---------- */
 var root=document.documentElement;
-function syncThemeIcon(){$("#pb-theme").textContent=root.getAttribute("data-theme")==="light"?"🌙":"☀️";}
+var SUN='<svg fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+var MOON='<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>';
+function syncThemeIcon(){$("#pb-theme").innerHTML=root.getAttribute("data-theme")==="light"?MOON:SUN;}
 $("#pb-theme").addEventListener("click",function(){var n=root.getAttribute("data-theme")==="light"?"dark":"light";root.setAttribute("data-theme",n);try{localStorage.setItem("pb-theme",n);}catch(e){}syncThemeIcon();});
 syncThemeIcon();
 
 /* ---------- Header / menu / branding ---------- */
 if(C.logoUrl){$$(".pb-logo-mark").forEach(function(m){m.outerHTML='<img alt="'+esc(C.siteName)+'" src="'+esc(C.logoUrl)+'"/>';});}
-var menuHTML=(C.menu||[]).map(function(m){var on=(location.pathname===m.url||location.pathname+location.search===m.url)?" class=\"on\"":"";return '<a href="'+esc(m.url)+'"'+on+'>'+esc(m.text)+'</a>';}).join("");
+var menuHTML=(C.menu||[]).map(function(m){var on=(location.pathname===m.url||location.pathname+location.search===m.url)?" on":"";return '<a class="pb-nl'+on+'" href="'+esc(m.url)+'">'+esc(m.text)+'</a>';}).join("");
 var mEl=$("#pb-menu");if(mEl)mEl.outerHTML=menuHTML;
 $("#pb-foot-menu").innerHTML=(C.menu||[]).map(function(m){return '<li><a href="'+esc(m.url)+'">'+esc(m.text)+'</a></li>';}).join("");
-if(C.courseLink){var cl=$("#pb-course");cl.href=C.courseLink.url;cl.textContent="🎓 "+C.courseLink.text;}
-if(C.aiLabText)$("#pb-lab-btn").textContent="🧪 "+C.aiLabText;
+if(C.courseLink){var cl=$("#pb-course");cl.href=C.courseLink.url;$(".t",cl).textContent=C.courseLink.text;}
+if(C.aiLabText)$("#pb-lab-btn .t").textContent=C.aiLabText;
+if(C.heroTitle&&$("#pb-hero-title"))$("#pb-hero-title").textContent=C.heroTitle;
 $("#pb-burger").addEventListener("click",function(){$("#pb-nav").classList.toggle("open");});
 if(C.tagline){var tg=$("#pb-foot-tag");if(tg)tg.textContent=C.tagline;}
 $("#pb-copy").textContent=String(C.footerText||"").replace("{year}",new Date().getFullYear());
 var waLink=wa("আসসালামু আলাইকুম, "+(C.siteName||"")+" সম্পর্কে জানতে চাই।");
-$("#pb-fab-wa").href=waLink;$("#pb-foot-wa").href=waLink;$("#pb-foot-mail").href="mailto:"+(C.email||"");
+$("#pb-fab-wa").href=waLink;if($("#pb-stat-wa"))$("#pb-stat-wa").href=waLink;$("#pb-foot-wa").href=waLink;$("#pb-foot-mail").href="mailto:"+(C.email||"");
 var topBtn=$("#pb-top");
 window.addEventListener("scroll",function(){topBtn.classList.toggle("show",window.scrollY>600);},{passive:true});
 topBtn.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"});});
@@ -1323,6 +1366,7 @@ function renderAppsStore(mount){
   if(!mount&&onLabel){mount=$("#pb-main");}
   if(!mount)return;
   var lay=$(".pb-layout");if(lay&&(onLabel||mount.hasAttribute("data-full")))lay.classList.add("pb-apps-mode");
+  if(onLabel)$("#pb-apps-link").classList.add("on");
   renderAppsStore(mount);
 })();
 
