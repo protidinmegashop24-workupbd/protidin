@@ -14,7 +14,8 @@ window.PB_CONFIG = {
   /* ---------- ব্র্যান্ড ---------- */
   siteName   : "PromptBox",
   tagline    : "প্রিমিয়াম AI প্রম্পট ও কোড মার্কেটপ্লেস",
-  logoUrl    : "",                       // খালি থাকলে বিল্ট-ইন লোগো দেখাবে। PNG/SVG লিংক দিলে সেটা দেখাবে
+  logoUrl    : "",                       // হেডার/ফুটারের লোগো। খালি থাকলে বিল্ট-ইন বেগুনি "P" লোগো দেখাবে। নিজের PNG/SVG লিংক দিলে সেটা দেখাবে
+  faviconUrl : "",                       // ব্রাউজার ট্যাবের ছোট আইকন (ফেভিকন)। খালি থাকলে বিল্ট-ইন লোগো
   whatsapp   : "8801XXXXXXXXX",          // এডমিনের WhatsApp নম্বর (কান্ট্রি কোডসহ, + ছাড়া)
   email      : "you@example.com",
 
@@ -172,8 +173,9 @@ window.PB_CONFIG = {
 <meta content='yes' name='mobile-web-app-capable'/>
 <meta content='yes' name='apple-mobile-web-app-capable'/>
 <meta content='black-translucent' name='apple-mobile-web-app-status-bar-style'/>
-<!-- Favicon (বিল্ট-ইন SVG লোগো) — নিজের দিতে চাইলে href বদলান বা Layout > Favicon থেকে আপলোড করুন -->
-<link href='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%237c3aed%22/%3E%3Cstop offset=%221%22 stop-color=%22%2306b6d4%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22url(%23g)%22/%3E%3Cpath d=%22M22 46V18h12a9 9 0 0 1 0 18h-6v10z%22 fill=%22%23fff%22/%3E%3C/svg%3E' rel='icon' type='image/svg+xml'/>
+<!-- Favicon: বিল্ট-ইন PromptBox লোগো। নিজের ফেভিকন দিতে PB_CONFIG.faviconUrl-এ লিংক দিন, অথবা Layout > Favicon থেকে আপলোড করুন -->
+<link href='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEjElEQVR42q2XTWgdVRiGn/ebuSEmarClVC1VEEtqam2pLmoRsZqiC1eKwXbhD1VUEARdF6NQxL+NLiziH6KCdaULF6LSogvpQm+QpokWDbXYRpumYm1+7p05Lu78nJk7k0TwwOUy954533m/93vf7xxRGqO3zWw36WGJ68xsCNxqMwEOM4HAJCSHTIjkW1CYR/Y8Y6ZxiXGz4L1HP+z7zo+nPPCvvbiB5wLTM8gFnSAgI1tMIv+Un1V89ueTPkMk8UrU17/vsTfVyjbw/M7ZLc7FH5tsEHUhyJH7iEk34aqRy2HK30v/TzY/5sw9uPedi8cMwDm3W9Jg9hJgRra4BJ095OlW8r+S+SoET2nKkHsZEYIthu0G0OitMzuC0L4BZ7XIC5ynwWs5z967ZI2Bc8yd82nK1okNt82CQA+AM1O6UwrpMpG/pDx4hlwq1IhP16bhBkPDPaUayegzAj0RIramCFRCoDLn8jlPN5tzLo/zdZuMjTsbOOc4PRFx+liUrZNlStqo/XfMnkMMmFVXc4r8isGAq7eGWKCssgW05hx/TsWc+SUiWoSgIXY91ctV24KCvE98H3H4wAK4wvrT2j8865bT+bpNISMv9LPUiNtw5OAiP36+iJm4cijg9id7wcGhA/NMT8SVqgrLnKvMucT6zSHLDQth+54e1t8Q8MWr85yeiPnpcAuA6Ym4Q29aOylIwHzp5IXmcw5BKFY61l0fsO2eHiTH5KE2k1+3M/8wz6SQQwZhAbmvcxV17o837j+fLdbTJ9ZuCLjpvh7WXNOpyi13NzjZjJiZiguZTJEXVINfeBly304d5T1YWoQmWvOO349GfPXaPHGUG/y1t4S1yFP1SEp+W4HOKXWQssPNnYO/TrlsSt9lOa0Fzq2YgbCb826dd2UgqWY/veVMRYt5pvz5Bd8wEdZx7nfBigSUgkP/KuPSy/O5Z0/ElZz7cQSEwmWL1Hl7OQM+TY2LHGs3hNx4bwNLvKe9AFNH2l3rdQrRFWouLFRphbdX1cDe95c2pbFPWyz+nQfJ1/ODdzIR1iL3vL2yEGvGqaMxxw9HGcdlzjP6ksyHy/Vz2cqCx+0O8skvo1wlFZz754hEBRX9XJ6EKmpg7LNWRlfrQszsScfZEzFxK9V5PeflmgsrOfd0nuq4zHH5TFjOmJVUUkbeCZuAzTkv6za16G4fqPP2IudU9hb/8BJWcV7WeWshd7j2Al1dbSmd1yHPMiUx7Xt7AXnicL81I1pznQ0c/7a9pLdX95Zu5IktT4cYTeBOq0Cefp//w3Hw6Tn6V4l/zricc5bXeRdyFWy+aXJqWg1y//Tr2o4LafBazleA3D+4BjQNi94WLFoFcl8FflcrnoKT+0OZc6vh3EgvLedji96yxz8a+Bnj2Trky/Xz/8h5VnjC7btrtPe4AQzM978s6YflkFf1cytzbvWcZ6Yn15zd3Hid9Ew48okiqW+HmV6UiP5PnfucS4owXmpY4+aREUWF23E6PnjkwnYn95BMQ4Ihk1aTcV1xG17qPtHZ7Axy4xLHLODdXaM9hev5v6ToaE/gGo4YAAAAAElFTkSuQmCC' rel='icon' sizes='32x32' type='image/png'/>
+<link href='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%237c3aed%22/%3E%3Cstop offset=%221%22 stop-color=%22%23c084fc%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22url%28%23g%29%22/%3E%3Cpath d=%22M22.5 47V18.5h10a9.5 9.5 0 0 1 0 19h-10%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%227%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M48 8.5l1.9 4.6 4.6 1.9-4.6 1.9L48 21.5l-1.9-4.6-4.6-1.9 4.6-1.9z%22 fill=%22%23fff%22/%3E%3C/svg%3E' rel='icon' type='image/svg+xml'/>
 <meta expr:content='data:blog.title.escaped' property='og:site_name'/>
 <meta content='summary_large_image' name='twitter:card'/>
 <meta expr:content='data:view.title.escaped' name='twitter:title'/>
@@ -254,7 +256,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .pb-hrow{position:relative;display:flex;align-items:center;gap:14px;min-height:78px;padding:0 16px 0 20px;border-radius:24px;background:var(--hdr);border:1px solid var(--line);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:0 12px 40px -18px rgba(0,0,0,.45)}
 .pb-logo{display:flex;align-items:center;gap:12px;font-family:var(--f-en);font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--head);white-space:nowrap}
 .pb-logo img{height:44px;width:auto}
-.pb-logo-mark{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#8b5cf6,#c084fc);display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;box-shadow:0 8px 22px -6px rgba(139,92,246,.75)}
+.pb-logo-mark{flex:0 0 44px;width:44px;height:44px;border-radius:13px;display:block;box-shadow:0 8px 22px -6px rgba(139,92,246,.75)}
+.pb-logo-mark svg{display:block;width:100%;height:100%}
+.pb-logo img{height:44px;width:auto;border-radius:12px}
 .pb-nav{display:flex;align-items:center;gap:8px;margin:0 auto}
 .pb-nav>a,.pb-nav>button{display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 20px;border-radius:99px;border:1px solid transparent;font-family:var(--f-en);font-weight:800;font-size:15.5px;letter-spacing:.01em;white-space:nowrap;cursor:pointer;background:none;color:var(--muted);transition:transform .2s,filter .2s,box-shadow .2s}
 .pb-nav>a:hover,.pb-nav>button:hover{transform:translateY(-1px);filter:brightness(1.08)}
@@ -282,7 +286,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   .pb-nav .pb-lab-tab{display:inline-flex;background:rgba(236,72,153,.12);color:#f472b6}
   .pb-burger{display:grid}
   .pb-hact .pb-lab-ic{display:none}
-  .pb-logo{font-size:19px}.pb-logo-mark{width:38px;height:38px;font-size:19px}
+  .pb-logo{font-size:19px}.pb-logo-mark{flex-basis:38px;width:38px;height:38px}.pb-logo img{height:38px}
 }
 
 /* ===== Hero ===== */
@@ -605,7 +609,7 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
 <header class='pb-header'>
   <div class='pb-wrap pb-hwrap'><div class='pb-hrow'>
     <button aria-label='Menu' class='pb-icon-btn pb-burger' id='pb-burger' type='button'><svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-width='2.4' viewBox='0 0 24 24'><path d='M4 7h16M4 12h16M4 17h16'/></svg></button>
-    <a class='pb-logo' expr:href='data:blog.homepageUrl' id='pb-logo'><span class='pb-logo-mark'>P</span><span id='pb-logo-text'><data:blog.title/></span></a>
+    <a class='pb-logo' expr:href='data:blog.homepageUrl' id='pb-logo'><span class='pb-logo-mark'><svg aria-hidden='true' viewBox='0 0 64 64'><defs><linearGradient id='pbLogoG' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#7c3aed'/><stop offset='1' stop-color='#c084fc'/></linearGradient></defs><rect width='64' height='64' rx='16' fill='url(#pbLogoG)'/><path d='M22.5 47V18.5h10a9.5 9.5 0 0 1 0 19h-10' fill='none' stroke='#fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/><path d='M48 8.5l1.9 4.6 4.6 1.9-4.6 1.9L48 21.5l-1.9-4.6-4.6-1.9 4.6-1.9z' fill='#fff'/></svg></span><span id='pb-logo-text'><data:blog.title/></span></a>
     <nav class='pb-nav' id='pb-nav'>
       <span id='pb-menu'></span>
       <a class='pb-nav-app' href='/search/label/app' id='pb-apps-link'><svg fill='none' stroke='currentColor' stroke-width='2.2' viewBox='0 0 24 24'><rect height='20' rx='3' width='12' x='6' y='2'/><path d='M11 18h2' stroke-linecap='round'/></svg><span>Apps Store</span></a>
@@ -825,7 +829,7 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
   <div class='pb-wrap'>
     <div class='pb-fcols'>
       <div>
-        <a class='pb-logo' expr:href='data:blog.homepageUrl'><span class='pb-logo-mark'>P</span><span><data:blog.title/></span></a>
+        <a class='pb-logo' expr:href='data:blog.homepageUrl'><span class='pb-logo-mark'><svg aria-hidden='true' viewBox='0 0 64 64'><defs><linearGradient id='pbLogoG2' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#7c3aed'/><stop offset='1' stop-color='#c084fc'/></linearGradient></defs><rect width='64' height='64' rx='16' fill='url(#pbLogoG2)'/><path d='M22.5 47V18.5h10a9.5 9.5 0 0 1 0 19h-10' fill='none' stroke='#fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/><path d='M48 8.5l1.9 4.6 4.6 1.9-4.6 1.9L48 21.5l-1.9-4.6-4.6-1.9 4.6-1.9z' fill='#fff'/></svg></span><span><data:blog.title/></span></a>
         <p id='pb-foot-tag'>প্রিমিয়াম AI প্রম্পট ও কোড মার্কেটপ্লেস</p>
       </div>
       <div><h4>লিংক</h4><ul id='pb-foot-menu'></ul></div>
@@ -1026,6 +1030,11 @@ syncThemeIcon();
 
 /* ---------- Header / menu / branding ---------- */
 if(C.logoUrl){$$(".pb-logo-mark").forEach(function(m){m.outerHTML='<img alt="'+esc(C.siteName)+'" src="'+esc(C.logoUrl)+'"/>';});}
+if(C.faviconUrl&&!root.classList.contains("pb-appmode")){
+  $$('link[rel~="icon"]').forEach(function(l,i){if(i)l.remove();else{l.removeAttribute("type");l.removeAttribute("sizes");l.href=C.faviconUrl;}});
+}
+/* বিল্ট-ইন লোগো (অ্যাপ আইকন বানাতে লাগে) */
+var LOGO_SVG='data:image/svg+xml,'+encodeURIComponent('<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#c084fc"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="M22.5 47V18.5h10a9.5 9.5 0 0 1 0 19h-10" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 8.5l1.9 4.6 4.6 1.9-4.6 1.9L48 21.5l-1.9-4.6-4.6-1.9 4.6-1.9z" fill="#fff"/></svg>');
 var menuHTML=(C.menu||[]).map(function(m){var on=(location.pathname===m.url||location.pathname+location.search===m.url)?" on":"";return '<a class="pb-nl'+on+'" href="'+esc(m.url)+'">'+esc(m.text)+'</a>';}).join("");
 var mEl=$("#pb-menu");if(mEl)mEl.outerHTML=menuHTML;
 $("#pb-foot-menu").innerHTML=(C.menu||[]).map(function(m){return '<li><a href="'+esc(m.url)+'">'+esc(m.text)+'</a></li>';}).join("");
@@ -1389,18 +1398,17 @@ var rv=$("#pb-reviews");if(rv)rv.innerHTML=(C.reviews||[]).map(function(r){var s
 
 /* ---------- PWA: manifest generator + install ---------- */
 (function(){
-  var P=C.pwa||{},svg=$('link[rel="icon"][type="image/svg+xml"]'),icons=[];
-  if(P.icon192)icons.push({src:P.icon192,sizes:"192x192",type:"image/png",purpose:"any maskable"});
-  if(P.icon512)icons.push({src:P.icon512,sizes:"512x512",type:"image/png",purpose:"any maskable"});
-  if(!icons.length&&svg)icons.push({src:svg.href,sizes:"any",type:"image/svg+xml"});
+  var P=C.pwa||{},icons=[];
   var origin=location.origin+"/";
   var man={name:C.siteName||document.title,short_name:P.shortName||C.siteName,description:C.tagline||"",start_url:origin,scope:origin,id:origin,display:"standalone",orientation:"portrait",background_color:"#070910",theme_color:P.themeColor||"#070910",icons:icons};
   function addMan(){var l=document.createElement("link");l.rel="manifest";l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));document.head.appendChild(l);}
   if(!APPMODE){
-    if(P.icon512||P.icon192)makeAppIcons(man.name,"",P.icon512||P.icon192,function(r){man.icons=[{src:r.i192,sizes:"192x192",type:"image/png",purpose:"any"},{src:r.i512,sizes:"512x512",type:"image/png",purpose:"any"}];addMan();});
-    else addMan();
+    /* অ্যাপ আইকন: pwa.icon → logoUrl → বিল্ট-ইন লোগো, সবসময় ১৯২ ও ৫১২ PNG বানিয়ে */
+    makeAppIcons(man.name,"",P.icon512||P.icon192||C.logoUrl||LOGO_SVG,function(r){
+      man.icons=[{src:r.i192,sizes:"192x192",type:"image/png",purpose:"any"},{src:r.i512,sizes:"512x512",type:"image/png",purpose:"any"}];addMan();
+      var a=document.createElement("link");a.rel="apple-touch-icon";a.href=P.icon192||r.i192;document.head.appendChild(a);
+    });
   }
-  if(P.icon192&&!APPMODE){var a=document.createElement("link");a.rel="apple-touch-icon";a.href=P.icon192;document.head.appendChild(a);}
   var deferred=null,btn=$("#pb-install");
   window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferred=e;btn.style.boxShadow="0 0 18px rgba(6,182,212,.8)";});
   window.addEventListener("appinstalled",function(){toast("অ্যাপ ইনস্টল হয়েছে ✓");btn.remove();$$(".pb-do-install").forEach(function(b){b.remove();});});
