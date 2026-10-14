@@ -106,7 +106,8 @@ window.PB_CONFIG = {
       copy     : true,                    // কোড বক্সের Copy বাটন
       download : true,                    // কোড বক্সের Download বাটন
       install  : true,                    // Apps Store-এর ইনস্টল বাটন
-      link     : true                     // পোস্টের ভেতরের ফাইল-লিংক (নিচের linkDomains) আর data-gate দেওয়া লিংক
+      link     : true,                    // পোস্টের ভেতরের ফাইল-লিংক (নিচের linkDomains), pb-dl-btn বাটন আর data-gate দেওয়া লিংক
+      view     : true                     // হোমপেজ/লেবেল পেজে কোনো পোস্টে (ছবি, টাইটেল, View) ক্লিক করলে
     },
     linkDomains : ["drive.google.com", "docs.google.com", "mediafire.com", "mega.nz", "dropbox.com", "terabox.com", "github.com", "1drv.ms", "pixeldrain.com"],
     remember : "page",                    // "page" = পেজে একবার, "session" = ব্রাউজার বন্ধ না করা পর্যন্ত একবার, "none" = প্রতিবার
@@ -114,10 +115,16 @@ window.PB_CONFIG = {
       copy     : "কোড পেতে Human Verification করুন।",
       download : "ফাইল পেতে Human Verification করুন।",
       install  : "অ্যাপ পেতে Human Verification করুন।",
-      link     : "লিংক পেতে Human Verification করুন।"
+      link     : "লিংক পেতে Human Verification করুন।",
+      view     : "পোস্ট দেখতে Human Verification করুন।"
     },
     text : "নিচের ধাপগুলো সম্পন্ন করে আপনি মানুষ তা নিশ্চিত করুন।"
   },
+
+  /* ---------- কোড বক্স (Copy / Download বাটনসহ) ----------
+     true হলে সব পোস্টের <pre> আপনা-আপনি কোড বক্স হবে (download লেবেল লাগবে না)।
+     পোস্টে <textarea class="codebox">…</textarea> বা <div class="codebox">…</div> লিখলেও কোড বক্স হবে। */
+  codeBoxAllPre : true,
 
   /* ---------- হোমপেজ ---------- */
   postsPerPage  : 6,
@@ -372,6 +379,12 @@ a.pb-stat:hover{transform:translateY(-3px);box-shadow:var(--glow)}
 .pb-neon-act button:hover{background:var(--grad);border-color:transparent}
 .pb-neon-act button.ok{background:#16a34a;border-color:#16a34a}
 .pb-neon pre,.pb-post-body .pb-neon pre{margin:0;padding:18px;max-height:520px;overflow:auto;background:transparent!important;color:#c9f7ff;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;text-shadow:0 0 6px rgba(0,225,255,.35);border-radius:0}
+
+/* ===== ফাইল ডাউনলোড বাটন (পোস্টে <a class="pb-dl-btn">) ===== */
+.pb-post-body a.pb-dl-btn{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px 0;padding:16px 22px;border-radius:16px;font-weight:800;font-size:16px;color:#fff;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#06b6d4);box-shadow:0 12px 30px -10px rgba(124,58,237,.7);transition:transform .2s}
+.pb-post-body a.pb-dl-btn::before{content:"⬇"}
+.pb-post-body a.pb-dl-btn:hover{transform:translateY(-2px)}
+.pb-post-body textarea.codebox{display:none}
 
 /* ===== Lock (tbp-root) ===== */
 .tbp-root{position:relative;padding:26px;border-radius:20px;background:linear-gradient(160deg,rgba(124,58,237,.16),rgba(6,182,212,.08));border:1px solid rgba(124,58,237,.4);box-shadow:var(--glow);margin:6px 0 20px}
@@ -1445,13 +1458,23 @@ function gateAction(kind,fn){
 document.addEventListener("click",function(e){
   var G=C.actionGate||{};if(!G.enabled||!(G.on||{}).link||APPMODE)return;
   var a=e.target.closest("a[href]");if(!a||e.defaultPrevented)return;
-  var gated=a.hasAttribute("data-gate");
+  var gated=a.hasAttribute("data-gate")||a.classList.contains("pb-dl-btn");
   if(!gated&&a.closest(".pb-post-body")){
     try{var h=new URL(a.href,location.href).hostname.replace(/^www\./,"");gated=(G.linkDomains||[]).some(function(d){return h===d||h.slice(-(d.length+1))==="."+d;});}catch(x){}
   }
   if(!gated||agPassed||(G.remember==="session"&&ss.get("pb-ag-pass")))return;
   e.preventDefault();
-  var href=a.href;gateAction("link",function(){window.open(href,"_blank","noopener");});
+  var href=a.href;gateAction(a.classList.contains("pb-dl-btn")?"download":"link",function(){window.open(href,"_blank","noopener");});
+},true);
+
+/* পোস্ট কার্ডে ক্লিক (ছবি / টাইটেল / View) → Human Verification → পোস্ট খুলবে */
+document.addEventListener("click",function(e){
+  var G=C.actionGate||{};if(!G.enabled||!(G.on||{}).view||APPMODE)return;
+  if(e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey)return;
+  var a=e.target.closest(".pb-card a[href]");if(!a||a.classList.contains("pb-cat"))return;
+  if(agPassed||(G.remember==="session"&&ss.get("pb-ag-pass")))return;
+  e.preventDefault();
+  var href=a.href;gateAction("view",function(){location.href=href;});
 },true);
 
 /* ---------- সাইট গেট: পপআপ → ভেরিফাই (অ্যাড) → কনটেন্ট ---------- */
@@ -1512,7 +1535,14 @@ if(post){
     });
     return w;
   }
+  function codeText(el){return (el.tagName==="TEXTAREA"?el.value:el.innerText).replace(/^\n+|\s+$/g,"");}
+  /* লেবেল ছাড়াই: <pre> (codeBoxAllPre হলে), .codebox (textarea/div) → কোড বক্স */
+  function buildCodeBoxes(){
+    var els=$$(".codebox"+(C.codeBoxAllPre===false?"":",pre"),body).filter(function(el){return !el.closest(".pb-neon")&&!(el.tagName==="PRE"&&el.closest(".codebox"));});
+    els.forEach(function(el,i){el.parentNode.replaceChild(neonBox(codeText(el),i),el);});
+  }
   function buildNeon(){
+    if($(".codebox",body)){buildCodeBoxes();return;}
     var pres=$$("pre",body);
     if(pres.length){pres.forEach(function(p,i){p.parentNode.replaceChild(neonBox(p.innerText.replace(/\n$/,""),i),p);});}
     else{
@@ -1572,7 +1602,7 @@ if(post){
 
   /* ---- ফ্লো: verify → lock → download ---- */
   try{
-    if(has("download"))buildNeon();
+    if(has("download"))buildNeon();else buildCodeBoxes();
     var afterVerify=function(){if(has("lock")&&!ls.get("pb-unlock-"+sid,0))showLock();else{$$("[data-pin],[data-price]",body).forEach(function(x){x.remove();});reveal();}};
     if(has("app"))buildAppHero();
     if(has("verify")){body.classList.add("pb-hidden");reveal();runVerify("post-"+sid,function(){body.classList.remove("pb-hidden");afterVerify();});}
