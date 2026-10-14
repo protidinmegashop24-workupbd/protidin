@@ -96,6 +96,31 @@ window.PB_CONFIG = {
     text       : "নিচের ভেরিফাই বাটনে চাপুন। একটি স্পনসর পেজ খুলবে, কয়েক সেকেন্ড পর ফিরে এসে কনটেন্ট দেখুন।"
   },
 
+  /* ---------- অ্যাকশন গেট (Copy / Download / Install / ফাইল লিংকে চাপলে Human Verification পপআপ) ----------
+     ▼▼ এখানেই আপনার অ্যাডের Direct Link বসাবেন — প্রতিটা ধাপের directLink-এ একটা করে ▼▼ */
+  actionGate : {
+    enabled  : true,
+    steps : [
+      { directLink: "", seconds: 5 },     // ধাপ ১ — Adsterra / Monetag Direct Link
+      { directLink: "", seconds: 5 }      // ধাপ ২ — আরেকটা Direct Link (একই লিংকও দিতে পারেন)
+    ],
+    on : {                                // কোন কাজে পপআপ আসবে
+      copy     : true,                    // কোড বক্সের Copy বাটন
+      download : true,                    // কোড বক্সের Download বাটন
+      install  : true,                    // Apps Store-এর ইনস্টল বাটন
+      link     : true                     // পোস্টের ভেতরের ফাইল-লিংক (নিচের linkDomains) আর data-gate দেওয়া লিংক
+    },
+    linkDomains : ["drive.google.com", "docs.google.com", "mediafire.com", "mega.nz", "dropbox.com", "terabox.com", "github.com", "1drv.ms", "pixeldrain.com"],
+    remember : "page",                    // "page" = পেজে একবার, "session" = ব্রাউজার বন্ধ না করা পর্যন্ত একবার, "none" = প্রতিবার
+    titles : {
+      copy     : "কোড পেতে Human Verification করুন।",
+      download : "ফাইল পেতে Human Verification করুন।",
+      install  : "অ্যাপ পেতে Human Verification করুন।",
+      link     : "লিংক পেতে Human Verification করুন।"
+    },
+    text : "নিচের ধাপগুলো সম্পন্ন করে আপনি মানুষ তা নিশ্চিত করুন।"
+  },
+
   /* ---------- হোমপেজ ---------- */
   postsPerPage  : 6,
   premiumLabels : ["lock", "Lock", "LOCK"],
@@ -434,6 +459,44 @@ html.pb-appmode body::before{display:none}
 .pb-w2a-pub p{margin:0 0 10px;font-size:14px}
 details.pb-adv{margin-top:2px}
 details.pb-adv summary{cursor:pointer;font-size:13px;color:var(--p2);font-weight:700}
+
+/* ===== Action gate (Human Verification ধাপ) ===== */
+.pb-ag{max-width:520px;padding:2px;border-radius:28px;background:linear-gradient(160deg,#a855f7,#1e1b3a 45%,#1e1b3a 70%,#22d3ee)}
+.pb-ag-in{border-radius:26px;background:var(--bg2);padding:26px}
+@media (max-width:480px){.pb-ag-in{padding:18px}}
+.pb-ag-head{display:flex;gap:16px;align-items:center}
+.pb-ag-logo{flex:0 0 64px;width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#c084fc);box-shadow:0 10px 26px -8px rgba(168,85,247,.8)}
+.pb-ag-head h3{font-size:19px;margin:0 0 4px}
+.pb-ag-head p{margin:0;color:var(--muted);font-size:14px}
+.pb-ag-prog{display:flex;align-items:center;gap:14px;margin:22px 0 18px}
+.pb-ag-bar{flex:1;height:8px;border-radius:9px;background:var(--card2);overflow:hidden}
+.pb-ag-bar i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#7c3aed,#22d3ee);transition:width .4s}
+.pb-ag-cnt{font-weight:800;color:#a78bfa;font-family:var(--f-head);font-size:14px}
+.pb-ag-step{padding:16px;border-radius:20px;border:1px solid var(--line);background:var(--card);margin-bottom:14px;transition:.3s}
+.pb-ag-step.on{border-color:rgba(167,139,250,.7);background:rgba(124,58,237,.08);box-shadow:0 0 0 4px rgba(124,58,237,.08)}
+.pb-ag-step.lock{opacity:.5}
+.pb-ag-step.ok{border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.06)}
+.pb-ag-sh{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.pb-ag-num{flex:0 0 38px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:rgba(124,58,237,.18);color:#a78bfa}
+.pb-ag-step.ok .pb-ag-num{background:rgba(34,197,94,.2);color:var(--ok)}
+.pb-ag-sh b{display:block;color:var(--head);font-size:15.5px}
+.pb-ag-sh small{color:var(--muted);font-size:13px}
+.pb-ag-btn{width:100%;display:flex;align-items:center;gap:16px;padding:14px 18px;border-radius:16px;border:1px solid var(--line);background:var(--bg);cursor:pointer;text-align:left;transition:.2s}
+.pb-ag-step.on .pb-ag-btn{border-color:rgba(167,139,250,.8)}
+.pb-ag-step.on .pb-ag-btn:hover{box-shadow:0 0 20px -4px rgba(124,58,237,.7)}
+.pb-ag-btn[disabled]{cursor:not-allowed}
+.pb-ag-box{flex:0 0 34px;width:34px;height:34px;border-radius:9px;border:2px solid #8b5cf6;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff}
+.pb-ag-step.lock .pb-ag-box{border-color:var(--muted)}
+.pb-ag-step.ok .pb-ag-box{background:var(--ok);border-color:var(--ok)}
+.pb-ag-box.spin{border-color:rgba(139,92,246,.3);border-top-color:#8b5cf6;border-radius:50%;animation:pbspin .8s linear infinite}
+@keyframes pbspin{to{transform:rotate(360deg)}}
+.pb-ag-lbl{flex:1;font-weight:800;font-size:17px;color:var(--head)}
+.pb-ag-sec{display:flex;flex-direction:column;align-items:center;font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--muted);gap:2px}
+.pb-ag-foot{display:flex;gap:12px;margin-top:8px}
+.pb-ag-foot .pb-btn{padding:16px;border-radius:99px;font-size:15px}
+.pb-ag-go{flex:1;background:linear-gradient(135deg,#16a34a,#22c55e)}
+.pb-ag-go[disabled]{opacity:.45;filter:saturate(.6)}
+.pb-ag-cancel{background:var(--card2);color:var(--text);border:1px solid var(--line);box-shadow:none}
 
 /* ===== Site gate ===== */
 html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:none;user-select:none}
@@ -833,6 +896,24 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
   </div>
 </div>
 
+<!-- ================= MODAL: ACTION GATE (Human Verification) ================= -->
+<div aria-modal='true' class='pb-modal' id='pb-agate' role='dialog'>
+  <div class='pb-mbox pb-ag'>
+    <div class='pb-ag-in'>
+      <div class='pb-ag-head'>
+        <div class='pb-ag-logo'><svg fill='#fff' height='30' viewBox='0 0 24 24' width='30'><path d='M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm0 2.2 6 2.2V11c0 4-2.6 7.8-6 8.9V4.2z'/></svg></div>
+        <div><h3 id='pb-ag-title'></h3><p id='pb-ag-text'></p></div>
+      </div>
+      <div class='pb-ag-prog'><div class='pb-ag-bar'><i id='pb-ag-bar'></i></div><span class='pb-ag-cnt' id='pb-ag-cnt'></span></div>
+      <div id='pb-ag-steps'></div>
+      <div class='pb-ag-foot'>
+        <button class='pb-btn pb-ag-go' disabled='disabled' id='pb-ag-go' type='button'>🔓 এক্সেস নিন</button>
+        <button class='pb-btn pb-ag-cancel' id='pb-ag-cancel' type='button'>বাতিল</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= MODAL: SITE GATE ================= -->
 <div aria-modal='true' class='pb-modal' id='pb-sitegate' role='dialog'>
   <div class='pb-mbox pb-sg'>
@@ -913,9 +994,9 @@ function closeM(m){m.classList.remove("open");if(!$(".pb-modal.open"))document.b
 document.addEventListener("click",function(e){
   var o=e.target.closest("[data-open]");if(o){e.preventDefault();openM(o.getAttribute("data-open"));$("#pb-nav").classList.remove("open");return;}
   var c=e.target.closest("[data-close]");if(c){closeM(c.closest(".pb-modal"));return;}
-  if(e.target.classList.contains("pb-modal")&&e.target.id!=="pb-verify"&&e.target.id!=="pb-sitegate")closeM(e.target);
+  if(e.target.classList.contains("pb-modal")&&e.target.id!=="pb-verify"&&e.target.id!=="pb-sitegate"&&e.target.id!=="pb-agate")closeM(e.target);
 });
-document.addEventListener("keydown",function(e){if(e.key==="Escape")$$(".pb-modal.open").forEach(function(m){if(m.id!=="pb-verify"&&m.id!=="pb-sitegate")closeM(m);});});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")$$(".pb-modal.open").forEach(function(m){if(m.id!=="pb-verify"&&m.id!=="pb-sitegate"&&m.id!=="pb-agate")closeM(m);});});
 
 /* ---------- Sell form → WhatsApp ---------- */
 $("#pb-sell-form").addEventListener("submit",function(e){
@@ -1196,7 +1277,9 @@ function installApp(app){
     else if(location.href.split(/[?#]/)[0]!==app.url.split(/[?#]/)[0])location.href=app.url;
     else toast("এই অ্যাপের ডাউনলোড লিংক এখনো দেওয়া হয়নি");
   };
-  if(A.verify!==false)runVerify("app-"+app.id,go,{cancel:true,label:"⬇ এখনই ইনস্টল করুন"});else go();
+  var AG=C.actionGate||{};
+  if(AG.enabled&&(AG.on||{}).install&&(AG.steps||[]).length)gateAction("install",go);
+  else if(A.verify!==false)runVerify("app-"+app.id,go,{cancel:true,label:"⬇ এখনই ইনস্টল করুন"});else go();
 }
 function shareApp(app){
   if(navigator.share){navigator.share({title:app.title,url:app.url}).catch(function(){});}
@@ -1271,6 +1354,62 @@ var rv=$("#pb-reviews");if(rv)rv.innerHTML=(C.reviews||[]).map(function(r){var s
   });
 })();
 
+/* ---------- অ্যাকশন গেট: Copy / Download / Install / ফাইল লিংকের আগে Human Verification ---------- */
+var agPassed=false,agRun=0;
+function bnNum(n){return String(n).replace(/\d/g,function(d){return "০১২৩৪৫৬৭৮৯"[d];});}
+function gateAction(kind,fn){
+  var G=C.actionGate||{},steps=(G.steps||[]).slice(0,5);
+  if(!G.enabled||!steps.length||!(G.on||{})[kind]||APPMODE){fn();return;}
+  if(agPassed||(G.remember==="session"&&ss.get("pb-ag-pass"))){fn();return;}
+  var run=++agRun,done=0,total=steps.length,wrap=$("#pb-ag-steps"),go=$("#pb-ag-go");
+  $("#pb-ag-title").textContent=(G.titles||{})[kind]||"Human Verification করুন।";
+  $("#pb-ag-text").textContent=G.text||"";
+  var shield='<span class="pb-ag-sec"><svg fill="#8b5cf6" height="20" viewBox="0 0 24 24" width="20"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3z"/></svg>SECURE</span>';
+  wrap.innerHTML=steps.map(function(st,i){
+    return '<div class="pb-ag-step '+(i?"lock":"on")+'" data-i="'+i+'"><div class="pb-ag-sh"><span class="pb-ag-num">'+bnNum(i+1)+'</span><div><b>Human Verification '+bnNum(i+1)+'</b><small>বাটনে ক্লিক করুন, '+bnNum(+st.seconds||5)+' সেকেন্ডেই ভেরিফাই হয়ে যাবে</small></div></div>'+
+      '<button type="button" class="pb-ag-btn"'+(i?' disabled':'')+'><span class="pb-ag-box">'+(i?"🔒":"")+'</span><span class="pb-ag-lbl">Human Verify</span>'+shield+'</button></div>';
+  }).join("");
+  function prog(){$("#pb-ag-bar").style.width=(done/total*100)+"%";$("#pb-ag-cnt").textContent=bnNum(done)+"/"+bnNum(total);go.disabled=done<total;}
+  prog();
+  $$(".pb-ag-step",wrap).forEach(function(el,i){
+    var btn=$(".pb-ag-btn",el),box=$(".pb-ag-box",el),started=false;
+    btn.onclick=function(){
+      if(started||el.classList.contains("lock"))return;started=true;
+      var st=steps[i];if(st.directLink)window.open(st.directLink,"_blank","noopener");
+      var left=Math.max(1,+st.seconds||5);box.classList.add("spin");$(".pb-ag-lbl",el).textContent="ভেরিফাই হচ্ছে… "+bnNum(left)+"s";
+      (function tick(){
+        if(run!==agRun)return;
+        if(left<=0){
+          box.classList.remove("spin");box.textContent="✓";el.classList.remove("on");el.classList.add("ok");$(".pb-ag-lbl",el).textContent="Verified";btn.disabled=true;done++;prog();
+          var nx=el.nextElementSibling;if(nx){nx.classList.remove("lock");nx.classList.add("on");var nb=$(".pb-ag-btn",nx);nb.disabled=false;$(".pb-ag-box",nx).textContent="";}
+          return;
+        }
+        $(".pb-ag-lbl",el).textContent="ভেরিফাই হচ্ছে… "+bnNum(left)+"s";left--;setTimeout(tick,1000);
+      })();
+    };
+  });
+  go.onclick=function(){
+    if(done<total)return;
+    if(G.remember==="session")ss.set("pb-ag-pass","1");
+    if(G.remember!=="none")agPassed=true;
+    closeM($("#pb-agate"));fn();
+  };
+  $("#pb-ag-cancel").onclick=function(){agRun++;closeM($("#pb-agate"));};
+  openM("pb-agate");
+}
+/* পোস্টের ভেতরের ফাইল-লিংক (drive, mediafire…) আর data-gate দেওয়া যেকোনো লিংক */
+document.addEventListener("click",function(e){
+  var G=C.actionGate||{};if(!G.enabled||!(G.on||{}).link||APPMODE)return;
+  var a=e.target.closest("a[href]");if(!a||e.defaultPrevented)return;
+  var gated=a.hasAttribute("data-gate");
+  if(!gated&&a.closest(".pb-post-body")){
+    try{var h=new URL(a.href,location.href).hostname.replace(/^www\./,"");gated=(G.linkDomains||[]).some(function(d){return h===d||h.slice(-(d.length+1))==="."+d;});}catch(x){}
+  }
+  if(!gated||agPassed||(G.remember==="session"&&ss.get("pb-ag-pass")))return;
+  e.preventDefault();
+  var href=a.href;gateAction("link",function(){window.open(href,"_blank","noopener");});
+},true);
+
 /* ---------- সাইট গেট: পপআপ → ভেরিফাই (অ্যাড) → কনটেন্ট ---------- */
 (function(){
   var G=C.siteGate||{};
@@ -1323,8 +1462,8 @@ if(post){
     $("pre",w).textContent=text;
     w.addEventListener("click",function(e){
       var b=e.target.closest("button[data-a]");if(!b)return;var a=b.getAttribute("data-a");
-      if(a==="copy"){copyText(text).then(function(){b.textContent="✓ Copied!";b.classList.add("ok");bumpCopy();setTimeout(function(){b.textContent="⧉ Copy";b.classList.remove("ok");},1800);});}
-      else if(a==="dl"){var u=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));var d=document.createElement("a");d.href=u;d.download=name;document.body.appendChild(d);d.click();d.remove();setTimeout(function(){URL.revokeObjectURL(u);},1500);bumpCopy();toast("ডাউনলোড শুরু হয়েছে ⬇");}
+      if(a==="copy")gateAction("copy",function(){copyText(text).then(function(){b.textContent="✓ Copied!";b.classList.add("ok");bumpCopy();setTimeout(function(){b.textContent="⧉ Copy";b.classList.remove("ok");},1800);});});
+      else if(a==="dl")gateAction("download",function(){var u=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));var d=document.createElement("a");d.href=u;d.download=name;document.body.appendChild(d);d.click();d.remove();setTimeout(function(){URL.revokeObjectURL(u);},1500);bumpCopy();toast("ডাউনলোড শুরু হয়েছে ⬇");});
       else if(a==="lab"){window.PBLab(text);}
     });
     return w;
