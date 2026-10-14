@@ -50,7 +50,7 @@ window.PB_CONFIG = {
       { text: "আমাদের YouTube চ্যানেল সাবস্ক্রাইব করুন", url: "https://youtube.com/" },
       { text: "Telegram চ্যানেলে জয়েন করুন",          url: "https://t.me/" }
     ],
-    adHTML : '<a href="#" target="_blank" rel="nofollow sponsored" style="display:block;padding:22px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;text-align:center;font-weight:700">এখানে আপনার বিজ্ঞাপন (CONFIG.verify.adHTML)</a>'
+    adHTML : ""                           // অ্যাড কোড এখানে না দিয়ে নিচের HTML-এ "মানব যাচাইকরণ পপআপ" চিহ্নিত জায়গায় পেস্ট করাই সহজ
   },
 
   /* ---------- অ্যাড স্লট (AdSense কোডও বসানো যাবে) ---------- */
@@ -90,7 +90,7 @@ window.PB_CONFIG = {
     directLink : "",                     // Adsterra / Monetag Direct Link (ভেরিফাই চাপলে নতুন ট্যাবে খুলবে)
     seconds    : 5,                      // অ্যাড ট্যাবে কত সেকেন্ড থাকতে হবে
     countAway  : true,                   // true = শুধু অ্যাড ট্যাবে থাকার সময় কাউন্ট হবে
-    adHTML     : "",                     // পপআপের ভেতরে ব্যানার অ্যাড (ঐচ্ছিক)
+    adHTML     : "",                     // ব্যানার অ্যাড: এখানে না দিয়ে HTML-এ "সাইট খুললে আসা পপআপ" চিহ্নিত জায়গায় পেস্ট করাই সহজ
     title      : "কনটেন্ট আনলক করুন",
     text       : "নিচের ভেরিফাই বাটনে চাপুন। একটি স্পনসর পেজ খুলবে, কয়েক সেকেন্ড পর ফিরে এসে কনটেন্ট দেখুন।"
   },
@@ -119,7 +119,8 @@ window.PB_CONFIG = {
       link     : "লিংক পেতে Human Verification করুন।",
       view     : "পোস্ট দেখতে Human Verification করুন।"
     },
-    text : "নিচের ধাপগুলো সম্পন্ন করে আপনি মানুষ তা নিশ্চিত করুন।"
+    text : "নিচের ধাপগুলো সম্পন্ন করে আপনি মানুষ তা নিশ্চিত করুন।",
+    adHTML : ""                          // ব্যানার অ্যাড: HTML-এ "Human Verification (Copy/Download) পপআপ" চিহ্নিত জায়গায় পেস্ট করাও যায়
   },
 
   /* ---------- কোড বক্স (Copy / Download বাটনসহ) ----------
@@ -562,7 +563,8 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
 .pb-sg .pb-btn{width:100%;padding:14px;font-size:15px;margin-top:10px}
 .pb-sg-wait{min-height:22px;margin-top:10px;font-weight:700;color:var(--p2)}
 .pb-sg-ad:empty{display:none}
-.pb-sg-ad{margin:12px 0}
+.pb-sg-ad{margin:12px 0;display:flex;flex-direction:column;align-items:center;gap:8px;overflow:hidden}
+.pb-sg-ad iframe,.pb-sg-ad img{max-width:100%}
 
 /* ===== Apps Store ===== */
 .pb-layout.pb-apps-mode{grid-template-columns:minmax(0,1fr)}
@@ -901,7 +903,11 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
     <div class='pb-vstep' id='pb-v2'><h4>ধাপ ২ · টাস্ক সম্পন্ন করুন</h4><div id='pb-tasks'></div></div>
     <div class='pb-vstep' id='pb-v3'>
       <h4>ধাপ ৩ · স্পনসর <span class='pb-count' id='pb-vcount'></span></h4>
-      <div id='pb-vad'></div>
+      <div class='pb-sg-ad' id='pb-vad'>
+      <!-- ▼▼▼ মানব যাচাইকরণ পপআপ: এখানে আপনার অ্যাড কোড (Adsterra / Monetag ব্যানার) পেস্ট করুন ▼▼▼ -->
+
+      <!-- ▲▲▲ অ্যাড কোড শেষ ▲▲▲ -->
+      </div>
     </div>
     <button class='pb-btn' disabled='disabled' id='pb-v-done' style='width:100%' type='button'><span id='pb-v-done-t'>🔓 কনটেন্ট দেখুন</span></button>
   </div>
@@ -963,6 +969,11 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
       </div>
       <div class='pb-ag-prog'><div class='pb-ag-bar'><i id='pb-ag-bar'></i></div><span class='pb-ag-cnt' id='pb-ag-cnt'></span></div>
       <div id='pb-ag-steps'></div>
+      <div class='pb-sg-ad' id='pb-ag-ad'>
+      <!-- ▼▼▼ Human Verification (Copy/Download) পপআপ: এখানে আপনার অ্যাড কোড (Adsterra / Monetag ব্যানার) পেস্ট করুন ▼▼▼ -->
+
+      <!-- ▲▲▲ অ্যাড কোড শেষ ▲▲▲ -->
+      </div>
       <div class='pb-ag-foot'>
         <button class='pb-btn pb-ag-go' disabled='disabled' id='pb-ag-go' type='button'>🔓 এক্সেস নিন</button>
         <button class='pb-btn pb-ag-cancel' id='pb-ag-cancel' type='button'>বাতিল</button>
@@ -977,7 +988,11 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
     <div class='pb-sg-icon'>🔐</div>
     <h3 id='pb-sg-title'></h3>
     <p class='sub' id='pb-sg-text'></p>
-    <div class='pb-sg-ad' id='pb-sg-ad'></div>
+    <div class='pb-sg-ad' id='pb-sg-ad'>
+      <!-- ▼▼▼ সাইট খুললে আসা পপআপ: এখানে আপনার অ্যাড কোড (Adsterra / Monetag ব্যানার) পেস্ট করুন ▼▼▼ -->
+
+      <!-- ▲▲▲ অ্যাড কোড শেষ ▲▲▲ -->
+    </div>
     <button class='pb-btn' id='pb-sg-verify' type='button'>✅ ভেরিফাই করুন</button>
     <div class='pb-sg-wait' id='pb-sg-wait'></div>
     <button class='pb-btn pb-btn-wa' disabled='disabled' hidden='hidden' id='pb-sg-go' type='button'>🔓 কনটেন্ট দেখুন</button>
@@ -1100,7 +1115,7 @@ function runVerify(key,done,opt){
   $("#pb-tasks").innerHTML=tasks.map(function(t,i){return '<div class="pb-task" data-i="'+i+'"><span>'+esc(t.text)+'</span><a class="pb-btn pb-btn-sm" target="_blank" rel="noopener" href="'+esc(t.url)+'">যান →</a></div>';}).join("")||"<small>কোনো টাস্ক নেই</small>";
   if(!left){st.tasks=true;$("#pb-v2").classList.add("done");}
   $$("#pb-tasks .pb-task a").forEach(function(l){l.onclick=function(){var r=l.parentNode;if(r.classList.contains("done"))return;setTimeout(function(){if(gen!==vGen)return;r.classList.add("done");l.textContent="✓";if(--left<=0){st.tasks=true;$("#pb-v2").classList.add("done");check();}},1500);};});
-  setHTML($("#pb-vad"),V.adHTML||"");
+  if(V.adHTML)setHTML($("#pb-vad"),V.adHTML);
   var started=false;$("#pb-vcount").textContent="";
   function startAd(){if(started)return;started=true;var s=+V.seconds||0,c=$("#pb-vcount");
     (function tick(){if(gen!==vGen)return;c.textContent=s>0?s+"s":"✓";if(s<=0){st.ad=true;$("#pb-v3").classList.add("done");check();return;}s--;setTimeout(tick,1000);})();}
@@ -1460,6 +1475,7 @@ function gateAction(kind,fn){
     closeM($("#pb-agate"));fn();
   };
   $("#pb-ag-cancel").onclick=function(){agRun++;closeM($("#pb-agate"));};
+  if(G.adHTML&&!$("#pb-ag-ad").getAttribute("data-set")){setHTML($("#pb-ag-ad"),G.adHTML);$("#pb-ag-ad").setAttribute("data-set","1");}
   openM("pb-agate");
 }
 /* পোস্টের ভেতরের ফাইল-লিংক (drive, mediafire…) আর data-gate দেওয়া যেকোনো লিংক */
