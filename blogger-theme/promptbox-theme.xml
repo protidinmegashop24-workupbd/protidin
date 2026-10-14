@@ -73,6 +73,7 @@ window.PB_CONFIG = {
 
   /* ---------- Website to App (ফ্রি, সাথে সাথে PWA অ্যাপ) ---------- */
   w2a : {
+    shortener: "is.gd",                  // অ্যাপ লিংক ছোট করার সার্ভিস: "is.gd" বা "v.gd" ("" দিলে বন্ধ)
     oldPrice : "১০০ টাকা",               // কাটা দাম (স্টোরে পাবলিশ)
     newPrice : "০ টাকায় (সম্পূর্ণ ফ্রি)",
     packages : [                         // "Play Store APK চাই?" বাটনে দেখাবে (খালি [] দিলে বাটন লুকাবে)
@@ -426,6 +427,9 @@ html.pb-appmode body::before{display:none}
 .pb-w2a-link{display:flex;gap:8px;margin:10px 0}
 .pb-w2a-link input{flex:1;min-width:0;font-size:13px}
 .pb-w2a-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pb-w2a-alias{display:flex;gap:8px;margin:0 0 10px}
+.pb-w2a-alias input{flex:1;min-width:0;font-size:13px}
+.pb-short-st{font-size:12.5px;color:var(--muted);min-height:18px;margin:-4px 0 8px}
 .pb-w2a-pub{margin-top:14px;padding:14px;border-radius:14px;border:1px dashed rgba(34,197,94,.5);background:rgba(34,197,94,.07)}
 .pb-w2a-pub p{margin:0 0 10px;font-size:14px}
 details.pb-adv{margin-top:2px}
@@ -812,6 +816,8 @@ html.pb-gated .pb-layout,html.pb-gated .pb-hero{filter:blur(7px);pointer-events:
       <div class='pb-w2a-prev'><img alt='' id='pb-w2a-ic' src='data:,'/><div style='min-width:0'><b id='pb-w2a-nm'></b><small id='pb-w2a-st'></small></div></div>
       <p style='color:var(--ok);font-weight:700;margin:0'>✅ আপনার অ্যাপ তৈরি হয়েছে!</p>
       <div class='pb-w2a-link'><input class='pb-in' id='pb-w2a-url' readonly='readonly'/><button class='pb-btn pb-btn-sm pb-btn-ghost' id='pb-w2a-copy' type='button'>⧉ কপি</button></div>
+      <div class='pb-short-st' id='pb-short-st'></div>
+      <div class='pb-w2a-alias' id='pb-w2a-alias-row'><input class='pb-in' id='pb-w2a-alias' maxlength='30' placeholder='নিজের নাম দিন, যেমন myshop'/><button class='pb-btn pb-btn-sm' id='pb-w2a-short' type='button'>✂️ ছোট করুন</button></div>
       <div class='pb-w2a-btns'>
         <a class='pb-btn' href='#' id='pb-w2a-open' rel='noopener' target='_blank'>📲 খুলুন ও ইনস্টল</a>
         <button class='pb-btn pb-btn-ghost' id='pb-w2a-share' type='button'>🔗 শেয়ার</button>
@@ -956,32 +962,107 @@ function runVerify(key,done,opt){
   check();openM("pb-verify");
 }
 
-/* ---------- Website to App: ফ্রি PWA জেনারেটর ---------- */
+/* ---------- অ্যাপ আইকন মেকার ----------
+   Chrome ইনস্টলের জন্য কমপক্ষে ১৪৪px আইকন লাগে। তাই ক্যানভাসে সবসময় ৫১২×৫১২ PNG বানানো হয়:
+   লোগো/ফেভিকন লোড হলে সেটা দিয়ে, না হলে নামের প্রথম অক্ষর দিয়ে। */
 function faviconOf(u){try{return "https://www.google.com/s2/favicons?sz=256&domain="+new URL(u).hostname;}catch(e){return "";}}
+function makeAppIcons(name,color,src,cb){
+  var S=512,c=document.createElement("canvas");c.width=c.height=S;var x=c.getContext("2d"),fired=false;
+  var dark=!color||color.toLowerCase()==="#070910";
+  function bg(){var g=x.createLinearGradient(0,0,S,S);g.addColorStop(0,dark?"#7c3aed":color);g.addColorStop(1,dark?"#06b6d4":color);x.fillStyle=g;x.fillRect(0,0,S,S);}
+  function out(){
+    var small=document.createElement("canvas");small.width=small.height=192;small.getContext("2d").drawImage(c,0,0,192,192);
+    return {i512:c.toDataURL("image/png"),i192:small.toDataURL("image/png")};
+  }
+  function letter(){
+    x.clearRect(0,0,S,S);bg();x.fillStyle="#fff";x.textAlign="center";x.textBaseline="middle";
+    x.font="800 290px Sora, 'Hind Siliguri', Arial, sans-serif";x.fillText((String(name||"A").trim().charAt(0)||"A").toUpperCase(),S/2,S/2+14);
+    return out();
+  }
+  function done(r){if(fired)return;fired=true;cb(r);}
+  if(!src){done(letter());return;}
+  var img=new Image();img.crossOrigin="anonymous";
+  var to=setTimeout(function(){done(letter());},5000);
+  img.onerror=function(){clearTimeout(to);done(letter());};
+  img.onload=function(){
+    clearTimeout(to);
+    var w=img.naturalWidth,h=img.naturalHeight;
+    if(Math.min(w,h)<96){done(letter());return;}            // খুব ছোট ছবি ঝাপসা দেখায়, তাই অক্ষর-আইকন
+    try{
+      x.clearRect(0,0,S,S);
+      if(Math.abs(w-h)/Math.max(w,h)<0.08){x.drawImage(img,0,0,S,S);}   // বর্গাকার: পুরোটা জুড়ে
+      else{x.fillStyle="#ffffff";x.fillRect(0,0,S,S);var k=Math.min(S*0.8/w,S*0.8/h);x.drawImage(img,(S-w*k)/2,(S-h*k)/2,w*k,h*k);}
+      done(out());
+    }catch(e){done(letter());}                                // CORS না থাকলে ক্যানভাস ব্যবহার করা যায় না
+  };
+  img.src=src;
+}
+
+/* ---------- লিংক ছোট করা (is.gd / v.gd, JSONP — কোনো সার্ভার লাগে না) ---------- */
+function shortenUrl(long,alias,cb){
+  var pref=((C.w2a||{}).shortener||"").toLowerCase();if(!pref){cb(null,"off");return;}
+  var hosts=pref==="v.gd"?["v.gd","is.gd"]:["is.gd","v.gd"],lastErr="";
+  if(alias)hosts=hosts.slice(0,1);                       // নিজের নাম দিলে শুধু প্রথম সার্ভিসে
+  (function next(k){
+    if(k>=hosts.length){cb(null,lastErr||"failed");return;}
+    var fn="pbShort"+Date.now()+k,sc=document.createElement("script"),ended=false;
+    var to=setTimeout(function(){fin(null,"সার্ভিস সাড়া দিচ্ছে না");},9000);
+    function fin(r,err){
+      if(ended)return;ended=true;clearTimeout(to);try{delete window[fn];}catch(e){window[fn]=undefined;}sc.remove();
+      if(r&&r.shorturl){cb(r.shorturl);return;}
+      lastErr=(r&&r.errormessage)||err||"failed";
+      if(alias){cb(null,lastErr);return;}
+      next(k+1);
+    }
+    window[fn]=function(r){fin(r);};sc.onerror=function(){fin(null,"নেটওয়ার্ক সমস্যা");};
+    sc.src="https://"+hosts[k]+"/create.php?format=json&callback="+fn+"&url="+encodeURIComponent(long)+(alias?"&shorturl="+encodeURIComponent(alias):"");
+    document.head.appendChild(sc);
+  })(0);
+}
+
+/* ---------- Website to App: ফ্রি PWA জেনারেটর ---------- */
 (function(){
-  var W=C.w2a||{},form=$("#pb-w2a-form"),res=$("#pb-w2a-res"),cur=null;
+  var W=C.w2a||{},form=$("#pb-w2a-form"),res=$("#pb-w2a-res"),cur=null,st=$("#pb-short-st");
   ["","2"].forEach(function(k){$("#pb-w2a-old"+k).textContent=W.oldPrice||"";$("#pb-w2a-new"+k).textContent=W.newPrice||"ফ্রি";});
   if(!(W.packages||[]).length)$("#pb-w2a-apk").hidden=true;
+  if(!W.shortener)$("#pb-w2a-alias-row").hidden=true;
+  function share(){return cur.short||cur.link;}
+  function setLink(u){$("#pb-w2a-url").value=u;$("#pb-w2a-open").href=u;}
+  function doShort(alias){
+    var gen=cur;st.textContent="✂️ ছোট লিংক তৈরি হচ্ছে…";
+    shortenUrl(cur.link,alias,function(u,err){
+      if(gen!==cur)return;
+      if(u){cur.short=u;setLink(u);st.textContent="✅ ছোট লিংক তৈরি হয়েছে";if(alias)toast("ছোট লিংক: "+u);}
+      else st.textContent=err==="off"?"":(alias?"❌ "+err:"ছোট লিংক তৈরি করা যায়নি, বড় লিংকটাই কাজ করবে।");
+    });
+  }
   form.addEventListener("submit",function(e){
     e.preventDefault();var f=new FormData(form),g=function(k){return (f.get(k)||"").toString().trim();};
     var site=g("site"),name=g("app").slice(0,40),icon=g("icon"),color=g("color"),mode=g("mode");
     if(!/^https:\/\/[^\s.]+\.[^\s]+$/i.test(site)){toast("লিংক অবশ্যই https:// দিয়ে শুরু হতে হবে");return;}
     if(icon&&!/^https:\/\//i.test(icon)){toast("আইকনের লিংকও https:// হতে হবে");return;}
     var link=location.origin+"/?pbapp=1&n="+encodeURIComponent(name)+"&u="+encodeURIComponent(site)+(icon?"&i="+encodeURIComponent(icon):"")+(color&&color!=="#070910"?"&c="+encodeURIComponent(color):"")+(mode==="d"?"&m=d":"");
-    cur={site:site,name:name,icon:icon,link:link};
-    $("#pb-w2a-ic").src=icon||faviconOf(site);$("#pb-w2a-nm").textContent=name;$("#pb-w2a-st").textContent=site;
-    $("#pb-w2a-url").value=link;$("#pb-w2a-open").href=link;
-    form.hidden=true;res.hidden=false;toast("অ্যাপ তৈরি হয়েছে 🎉");
+    cur={site:site,name:name,icon:icon,link:link,short:""};
+    $("#pb-w2a-ic").src="data:,";
+    makeAppIcons(name,color,icon||faviconOf(site),function(r){$("#pb-w2a-ic").src=r.i192;});
+    $("#pb-w2a-nm").textContent=name;$("#pb-w2a-st").textContent=site;$("#pb-w2a-alias").value="";
+    setLink(link);form.hidden=true;res.hidden=false;toast("অ্যাপ তৈরি হয়েছে 🎉");
+    if(W.shortener)doShort("");
   });
-  $("#pb-w2a-copy").addEventListener("click",function(){copyText(cur.link).then(function(){toast("লিংক কপি হয়েছে ✓");});});
-  $("#pb-w2a-share").addEventListener("click",function(){if(navigator.share)navigator.share({title:cur.name,url:cur.link}).catch(function(){});else copyText(cur.link).then(function(){toast("লিংক কপি হয়েছে ✓");});});
+  $("#pb-w2a-short").addEventListener("click",function(){
+    var a=$("#pb-w2a-alias").value.trim();
+    if(!/^[A-Za-z0-9_]{5,30}$/.test(a)){toast("৫-৩০ অক্ষর, শুধু ইংরেজি অক্ষর/সংখ্যা/_ দিন");return;}
+    doShort(a);
+  });
+  $("#pb-w2a-copy").addEventListener("click",function(){copyText(share()).then(function(){toast("লিংক কপি হয়েছে ✓");});});
+  $("#pb-w2a-share").addEventListener("click",function(){if(navigator.share)navigator.share({title:cur.name,url:share()}).catch(function(){});else copyText(share()).then(function(){toast("লিংক কপি হয়েছে ✓");});});
   $("#pb-w2a-pub").addEventListener("click",function(){
-    window.open(wa("🏪 *Apps Store-এ ফ্রি পাবলিশ রিকোয়েস্ট*\n\n📦 অ্যাপ: "+cur.name+"\n🌐 সাইট: "+cur.site+(cur.icon?"\n🖼️ আইকন: "+cur.icon:"")+"\n📲 অ্যাপ লিংক: "+cur.link),"_blank");
+    window.open(wa("🏪 *Apps Store-এ ফ্রি পাবলিশ রিকোয়েস্ট*\n\n📦 অ্যাপ: "+cur.name+"\n🌐 সাইট: "+cur.site+(cur.icon?"\n🖼️ আইকন: "+cur.icon:"")+"\n📲 অ্যাপ লিংক: "+share()),"_blank");
   });
   $("#pb-w2a-apk").addEventListener("click",function(){
-    window.open(wa("🤖 *APK / Play Store ভার্সন অর্ডার*\n\n📦 অ্যাপ: "+cur.name+"\n🌐 সাইট: "+cur.site+"\n📲 PWA লিংক: "+cur.link+"\n\nপ্যাকেজ:\n"+(W.packages||[]).map(function(p){return "• "+p.name+" — "+p.price;}).join("\n")),"_blank");
+    window.open(wa("🤖 *APK / Play Store ভার্সন অর্ডার*\n\n📦 অ্যাপ: "+cur.name+"\n🌐 সাইট: "+cur.site+"\n📲 PWA লিংক: "+share()+"\n\nপ্যাকেজ:\n"+(W.packages||[]).map(function(p){return "• "+p.name+" — "+p.price;}).join("\n")),"_blank");
   });
-  $("#pb-w2a-again").addEventListener("click",function(){form.reset();form.hidden=false;res.hidden=true;});
+  $("#pb-w2a-again").addEventListener("click",function(){form.reset();form.hidden=false;res.hidden=true;st.textContent="";});
 })();
 
 /* ---------- App shell: ?pbapp=1 লিংক খুললে অ্যাপ হিসেবে চলে ---------- */
@@ -992,19 +1073,22 @@ if(APPMODE)(function(){
   var col=/^#[0-9a-f]{6}$/i.test(q.get("c")||"")?q.get("c"):"#070910",direct=q.get("m")==="d";
   if(!/^https?:\/\/[^\s]+$/i.test(u)){root.classList.remove("pb-appmode");APPMODE=false;toast("অ্যাপ লিংক সঠিক নয়");return;}
   if(ic&&!/^https:\/\//i.test(ic))ic="";
-  var icon=ic||faviconOf(u),start=location.href.split("#")[0];
+  var start=location.href.split("#")[0];
   document.title=n;
   var tc=$('meta[name="theme-color"]');if(tc)tc.setAttribute("content",col);
-  var man={name:n,short_name:n.slice(0,12),start_url:start,id:start,scope:location.origin+"/",display:"standalone",background_color:col,theme_color:col,
-    icons:[{src:icon,sizes:"192x192",type:"image/png",purpose:"any"},{src:icon,sizes:"512x512",type:"image/png",purpose:"any"}]};
-  var l=document.createElement("link");l.rel="manifest";l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));document.head.appendChild(l);
-  var at=document.createElement("link");at.rel="apple-touch-icon";at.href=icon;document.head.appendChild(at);
   var am=document.createElement("meta");am.name="apple-mobile-web-app-title";am.content=n;document.head.appendChild(am);
+  makeAppIcons(n,q.get("c")||"",ic||faviconOf(u),function(r){
+    var man={name:n,short_name:n.slice(0,12),start_url:start,id:start,scope:location.origin+"/",display:"standalone",background_color:col,theme_color:col,
+      icons:[{src:r.i192,sizes:"192x192",type:"image/png",purpose:"any"},{src:r.i512,sizes:"512x512",type:"image/png",purpose:"any"}]};
+    var l=document.createElement("link");l.rel="manifest";l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));document.head.appendChild(l);
+    var at=document.createElement("link");at.rel="apple-touch-icon";at.href=r.i192;document.head.appendChild(at);
+    $$("#pb-shell .pb-app-ic").forEach(function(im){im.src=r.i192;});
+  });
   if(direct&&STANDALONE){location.replace(u);return;}
   var sh=document.createElement("div");sh.id="pb-shell";
-  var bar=STANDALONE?"":'<div class="pb-shell-bar"><img alt="" src="'+esc(icon)+'"/><b>'+esc(n)+'</b><button type="button" class="pb-btn pb-btn-sm pb-do-install">📲 ইনস্টল</button></div>';
+  var bar=STANDALONE?"":'<div class="pb-shell-bar"><img class="pb-app-ic" alt="" src="data:,"/><b>'+esc(n)+'</b><button type="button" class="pb-btn pb-btn-sm pb-do-install">📲 ইনস্টল</button></div>';
   if(direct){
-    sh.innerHTML=bar+'<div class="pb-splash"><img alt="" src="'+esc(icon)+'"/><h2 style="margin:0">'+esc(n)+'</h2><p style="color:var(--muted);margin:0">'+esc(u)+'</p>'+
+    sh.innerHTML=bar+'<div class="pb-splash"><img class="pb-app-ic" alt="" src="data:,"/><h2 style="margin:0">'+esc(n)+'</h2><p style="color:var(--muted);margin:0">'+esc(u)+'</p>'+
       '<button type="button" class="pb-btn pb-do-install">📲 অ্যাপ ইনস্টল করুন</button><a class="pb-btn pb-btn-ghost" href="'+esc(u)+'">↗ এখনই খুলুন</a></div>';
   }else{
     sh.innerHTML=bar+'<iframe allow="geolocation; camera; microphone; clipboard-read; clipboard-write; fullscreen; payment; autoplay" allowfullscreen="" referrerpolicy="strict-origin-when-cross-origin" title="'+esc(n)+'"></iframe><a class="pb-shell-out" href="'+esc(u)+'">সাইট না দেখালে চাপুন ↗</a>';
@@ -1087,7 +1171,7 @@ if(pg&&!APPMODE){
     $$(".pb-card",pg).forEach(function(c){fillStats(c,idFromUrl(c.getAttribute("data-url")),false);});
   });
 }
-if($("#pb-stat-posts"))feed("/feeds/posts/summary?alt=json&max-results=0").then(function(r){if(r&&r.feed)$("#pb-stat-posts").textContent=fmt(r.feed.openSearch$totalResults.$t)+"+";});
+if($("#pb-stat-posts"))feed("/feeds/posts/summary?alt=json&max-results=0").then(function(r){if(r&&r.feed)$("#pb-stat-posts").textContent=fmt((r.feed.openSearch$totalResults||{}).$t)+"+";});
 
 /* ---------- Apps Store ---------- */
 var A=C.apps||{},APP_LABELS=A.labels||["app"];
@@ -1171,7 +1255,11 @@ var rv=$("#pb-reviews");if(rv)rv.innerHTML=(C.reviews||[]).map(function(r){var s
   if(!icons.length&&svg)icons.push({src:svg.href,sizes:"any",type:"image/svg+xml"});
   var origin=location.origin+"/";
   var man={name:C.siteName||document.title,short_name:P.shortName||C.siteName,description:C.tagline||"",start_url:origin,scope:origin,id:origin,display:"standalone",orientation:"portrait",background_color:"#070910",theme_color:P.themeColor||"#070910",icons:icons};
-  if(!APPMODE){var l=document.createElement("link");l.rel="manifest";l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));document.head.appendChild(l);}
+  function addMan(){var l=document.createElement("link");l.rel="manifest";l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));document.head.appendChild(l);}
+  if(!APPMODE){
+    if(P.icon512||P.icon192)makeAppIcons(man.name,"",P.icon512||P.icon192,function(r){man.icons=[{src:r.i192,sizes:"192x192",type:"image/png",purpose:"any"},{src:r.i512,sizes:"512x512",type:"image/png",purpose:"any"}];addMan();});
+    else addMan();
+  }
   if(P.icon192&&!APPMODE){var a=document.createElement("link");a.rel="apple-touch-icon";a.href=P.icon192;document.head.appendChild(a);}
   var deferred=null,btn=$("#pb-install");
   window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferred=e;btn.style.boxShadow="0 0 18px rgba(6,182,212,.8)";});
