@@ -2972,6 +2972,47 @@ Route::get('/system-configure-cpagrip/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// One-off, READ-ONLY: diagnostic for "users can't complete CPAGrip offer
+// wall tasks" -- shows the live cpagrip provider row's config (password
+// masked) plus a summary of every offer_wall_conversions row ever logged
+// for it (how many, status breakdown, most recent one), so it's possible
+// to tell from the response whether the problem is (a) cpagrip not
+// enabled/configured on THIS server at all, or (b) configured but no
+// postback has ever arrived (CPAGrip-side: account/offer/postback-URL
+// setup), or (c) postbacks ARE arriving but with status "unverified"
+// (password mismatch between this site and CPAGrip's Global Postback
+// settings).
+Route::get('/system-cpagrip-diagnostic/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('offer_wall_providers')) {
+        return response()->json(['error' => 'offer_wall_providers table does not exist yet.'], 404);
+    }
+
+    $provider = \App\Models\OfferWallProvider::where('slug', 'cpagrip')->first();
+    if (!$provider) {
+        return response()->json(['error' => 'No cpagrip provider row -- run /system-add-cpagrip-provider first.'], 404);
+    }
+
+    $conversions = \Illuminate\Support\Facades\Schema::hasTable('offer_wall_conversions')
+        ? \App\Models\OfferWallConversion::where('provider_slug', 'cpagrip')->get()
+        : collect();
+
+    return response()->json([
+        'provider_enabled' => $provider->enabled,
+        'provider_app_id_affid' => $provider->app_id,
+        'provider_secret_key_set' => !empty($provider->secret_key),
+        'provider_secret_key_length' => $provider->secret_key ? strlen($provider->secret_key) : 0,
+        'provider_widget_url_template' => $provider->widget_url_template,
+        'postback_url_this_server_expects' => url('/postback/offer-wall/cpagrip'),
+        'total_conversions_ever_logged' => $conversions->count(),
+        'conversions_by_status' => $conversions->countBy('status'),
+        'most_recent_conversion' => $conversions->sortByDesc('created_at')->first(),
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-off, READ-ONLY: a money-trail reconciliation report for exactly the
 // users the /system-unverify-free-instant-verified-users route touched
 // (found via the "Account Verification" notice it sent each of them --
