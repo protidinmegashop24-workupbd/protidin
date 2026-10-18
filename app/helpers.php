@@ -1642,6 +1642,17 @@ if (!function_exists('smm_get_services')) {
     }
 }
 
-
-
-
+if (!function_exists('offer_wall_available')) {
+    /**
+     * Whether to show the "Special Offer Job" sidebar link at all -- true
+     * once at least one Offer Wall provider (e.g. CPAGrip) is enabled.
+     * Guarded the same way other optional features check
+     * Schema::hasTable() first, so a site that never ran
+     * /system-add-offerwall-providers just doesn't show the link.
+     */
+    function offer_wall_available(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('offer_wall_providers')
+            && \App\Models\OfferWallProvider::where('enabled', true)->exists();
+    }
+}

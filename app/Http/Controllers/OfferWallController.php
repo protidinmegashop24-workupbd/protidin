@@ -11,6 +11,16 @@ use Illuminate\Support\Facades\Log;
 
 class OfferWallController extends Controller
 {
+    // Shown on its own page (behind a dedicated "Special Offer Job" sidebar
+    // link) instead of mixed into the regular job list -- users scrolling
+    // past a long list of small PTC jobs were skipping right past it there,
+    // since nothing marked it as different or worth more.
+    public function index()
+    {
+        $providers = OfferWallProvider::where('enabled', true)->get();
+        return view('user.pages.offer-wall.index', compact('providers'));
+    }
+
     // Unlike CPX Research's widget URL (confirmed directly from their own
     // dashboard), none of these 3 providers' entry/widget URLs have been
     // confirmed yet. So the URL lives in the admin-editable

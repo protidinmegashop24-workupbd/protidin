@@ -909,6 +909,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/survey-provider/{slug}/start', [\App\Http\Controllers\SurveyProviderController::class, 'start'])->name('survey-provider.start');
 
     Route::get('/offer-wall/{slug}/start', [\App\Http\Controllers\OfferWallController::class, 'start'])->name('offer-wall.start');
+    Route::get('/offer-wall-jobs', [\App\Http\Controllers\OfferWallController::class, 'index'])->name('offer-wall.index');
 });
 
 // Survey Provider postback -- not behind 'auth' (the provider's server
