@@ -3014,6 +3014,59 @@ Route::get('/system-cpagrip-diagnostic/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// One-off, READ-ONLY: explains exactly why a test postback to
+// /postback/offer-wall/cpagrip would be rejected, without crediting
+// anything -- pass the same password/tracking_id/offer_id/payout you were
+// testing with as query params here instead, and this reports which
+// specific check (password, tracking_id numeric, payout numeric, user
+// exists) fails, instead of the real endpoint's bare "0"/"1".
+Route::get('/system-cpagrip-postback-explain/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $provider = \App\Models\OfferWallProvider::where('slug', 'cpagrip')->first();
+    if (!$provider) {
+        return response()->json(['error' => 'No cpagrip provider row.'], 404);
+    }
+
+    $password = request('password');
+    $trackingId = request('tracking_id');
+    $offerId = request('offer_id');
+    $payout = request('payout');
+
+    $passwordMatches = !empty($provider->secret_key) && hash_equals((string) $provider->secret_key, (string) $password);
+    $trackingIdNumeric = is_numeric($trackingId);
+    $payoutNumeric = is_numeric($payout);
+
+    $user = $trackingIdNumeric ? \App\Models\User::find((int) $trackingId) : null;
+
+    $transId = $trackingIdNumeric ? ('user' . $trackingId . '-offer' . $offerId) : null;
+    $alreadyExists = $transId
+        ? \App\Models\OfferWallConversion::where('provider_slug', 'cpagrip')->where('trans_id', $transId)->exists()
+        : false;
+
+    return response()->json([
+        'you_sent' => [
+            'password' => $password,
+            'tracking_id' => $trackingId,
+            'offer_id' => $offerId,
+            'payout' => $payout,
+        ],
+        'provider_secret_key_set' => !empty($provider->secret_key),
+        'provider_secret_key_length' => $provider->secret_key ? strlen($provider->secret_key) : 0,
+        'your_password_length' => $password ? strlen((string) $password) : 0,
+        'password_matches' => $passwordMatches,
+        'tracking_id_is_numeric' => $trackingIdNumeric,
+        'payout_is_numeric' => $payoutNumeric,
+        'would_fail_with_status' => !$passwordMatches ? 403 : (!$trackingIdNumeric || !$payoutNumeric ? 400 : null),
+        'matching_user_found' => (bool) $user,
+        'matching_user_email' => $user->email ?? null,
+        'transaction_id_would_be' => $transId,
+        'already_recorded_before' => $alreadyExists,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-off, READ-ONLY: a money-trail reconciliation report for exactly the
 // users the /system-unverify-free-instant-verified-users route touched
 // (found via the "Account Verification" notice it sent each of them --
