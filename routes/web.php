@@ -3067,6 +3067,61 @@ Route::get('/system-cpagrip-postback-explain/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// One-off, READ-ONLY: checks whether this shared-hosting server can
+// actually run FFmpeg at all -- the single fact that decides whether any
+// server-side video-rendering feature (watch-ad-to-earn video maker,
+// video ads, etc.) is even possible here, before any code gets written
+// for it. Checks (1) whether PHP's exec()/shell_exec() functions are
+// disabled (very common on shared hosting for security -- cPanel's
+// php.ini often lists them in disable_functions), (2) whether an ffmpeg
+// binary exists in common locations or on PATH, and (3) if found, runs
+// `ffmpeg -version` for real to confirm it actually executes.
+Route::get('/system-check-ffmpeg/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+    $execDisabled = in_array('exec', $disabled);
+    $shellExecDisabled = in_array('shell_exec', $disabled);
+
+    $result = [
+        'exec_function_disabled' => $execDisabled,
+        'shell_exec_function_disabled' => $shellExecDisabled,
+    ];
+
+    if ($execDisabled && $shellExecDisabled) {
+        $result['verdict'] = 'FFmpeg (or any external program) cannot be run from PHP on this server -- exec() and shell_exec() are both disabled. This usually cannot be changed without hosting support or a different hosting plan.';
+        return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+    }
+
+    $run = function (string $cmd) use ($execDisabled) {
+        if ($execDisabled) {
+            return shell_exec($cmd . ' 2>&1');
+        }
+        exec($cmd . ' 2>&1', $output, $code);
+        return implode("\n", $output);
+    };
+
+    $which = $run('which ffmpeg');
+    $commonPaths = ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/opt/ffmpeg/ffmpeg', '/usr/local/cpanel/3rdparty/bin/ffmpeg'];
+    $foundPaths = array_filter($commonPaths, 'file_exists');
+
+    $binary = trim((string) $which) ?: (array_values($foundPaths)[0] ?? null);
+    $result['which_ffmpeg_output'] = trim((string) $which);
+    $result['common_paths_checked'] = $commonPaths;
+    $result['common_paths_found'] = array_values($foundPaths);
+
+    if ($binary) {
+        $result['version_check'] = trim((string) $run(escapeshellarg($binary) . ' -version'));
+        $result['verdict'] = 'FFmpeg appears to be available -- video rendering is technically possible here.';
+    } else {
+        $result['verdict'] = 'No ffmpeg binary found in PATH or common locations. Video rendering is NOT possible on this server as-is -- would need the host to install it (shared hosting support ticket, often refused) or moving this feature to a VPS / a cloud video-rendering API instead.';
+    }
+
+    return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-off, READ-ONLY: a money-trail reconciliation report for exactly the
 // users the /system-unverify-free-instant-verified-users route touched
 // (found via the "Account Verification" notice it sent each of them --
