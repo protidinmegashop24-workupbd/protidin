@@ -327,8 +327,13 @@ SVG;
 
         $fontconfigFile = $this->ensureFontconfig();
 
+        // -threads 1: the PNG encoder frame-threads too, and hits the same
+        // shared-host LVE thread-limit failure as libx264 does in render()
+        // ("ff_frame_thread_encoder_init failed" / "Resource temporarily
+        // unavailable" -- a pthread_create failure, confirming that
+        // diagnosis directly).
         $cmd = sprintf(
-            'FONTCONFIG_FILE=%s %s -y -f lavfi -i %s -i %s -filter_complex %s -frames:v 1 -update 1 %s 2>&1',
+            'FONTCONFIG_FILE=%s %s -y -f lavfi -i %s -i %s -filter_complex %s -frames:v 1 -update 1 -threads 1 %s 2>&1',
             escapeshellarg($fontconfigFile),
             escapeshellcmd($ffmpeg),
             escapeshellarg(sprintf('color=c=0x123456:s=%dx%d', self::CANVAS_WIDTH, self::CANVAS_HEIGHT)),
@@ -351,8 +356,11 @@ SVG;
     public function generateThumbnail(string $videoFullPath, string $thumbnailFullPath): bool
     {
         $ffmpeg = $this->ffmpegBinary();
+        // -threads 1: same shared-host LVE thread-limit issue as the main
+        // render -- a single-frame image encoder still frame-threads by
+        // default and can fail to open on this host otherwise.
         $cmd = sprintf(
-            '%s -y -ss 00:00:01 -i %s -frames:v 1 -vf %s %s 2>&1',
+            '%s -y -ss 00:00:01 -i %s -frames:v 1 -vf %s -threads 1 %s 2>&1',
             escapeshellcmd($ffmpeg),
             escapeshellarg($videoFullPath),
             escapeshellarg('scale=480:854:force_original_aspect_ratio=increase,crop=480:854'),
