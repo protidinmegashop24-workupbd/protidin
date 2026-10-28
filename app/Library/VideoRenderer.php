@@ -209,8 +209,18 @@ SVG;
             self::CANVAS_HEIGHT
         );
 
+        // -threads 1 / x264-params threads=1 is required on this shared
+        // host: libx264 defaults to one encoder thread per detected CPU
+        // core, but the hosting account's LVE only allows a handful of
+        // threads/processes -- on the real (many-core) physical host that
+        // mismatch makes libx264 fail to even open the encoder ("Error
+        // while opening encoder") before a single frame is processed,
+        // regardless of the input file's own format (confirmed: this also
+        // happened on an input that already matched the normalized
+        // baseline exactly). Forcing a single thread keeps it within the
+        // account's limits.
         $cmd = sprintf(
-            '%s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -movflags +faststart %s 2>&1',
+            '%s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
             escapeshellcmd($ffmpeg),
             escapeshellarg($backgroundPath),
             escapeshellarg($svgFile),
@@ -261,8 +271,11 @@ SVG;
     {
         $ffmpeg = $this->ffmpegBinary();
 
+        // -threads 1 / x264-params threads=1: see the note in render() --
+        // the shared host's LVE thread limit, not the input file's own
+        // format, is what makes libx264 fail to open here.
         $cmd = sprintf(
-            '%s -y -i %s -vf %s -an -r 25 -c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -movflags +faststart %s 2>&1',
+            '%s -y -i %s -vf %s -an -r 25 -c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
             escapeshellcmd($ffmpeg),
             escapeshellarg($inputFullPath),
             escapeshellarg("scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1"),
