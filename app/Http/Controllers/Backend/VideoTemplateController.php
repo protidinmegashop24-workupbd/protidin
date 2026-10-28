@@ -34,13 +34,28 @@ class VideoTemplateController extends Controller
         }
 
         $file = $request->file('background');
-        $filename = Str::random(20) . '.' . strtolower($file->getClientOriginalExtension());
-        $file->move(base_path($uploadDir), $filename);
+        $rawFilename = Str::random(20) . '_raw.' . strtolower($file->getClientOriginalExtension());
+        $file->move(base_path($uploadDir), $rawFilename);
+        $rawFullPath = base_path($uploadDir . $rawFilename);
+
+        // Re-encode into a known-clean baseline right away -- whatever odd
+        // frame rate/pixel format the uploaded file carries gets fixed
+        // once here instead of breaking every future render that uses
+        // this template (see VideoRenderer::normalizeBackground()).
+        $cleanFilename = Str::random(20) . '.mp4';
+        $cleanFullPath = base_path($uploadDir . $cleanFilename);
+        try {
+            (new VideoRenderer())->normalizeBackground($rawFullPath, $cleanFullPath);
+        } catch (\Throwable $e) {
+            @unlink($rawFullPath);
+            return redirect()->back()->withInput()->with('error', 'Could not process this video file -- it may be corrupted or in an unsupported format. ' . $e->getMessage());
+        }
+        @unlink($rawFullPath);
 
         $template = new VideoTemplate();
         $template->name = $request->name;
         $template->category = $request->category;
-        $template->background_path = $uploadDir . $filename;
+        $template->background_path = $uploadDir . $cleanFilename;
         $template->duration_seconds = $request->duration_seconds;
         $template->font_size = $request->font_size;
         $template->text_color = $request->text_color;

@@ -223,7 +223,7 @@ SVG;
         @unlink($svgFile);
 
         if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
-            $tail = implode("\n", array_slice($outputLines, -15));
+            $tail = implode("\n", array_slice($outputLines, -40));
             throw new RuntimeException('FFmpeg render failed (exit ' . $exitCode . '): ' . $tail);
         }
 
@@ -242,5 +242,38 @@ SVG;
         );
         exec($cmd, $output, $exitCode);
         return $exitCode === 0 && file_exists($thumbnailFullPath);
+    }
+
+    /**
+     * Re-encodes an admin-uploaded background video into a known-clean
+     * baseline (h264/yuv420p/25fps/SAR 1:1, capped at 1920px on the long
+     * side) immediately at upload time. Whatever odd frame rate, pixel
+     * aspect ratio, or codec profile the original file carried (phone
+     * export, downloaded stock clip, screen recording, etc.) -- the exact
+     * class of thing that made libx264 refuse to open the encoder during
+     * render() -- gets normalized away once here, so every future render
+     * using this template starts from input FFmpeg already knows it can
+     * handle, instead of re-encountering the same failure on every use.
+     *
+     * @throws RuntimeException if the source file can't be read/encoded at all.
+     */
+    public function normalizeBackground(string $inputFullPath, string $outputFullPath): void
+    {
+        $ffmpeg = $this->ffmpegBinary();
+
+        $cmd = sprintf(
+            '%s -y -i %s -vf %s -an -r 25 -c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -movflags +faststart %s 2>&1',
+            escapeshellcmd($ffmpeg),
+            escapeshellarg($inputFullPath),
+            escapeshellarg("scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1"),
+            escapeshellarg($outputFullPath)
+        );
+
+        exec($cmd, $outputLines, $exitCode);
+
+        if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
+            $tail = implode("\n", array_slice($outputLines, -40));
+            throw new RuntimeException('Could not process this video (exit ' . $exitCode . '): ' . $tail);
+        }
     }
 }
