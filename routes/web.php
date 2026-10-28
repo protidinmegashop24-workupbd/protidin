@@ -923,6 +923,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/video-maker/store', [VideoMakerController::class, 'store'])->name('user.video-maker.store');
     Route::get('/video-maker/my-videos', [VideoMakerController::class, 'myVideos'])->name('user.video-maker.my-videos');
     Route::get('/video-maker/download/{id}', [VideoMakerController::class, 'download'])->name('user.video-maker.download');
+    Route::delete('/video-maker/{id}', [VideoMakerController::class, 'destroy'])->name('user.video-maker.destroy');
 });
 
 // Survey Provider postback -- not behind 'auth' (the provider's server
@@ -3133,6 +3134,39 @@ Route::get('/system-check-ffmpeg/{token}', function ($token) {
     }
 
     return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
+
+// One-off, READ-ONLY: checks whether any offline text-to-speech engine
+// (espeak-ng, espeak, festival, pico2wave, flite) is already installed on
+// this server -- needed to tell whether a free/offline voiceover option
+// is possible at all here, before deciding between that and a paid cloud
+// TTS API for the Video Maker's narration feature.
+Route::get('/system-check-tts/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+    if (in_array('exec', $disabled) && in_array('shell_exec', $disabled)) {
+        return response()->json(['verdict' => 'exec() and shell_exec() are both disabled -- cannot check for TTS binaries.'], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    $binaries = ['espeak-ng', 'espeak', 'festival', 'pico2wave', 'flite', 'say'];
+    $result = [];
+    foreach ($binaries as $bin) {
+        $which = trim((string) shell_exec('which ' . escapeshellarg($bin) . ' 2>/dev/null'));
+        $result[$bin] = $which !== '' ? $which : 'not found';
+    }
+
+    $curlAvailable = function_exists('curl_init');
+    $allowUrlFopen = (bool) ini_get('allow_url_fopen');
+
+    return response()->json([
+        'tts_binaries' => $result,
+        'any_found' => (bool) array_filter($result, fn($v) => $v !== 'not found'),
+        'curl_available_for_cloud_tts_api' => $curlAvailable,
+        'allow_url_fopen' => $allowUrlFopen,
+    ], 200, [], JSON_PRETTY_PRINT);
 });
 
 // One-off, READ-ONLY: renders a test PNG with common Bengali words (and

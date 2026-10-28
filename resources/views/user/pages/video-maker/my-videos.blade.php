@@ -98,6 +98,13 @@
                     @if($video->status == 'completed')
                         <a href="{{ route('user.video-maker.download', $video->id) }}" class="btn btn-sm btn-primary">Download</a>
                     @endif
+                    @if(in_array($video->status, ['completed', 'failed']))
+                        <form action="{{ route('user.video-maker.destroy', $video->id) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Delete this video? This cannot be undone.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    @endif
                 </div>
             @empty
                 <div class="text-center text-muted py-5">You haven't made any videos yet.</div>

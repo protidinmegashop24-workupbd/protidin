@@ -76,4 +76,19 @@ class VideoMakerController extends Controller
 
         return response()->download($fullPath, 'video-' . $video->id . '.mp4');
     }
+
+    public function destroy($id)
+    {
+        $video = UserVideo::where('user_id', Auth::id())
+            ->whereIn('status', ['completed', 'failed'])
+            ->findOrFail($id);
+
+        if ($video->output_path && file_exists(base_path($video->output_path))) {
+            @unlink(base_path($video->output_path));
+        }
+
+        $video->delete();
+
+        return redirect()->back()->with('message', 'Video deleted.');
+    }
 }
