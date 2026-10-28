@@ -195,14 +195,22 @@ SVG;
         $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
         $outputFullPath = $outDir . '/' . $outputFilename;
 
+        // fps=25 and setsar=1 are defensive: an admin-uploaded background
+        // can carry an odd/variable frame rate or non-square pixel aspect
+        // ratio from however it was originally recorded/exported, and
+        // libx264 can refuse to open the encoder at all over exactly that
+        // ("Error while opening encoder - maybe incorrect parameters such
+        // as bit_rate, rate, width or height") -- normalizing both before
+        // the encoder ever sees them removes that as a failure mode
+        // regardless of what the uploaded file's own metadata says.
         $filterComplex = sprintf(
-            '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0',
+            '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d,fps=25,setsar=1[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0,format=yuv420p',
             self::CANVAS_WIDTH,
             self::CANVAS_HEIGHT
         );
 
         $cmd = sprintf(
-            '%s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -movflags +faststart %s 2>&1',
+            '%s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -movflags +faststart %s 2>&1',
             escapeshellcmd($ffmpeg),
             escapeshellarg($backgroundPath),
             escapeshellarg($svgFile),
