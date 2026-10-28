@@ -3122,6 +3122,172 @@ Route::get('/system-check-ffmpeg/{token}', function ($token) {
     return response()->json($result, 200, [], JSON_PRETTY_PRINT);
 });
 
+// One-off, READ-ONLY: renders a test PNG with common Bengali words (and
+// the Arabic Bismillah) using the bundled Noto fonts, directly on THIS
+// server's real FFmpeg build -- so a shaping bug can be confirmed or
+// ruled out on the actual production FFmpeg version before the video
+// renderer is trusted with real content. Returns the image directly
+// (open the URL in a browser, screenshot what you see). Needs
+// resources/fonts/video-maker/*.ttf already uploaded.
+Route::get('/system-video-font-test/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $font = resource_path('fonts/video-maker/NotoSansBengali-Regular.ttf');
+    $arabicFont = resource_path('fonts/video-maker/NotoNaskhArabic-Regular.ttf');
+    if (!file_exists($font) || !file_exists($arabicFont)) {
+        return response()->json(['error' => 'Font files not found at resources/fonts/video-maker/ -- upload them first.'], 404);
+    }
+
+    $ffmpeg = trim((string) shell_exec('which ffmpeg 2>/dev/null')) ?: '/usr/bin/ffmpeg';
+
+    $textFile = tempnam(sys_get_temp_dir(), 'fonttest_') . '.txt';
+    file_put_contents($textFile, "কথা\nবলি\nবেলা\nআছো\nদোয়া\nআল্লাহ মহান\nভালো");
+
+    $arabicTextFile = tempnam(sys_get_temp_dir(), 'fonttest_ar_') . '.txt';
+    file_put_contents($arabicTextFile, 'بسم الله الرحمن الرحيم');
+
+    $outputPath = storage_path('app/font-test.png');
+    if (!is_dir(storage_path('app'))) {
+        mkdir(storage_path('app'), 0755, true);
+    }
+
+    $cmd = sprintf(
+        '%s -y -f lavfi -i color=c=black:s=900x900:d=1 -vf %s -frames:v 1 -update 1 %s 2>&1',
+        escapeshellcmd($ffmpeg),
+        escapeshellarg(sprintf(
+            "drawtext=fontfile='%s':textfile='%s':fontcolor=white:fontsize=55:line_spacing=20:x=50:y=40,drawtext=fontfile='%s':textfile='%s':fontcolor=yellow:fontsize=50:x=50:y=700",
+            $font,
+            $textFile,
+            $arabicFont,
+            $arabicTextFile
+        )),
+        escapeshellarg($outputPath)
+    );
+
+    exec($cmd, $out, $code);
+    @unlink($textFile);
+    @unlink($arabicTextFile);
+
+    if ($code !== 0 || !file_exists($outputPath)) {
+        return response()->json(['error' => 'Render failed', 'ffmpeg_output' => $out], 500);
+    }
+
+    return response()->file($outputPath, ['Content-Type' => 'image/png']);
+});
+
+// One-off: Video Maker feature. Admin uploads background video templates
+// (category + per-video cost); users pick one, type their own text (any
+// language -- Bengali/Arabic/English), and FFmpeg renders a real MP4
+// combining the two. No ad network / points system -- generating a video
+// just costs a small amount of the user's EXISTING earning_balance,
+// exactly like every other paid feature on this site (boost jobs, SMM
+// orders). Safe to run more than once.
+Route::get('/system-add-video-maker/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('video_templates')) {
+        \Illuminate\Support\Facades\Schema::create('video_templates', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('category')->default('General');
+            $table->string('background_path');
+            $table->string('thumbnail_path')->nullable();
+            $table->unsignedInteger('duration_seconds')->default(10);
+            $table->string('text_color', 20)->default('#ffffff');
+            $table->unsignedInteger('font_size')->default(60);
+            $table->decimal('cost', 10, 4)->default(0.05);
+            $table->boolean('enabled')->default(false);
+            $table->timestamps();
+        });
+        $log[] = 'Created video_templates table.';
+    } else {
+        $log[] = 'video_templates table already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('user_videos')) {
+        \Illuminate\Support\Facades\Schema::create('user_videos', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('template_id');
+            $table->text('text_content');
+            $table->string('status', 20)->default('pending'); // pending, processing, completed, failed
+            $table->string('output_path')->nullable();
+            $table->decimal('cost', 10, 4)->default(0);
+            $table->text('error_message')->nullable();
+            $table->timestamps();
+            $table->index(['user_id', 'status']);
+            $table->index('status');
+        });
+        $log[] = 'Created user_videos table.';
+    } else {
+        $log[] = 'user_videos table already exists.';
+    }
+
+    foreach (['uploads/video-templates', 'uploads/user-videos'] as $dir) {
+        $full = base_path($dir);
+        if (!is_dir($full)) {
+            mkdir($full, 0755, true);
+            $log[] = "Created $dir directory.";
+        }
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// Cron: processes ONE pending video per hit (set up as a real cPanel Cron
+// Job -- command: wget -q -O /dev/null "https://protidinmegashop.com/cron-process-videos/<token>",
+// every 2-3 minutes; no SSH/persistent queue worker on this host, same
+// reasoning as the SMM order-sync cron). Deliberately does only one video
+// per run so a single slow render can never pile up concurrent FFmpeg
+// processes and overload the shared server.
+Route::get('/cron-process-videos/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    set_time_limit(280);
+
+    $video = \App\Models\UserVideo::where('status', 'pending')->oldest()->first();
+    if (!$video) {
+        return response()->json(['message' => 'No pending videos.']);
+    }
+
+    $video->status = 'processing';
+    $video->save();
+
+    try {
+        $renderer = new \App\Library\VideoRenderer();
+        $outputPath = $renderer->render($video);
+
+        $video->status = 'completed';
+        $video->output_path = $outputPath;
+        $video->save();
+
+        return response()->json(['message' => 'Video ' . $video->id . ' rendered successfully.', 'output' => $outputPath]);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error('video-render-failed', ['video_id' => $video->id, 'error' => $e->getMessage()]);
+
+        // Refund the user -- a failed render shouldn't cost them anything.
+        $user = \App\Models\User::find($video->user_id);
+        if ($user) {
+            $user->earning_balance = (float) $user->earning_balance + (float) $video->cost;
+            $user->save();
+        }
+
+        $video->status = 'failed';
+        $video->error_message = $e->getMessage();
+        $video->save();
+
+        return response()->json(['message' => 'Video ' . $video->id . ' failed and was refunded.', 'error' => $e->getMessage()], 500);
+    }
+});
+
 // One-off, READ-ONLY: a money-trail reconciliation report for exactly the
 // users the /system-unverify-free-instant-verified-users route touched
 // (found via the "Account Verification" notice it sent each of them --
