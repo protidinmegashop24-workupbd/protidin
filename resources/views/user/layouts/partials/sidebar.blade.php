@@ -364,8 +364,17 @@
                     </a>
                 </li>
                 @endif
-                
-                
+
+                @if(video_maker_available())
+                 <li>
+                    <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('user.video-maker.index') }} @endif" @if(Auth::user()->status == 0) onclick="return alert('Your Account is blocked! {{ Auth::user()->reason }}. Please Contact with authority!')" @endif class=" waves-effect">
+                        <i class="fa fa-video" aria-hidden="true"></i>
+                        <span>Video Maker</span>
+                    </a>
+                </li>
+                @endif
+
+
                 
 
 

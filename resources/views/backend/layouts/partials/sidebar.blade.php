@@ -125,6 +125,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.video-templates') }}" class="nav-link {{ Route::is('admin.video-templates*') ? 'active' : '' }}">
+                        <i class="fa fa-video" aria-hidden="true"></i>
+                        <p>&nbsp;Video Templates</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.reviews') }}" class="nav-link {{ Route::is('admin.reviews*') || Route::is('admin.review-*') ? 'active' : '' }}">
                         <i class="fa fa-star" aria-hidden="true"></i>
                         <p>&nbsp;Reviews</p>

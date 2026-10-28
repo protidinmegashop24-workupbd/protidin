@@ -1656,3 +1656,16 @@ if (!function_exists('offer_wall_available')) {
             && \App\Models\OfferWallProvider::where('enabled', true)->exists();
     }
 }
+
+if (!function_exists('video_maker_available')) {
+    /**
+     * Whether to show the "Video Maker" sidebar link -- true once at
+     * least one video template is enabled, same guarded pattern as
+     * offer_wall_available() above.
+     */
+    function video_maker_available(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('video_templates')
+            && \App\Models\VideoTemplate::where('enabled', true)->exists();
+    }
+}

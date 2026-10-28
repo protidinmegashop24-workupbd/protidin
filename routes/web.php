@@ -12,6 +12,7 @@ use App\Http\Controllers\Backend\CommunityTopicController;
 use App\Http\Controllers\Backend\SurveyProviderController as AdminSurveyProviderController;
 use App\Http\Controllers\Backend\OfferWallController as AdminOfferWallController;
 use App\Http\Controllers\Backend\SmmProviderController as AdminSmmProviderController;
+use App\Http\Controllers\Backend\VideoTemplateController as AdminVideoTemplateController;
 use App\Http\Controllers\Backend\InvestmentPackageController;
 use App\Http\Controllers\Backend\WebScriptController;
 use App\Http\Controllers\Backend\SiteReviewController;
@@ -81,6 +82,7 @@ use App\Http\Controllers\User\UserJobController;
 use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\User\UserJobWorkController;
 use App\Http\Controllers\User\BoostPackageController;
+use App\Http\Controllers\User\VideoMakerController;
 use App\Http\Controllers\User\UserReferralController;
 use App\Http\Controllers\User\UserReviewController;
 use App\Http\Controllers\User\DailyBonusController;
@@ -330,6 +332,11 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
 
     Route::get('smm-providers', [AdminSmmProviderController::class, 'index'])->name('smm-providers');
     Route::post('smm-providers-update-{id}', [AdminSmmProviderController::class, 'update'])->name('smm-providers.update');
+
+    Route::get('video-templates', [AdminVideoTemplateController::class, 'index'])->name('video-templates');
+    Route::post('video-templates-store', [AdminVideoTemplateController::class, 'store'])->name('video-templates.store');
+    Route::post('video-templates-update-{id}', [AdminVideoTemplateController::class, 'update'])->name('video-templates.update');
+    Route::delete('video-templates-delete-{id}', [AdminVideoTemplateController::class, 'destroy'])->name('video-templates.delete');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -910,6 +917,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/offer-wall/{slug}/start', [\App\Http\Controllers\OfferWallController::class, 'start'])->name('offer-wall.start');
     Route::get('/offer-wall-jobs', [\App\Http\Controllers\OfferWallController::class, 'index'])->name('offer-wall.index');
+
+    Route::get('/video-maker', [VideoMakerController::class, 'index'])->name('user.video-maker.index');
+    Route::get('/video-maker/create/{id}', [VideoMakerController::class, 'create'])->name('user.video-maker.create');
+    Route::post('/video-maker/store', [VideoMakerController::class, 'store'])->name('user.video-maker.store');
+    Route::get('/video-maker/my-videos', [VideoMakerController::class, 'myVideos'])->name('user.video-maker.my-videos');
+    Route::get('/video-maker/download/{id}', [VideoMakerController::class, 'download'])->name('user.video-maker.download');
 });
 
 // Survey Provider postback -- not behind 'auth' (the provider's server
