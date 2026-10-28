@@ -3190,6 +3190,59 @@ Route::get('/system-video-font-test/{token}', function ($token) {
     return response()->file($outputPath, ['Content-Type' => 'image/png']);
 });
 
+// One-off, READ-ONLY: shows the stored error_message for the most recent
+// failed video render, plus enough environment context (temp dir
+// writability, upload dir writability, font files present) to diagnose
+// WHY without another failed attempt.
+Route::get('/system-video-maker-diagnostic/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $lastFailed = \App\Models\UserVideo::where('status', 'failed')->latest()->first();
+    $lastAny = \App\Models\UserVideo::latest()->first();
+
+    $fontDir = resource_path('fonts/video-maker');
+    $fonts = [
+        'NotoSansBengali-Regular.ttf',
+        'NotoSansBengali-Bold.ttf',
+        'NotoNaskhArabic-Regular.ttf',
+        'NotoNaskhArabic-Bold.ttf',
+    ];
+    $fontStatus = [];
+    foreach ($fonts as $f) {
+        $path = $fontDir . '/' . $f;
+        $fontStatus[$f] = file_exists($path) ? (filesize($path) > 10000 ? 'ok (' . filesize($path) . ' bytes)' : 'exists but suspiciously small') : 'MISSING';
+    }
+
+    $sysTemp = sys_get_temp_dir();
+    $sysTempWritable = @file_put_contents($sysTemp . '/vm_write_test.txt', 'test') !== false;
+    @unlink($sysTemp . '/vm_write_test.txt');
+
+    $uploadDir = base_path('uploads/user-videos');
+    $uploadDirExists = is_dir($uploadDir);
+    $uploadDirWritable = $uploadDirExists && is_writable($uploadDir);
+
+    return response()->json([
+        'last_failed_video' => $lastFailed ? [
+            'id' => $lastFailed->id,
+            'error_message' => $lastFailed->error_message,
+            'created_at' => (string) $lastFailed->created_at,
+        ] : null,
+        'last_video_of_any_status' => $lastAny ? [
+            'id' => $lastAny->id,
+            'status' => $lastAny->status,
+            'error_message' => $lastAny->error_message,
+        ] : null,
+        'font_files' => $fontStatus,
+        'system_temp_dir' => $sysTemp,
+        'system_temp_dir_writable' => $sysTempWritable,
+        'upload_dir' => $uploadDir,
+        'upload_dir_exists' => $uploadDirExists,
+        'upload_dir_writable' => $uploadDirWritable,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-off: Video Maker feature. Admin uploads background video templates
 // (category + per-video cost); users pick one, type their own text (any
 // language -- Bengali/Arabic/English), and FFmpeg renders a real MP4
