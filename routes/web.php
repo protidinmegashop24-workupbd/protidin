@@ -3243,6 +3243,31 @@ Route::get('/system-video-maker-diagnostic/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// One-off, READ-ONLY: renders a preview PNG through the REAL Video Maker
+// text pipeline (buildSvg + fontconfig-resolved fonts), not the old
+// drawtext-based /system-video-font-test. Confirms the fontconfig fix
+// actually resolves Bengali/Arabic glyphs on this exact server before a
+// user spends balance on a full video.
+Route::get('/system-video-svg-font-test/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $outputPath = storage_path('app/svg-font-test.png');
+    if (!is_dir(storage_path('app'))) {
+        mkdir(storage_path('app'), 0755, true);
+    }
+
+    $text = "বিসমিল্লাহির রাহমানির রাহিম — নিশ্চয়ই কষ্টের সাথে স্বস্তি আছে";
+    $result = (new \App\Library\VideoRenderer())->renderTextPreview($text, '#ffffff', 60, $outputPath);
+
+    if (!$result['success']) {
+        return response()->json($result, 500);
+    }
+
+    return response()->file($outputPath, ['Content-Type' => 'image/png']);
+});
+
 // One-off: backfill thumbnail_path for any video_templates row that's
 // missing one -- store() had a bug (used an undefined $filename instead
 // of $cleanFilename) that silently skipped thumbnail generation for

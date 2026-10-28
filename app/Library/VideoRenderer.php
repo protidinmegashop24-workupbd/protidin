@@ -14,12 +14,23 @@ use RuntimeException;
  * this exact server's FFmpeg build, not just a local one) confirmed
  * drawtext's Bengali shaping is broken for common, everyday words (e.g.
  * "বেলা" rendering as "বলো", vowel signs like "ো" showing a dotted-circle
- * placeholder). Instead, the text is built as an SVG (with the right font
- * embedded directly as base64, so it needs no fontconfig setup), which
- * FFmpeg rasterizes through its own bundled librsvg decoder -- that path
- * renders through Pango internally and shapes Bengali and Arabic
- * correctly (also confirmed empirically). The rasterized text PNG is then
- * composited onto the background video with the `overlay` filter.
+ * placeholder). Instead, the text is built as an SVG, which FFmpeg
+ * rasterizes through its own bundled librsvg decoder -- that path renders
+ * through Pango internally and shapes Bengali and Arabic correctly (also
+ * confirmed empirically).
+ *
+ * The font is referenced by family name and resolved through a
+ * request-scoped fontconfig config (see ensureFontconfig()), NOT embedded
+ * in the SVG as a base64 `@font-face`. The embedded-font approach worked
+ * in local testing but produced tofu boxes (empty glyph placeholders) in
+ * production -- the librsvg build bundled with the production FFmpeg
+ * doesn't honor `@font-face` the way the local one did. Fontconfig-based
+ * family lookup is what every librsvg/Pango build already relies on for
+ * ordinary system fonts, so it isn't sensitive to that kind of version
+ * difference.
+ *
+ * The rasterized text is composited onto the background video with the
+ * `overlay` filter.
  *
  * Font selection: the text's own script decides the font, not a setting
  * someone has to remember to pick -- Arabic text (Quran verses etc.) uses
@@ -57,6 +68,50 @@ class VideoRenderer
     }
 
     /**
+     * Font family name as embedded in the TTF's own name table (confirmed
+     * via fc-query) -- this is what the SVG's font-family has to match for
+     * fontconfig to resolve it to our bundled file.
+     */
+    protected function fontFamilyForText(string $text): string
+    {
+        return $this->isArabic($text) ? 'Noto Naskh Arabic' : 'Noto Sans Bengali';
+    }
+
+    /**
+     * Writes (or reuses) a minimal fontconfig config that points only at
+     * our bundled fonts directory, and returns its path so it can be fed
+     * to FFmpeg via the FONTCONFIG_FILE env var. Using FONTCONFIG_FILE
+     * (not FONTCONFIG_PATH) replaces the system config entirely for that
+     * one process, which is fine here -- the SVG only ever asks for our
+     * two font families, never a system one.
+     */
+    protected function ensureFontconfig(): string
+    {
+        $cacheDir = storage_path('app/fontconfig-cache');
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0755, true);
+        }
+
+        $confPath = storage_path('app/video-maker-fonts.conf');
+        $fontDir = resource_path('fonts/video-maker');
+
+        $xml = <<<CONF
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>{$fontDir}</dir>
+  <cachedir>{$cacheDir}</cachedir>
+</fontconfig>
+CONF;
+
+        // Regenerated on every call (it's tiny) so a change in paths
+        // across deploys never leaves a stale file behind.
+        file_put_contents($confPath, $xml);
+
+        return $confPath;
+    }
+
+    /**
      * Rough character-count-based line wrapping -- good enough for short
      * quote/verse-style text. mb_* throughout so Bengali/Arabic multi-byte
      * characters are never split mid-character.
@@ -89,22 +144,34 @@ class VideoRenderer
      * Builds a full-canvas transparent SVG: a centered, rounded
      * semi-transparent box behind the text, with each wrapped line drawn
      * as its own <text> element (SVG doesn't reliably center multi-line
-     * text any other way across renderers). The font file is embedded as
-     * base64 inside the SVG itself so librsvg never needs a system
-     * fontconfig entry for it.
+     * text any other way across renderers).
+     *
+     * Long text (the form allows up to 400 characters) is auto-shrunk so
+     * the box never swallows most of the canvas and hides the background
+     * video entirely -- line count is fixed by wrapLines() regardless of
+     * font size, so shrinking the font directly shrinks the box height.
      */
     protected function buildSvg(string $text, string $color, int $fontSize, bool $rtl): string
     {
-        $fontPath = $this->fontPathForText($text);
-        $fontBase64 = base64_encode(file_get_contents($fontPath));
+        $fontFamily = $this->fontFamilyForText($text);
         $lines = $this->wrapLines($text, $rtl ? 18 : 22);
 
-        $lineHeight = (int) round($fontSize * 1.45);
-        $textBlockHeight = count($lines) * $lineHeight;
         $boxPaddingY = 48;
-        $boxPaddingX = 56;
         $boxWidth = self::CANVAS_WIDTH - 120;
-        $boxHeight = $textBlockHeight + ($boxPaddingY * 2);
+        $maxBoxHeight = (int) round(self::CANVAS_HEIGHT * 0.8);
+        $minFontSize = 22;
+
+        do {
+            $lineHeight = (int) round($fontSize * 1.45);
+            $textBlockHeight = count($lines) * $lineHeight;
+            $boxHeight = $textBlockHeight + ($boxPaddingY * 2);
+            if ($boxHeight <= $maxBoxHeight || $fontSize <= $minFontSize) {
+                break;
+            }
+            $fontSize -= 2;
+        } while (true);
+        $boxHeight = min($boxHeight, $maxBoxHeight);
+
         $boxX = (self::CANVAS_WIDTH - $boxWidth) / 2;
         $boxY = (self::CANVAS_HEIGHT - $boxHeight) / 2;
 
@@ -131,11 +198,7 @@ class VideoRenderer
 <svg xmlns="http://www.w3.org/2000/svg" width="{$this->canvasWidth()}" height="{$this->canvasHeight()}">
 <defs>
 <style>
-@font-face {
-  font-family: 'VideoMakerFont';
-  src: url(data:font/ttf;base64,{$fontBase64}) format('truetype');
-}
-text { font-family: 'VideoMakerFont'; }
+text { font-family: '{$fontFamily}'; }
 </style>
 </defs>
 <rect x="{$boxX}" y="{$boxY}" width="{$boxWidth}" height="{$boxHeight}" rx="24" fill="black" fill-opacity="0.45"/>
@@ -219,8 +282,15 @@ SVG;
         // happened on an input that already matched the normalized
         // baseline exactly). Forcing a single thread keeps it within the
         // account's limits.
+        $fontconfigFile = $this->ensureFontconfig();
+
+        // FONTCONFIG_FILE points librsvg's Pango text layout at our
+        // bundled Bengali/Arabic fonts by family name, instead of relying
+        // on the SVG's own @font-face (see the class docblock for why
+        // that broke in production).
         $cmd = sprintf(
-            '%s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
+            'FONTCONFIG_FILE=%s %s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
+            escapeshellarg($fontconfigFile),
             escapeshellcmd($ffmpeg),
             escapeshellarg($backgroundPath),
             escapeshellarg($svgFile),
@@ -238,6 +308,44 @@ SVG;
         }
 
         return 'uploads/user-videos/' . $outputFilename;
+    }
+
+    /**
+     * Renders just the text overlay (buildSvg + fontconfig, same code
+     * path as render()) to a standalone PNG for diagnostics -- lets a
+     * one-off route confirm the real SVG/fontconfig pipeline works on a
+     * given server without spending a user's balance on a full video.
+     */
+    public function renderTextPreview(string $text, string $color, int $fontSize, string $outputPath): array
+    {
+        $ffmpeg = $this->ffmpegBinary();
+        $rtl = $this->isArabic($text);
+        $svg = $this->buildSvg($text, $color, $fontSize, $rtl);
+
+        $svgFile = tempnam(sys_get_temp_dir(), 'vtprev_') . '.svg';
+        file_put_contents($svgFile, $svg);
+
+        $fontconfigFile = $this->ensureFontconfig();
+
+        $cmd = sprintf(
+            'FONTCONFIG_FILE=%s %s -y -f lavfi -i %s -i %s -filter_complex %s -frames:v 1 -update 1 %s 2>&1',
+            escapeshellarg($fontconfigFile),
+            escapeshellcmd($ffmpeg),
+            escapeshellarg(sprintf('color=c=0x123456:s=%dx%d', self::CANVAS_WIDTH, self::CANVAS_HEIGHT)),
+            escapeshellarg($svgFile),
+            escapeshellarg('[1:v]format=rgba[txt];[0:v][txt]overlay=0:0'),
+            escapeshellarg($outputPath)
+        );
+
+        exec($cmd, $outputLines, $exitCode);
+        @unlink($svgFile);
+
+        return [
+            'success' => $exitCode === 0 && file_exists($outputPath),
+            'exit_code' => $exitCode,
+            'ffmpeg_output' => implode("\n", array_slice($outputLines, -30)),
+            'fontconfig_file' => $fontconfigFile,
+        ];
     }
 
     public function generateThumbnail(string $videoFullPath, string $thumbnailFullPath): bool
