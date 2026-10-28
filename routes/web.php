@@ -337,6 +337,7 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::post('video-templates-store', [AdminVideoTemplateController::class, 'store'])->name('video-templates.store');
     Route::post('video-templates-update-{id}', [AdminVideoTemplateController::class, 'update'])->name('video-templates.update');
     Route::delete('video-templates-delete-{id}', [AdminVideoTemplateController::class, 'destroy'])->name('video-templates.delete');
+    Route::post('video-templates-tts-settings', [AdminVideoTemplateController::class, 'saveTtsSettings'])->name('video-templates.tts-settings');
 
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
@@ -3396,6 +3397,18 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
         $log[] = 'user_videos table already exists.';
     }
 
+    if (!\Illuminate\Support\Facades\Schema::hasTable('video_maker_settings')) {
+        \Illuminate\Support\Facades\Schema::create('video_maker_settings', function ($table) {
+            $table->id();
+            $table->string('google_tts_api_key')->nullable();
+            $table->timestamps();
+        });
+        \App\Models\VideoMakerSetting::create(['google_tts_api_key' => null]);
+        $log[] = 'Created video_maker_settings table.';
+    } else {
+        $log[] = 'video_maker_settings table already exists.';
+    }
+
     foreach (['uploads/video-templates', 'uploads/user-videos'] as $dir) {
         $full = base_path($dir);
         if (!is_dir($full)) {
@@ -3405,6 +3418,92 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// One-off: fetches the full Quran text (simple/undiacritized script) from
+// a public Quran text API and stores it locally as storage/app/quran-
+// ayahs.json -- the reference data QuranAudioMatcher matches a user's
+// typed ayah against. Fetched here (not bundled with the app) because
+// it's large (6,236 ayahs across 114 surahs) and is best pulled directly
+// by this server rather than relayed through anything else. Safe to run
+// more than once -- re-fetches and overwrites.
+Route::get('/system-setup-quran-audio/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    set_time_limit(280);
+
+    $matcher = new \App\Library\QuranAudioMatcher();
+    $ayahs = [];
+    $errors = [];
+
+    for ($surah = 1; $surah <= 114; $surah++) {
+        $ch = curl_init("https://api.alquran.cloud/v1/surah/{$surah}/quran-simple");
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $httpCode !== 200) {
+            $errors[] = "Surah $surah: HTTP $httpCode";
+            continue;
+        }
+
+        $decoded = json_decode($response, true);
+        $ayahList = $decoded['data']['ayahs'] ?? null;
+        if (!is_array($ayahList)) {
+            $errors[] = "Surah $surah: unexpected response shape";
+            continue;
+        }
+
+        foreach ($ayahList as $ayah) {
+            $text = $ayah['text'] ?? '';
+            $ayahs[] = [
+                'surah' => $surah,
+                'ayah' => (int) ($ayah['numberInSurah'] ?? 0),
+                'text' => $text,
+                'normalized' => $matcher->normalize($text),
+            ];
+        }
+    }
+
+    $outPath = storage_path('app/quran-ayahs.json');
+    if (!is_dir(dirname($outPath))) {
+        mkdir(dirname($outPath), 0755, true);
+    }
+    file_put_contents($outPath, json_encode($ayahs, JSON_UNESCAPED_UNICODE));
+
+    return response()->json([
+        'ayahs_saved' => count($ayahs),
+        'surahs_with_errors' => $errors,
+        'sample' => array_slice($ayahs, 0, 2),
+        'saved_to' => $outPath,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
+// One-off, READ-ONLY: tests the saved Google Cloud TTS API key end-to-end
+// by synthesizing a short phrase and reporting success/failure with
+// Google's own error text -- lets the admin's key be verified without
+// spending a user's balance on a real video.
+Route::get('/system-check-google-tts/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $apiKey = \App\Models\VideoMakerSetting::query()->value('google_tts_api_key');
+    if (!$apiKey) {
+        return response()->json(['error' => 'No Google TTS API key saved yet in Admin -> Video Templates.'], 400);
+    }
+
+    $outputPath = storage_path('app/tts-test.mp3');
+    try {
+        (new \App\Library\GoogleTtsService($apiKey))->synthesize('আসসালামু আলাইকুম, এটি একটি টেস্ট।', $outputPath);
+    } catch (\Throwable $e) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+
+    return response()->file($outputPath, ['Content-Type' => 'audio/mpeg']);
 });
 
 // Cron: processes ONE pending video per hit (set up as a real cPanel Cron

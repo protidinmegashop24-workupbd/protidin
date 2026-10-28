@@ -3,6 +3,7 @@
 namespace App\Library;
 
 use App\Models\UserVideo;
+use App\Models\VideoMakerSetting;
 use RuntimeException;
 
 /**
@@ -37,6 +38,13 @@ use RuntimeException;
  * Noto Naskh Arabic; everything else (Bengali or Latin/English) uses Noto
  * Sans Bengali, which has both scripts' glyphs merged into one file so it
  * never needs picking either.
+ *
+ * Audio: see resolveAudio() -- a real Quran reciter's audio for a
+ * recognized ayah (QuranAudioMatcher), else a Google Cloud TTS voice
+ * (GoogleTtsService) if configured, else silent. When there's audio, the
+ * rendered video's length follows the audio exactly (ffmpeg -shortest
+ * against an indefinitely-looped background), not the template's fixed
+ * duration_seconds.
  */
 class VideoRenderer
 {
@@ -217,6 +225,50 @@ SVG;
         return self::CANVAS_HEIGHT;
     }
 
+    /**
+     * Picks the video's audio track, in priority order:
+     *  1. A real reciter's recitation, if the text is exactly a known
+     *     Quran ayah (QuranAudioMatcher) -- 'temp' is false since that
+     *     file is a shared, cached copy that must not be deleted.
+     *  2. A Google Cloud TTS voice reading the text aloud, if an API key
+     *     is configured in admin settings -- 'temp' is true, it's a
+     *     one-off file for this render only.
+     *  3. Neither -- 'path' is null and render() falls back to a silent
+     *     video (e.g. admin hasn't added a Google TTS key yet, or both
+     *     attempts failed). A failure here is deliberately swallowed
+     *     rather than failing the whole render, so a temporary TTS
+     *     outage doesn't refund every single video.
+     *
+     * @return array{path: ?string, temp: bool}
+     */
+    protected function resolveAudio(string $text): array
+    {
+        if ($this->isArabic($text)) {
+            try {
+                $ayahAudio = (new QuranAudioMatcher())->findAyahAudio($text);
+                if ($ayahAudio) {
+                    return ['path' => $ayahAudio, 'temp' => false];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('video-maker-quran-audio-failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        $apiKey = VideoMakerSetting::query()->value('google_tts_api_key');
+        if (!$apiKey) {
+            return ['path' => null, 'temp' => false];
+        }
+
+        try {
+            $ttsPath = tempnam(sys_get_temp_dir(), 'vttts_') . '.mp3';
+            (new GoogleTtsService($apiKey))->synthesize($text, $ttsPath);
+            return ['path' => $ttsPath, 'temp' => true];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('video-maker-tts-failed', ['error' => $e->getMessage()]);
+            return ['path' => null, 'temp' => false];
+        }
+    }
+
     public function render(UserVideo $video): string
     {
         $template = $video->template;
@@ -258,6 +310,8 @@ SVG;
         $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
         $outputFullPath = $outDir . '/' . $outputFilename;
 
+        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video->text_content);
+
         // fps=25 and setsar=1 are defensive: an admin-uploaded background
         // can carry an odd/variable frame rate or non-square pixel aspect
         // ratio from however it was originally recorded/exported, and
@@ -267,7 +321,7 @@ SVG;
         // the encoder ever sees them removes that as a failure mode
         // regardless of what the uploaded file's own metadata says.
         $filterComplex = sprintf(
-            '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d,fps=25,setsar=1[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0,format=yuv420p',
+            '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d,fps=25,setsar=1[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0,format=yuv420p[vout]',
             self::CANVAS_WIDTH,
             self::CANVAS_HEIGHT
         );
@@ -288,19 +342,47 @@ SVG;
         // bundled Bengali/Arabic fonts by family name, instead of relying
         // on the SVG's own @font-face (see the class docblock for why
         // that broke in production).
-        $cmd = sprintf(
-            'FONTCONFIG_FILE=%s %s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
-            escapeshellarg($fontconfigFile),
-            escapeshellcmd($ffmpeg),
-            escapeshellarg($backgroundPath),
-            escapeshellarg($svgFile),
-            (int) ($template->duration_seconds ?: 10),
-            escapeshellarg($filterComplex),
-            escapeshellarg($outputFullPath)
-        );
+        if ($audioPath) {
+            // With a real audio track, the video's length follows the
+            // audio's length exactly via -shortest -- the background
+            // loops indefinitely (-stream_loop -1, no -t), so the only
+            // stream that can run out first is the audio, and that's
+            // when the whole render stops. No separate duration/ffprobe
+            // step needed.
+            $cmd = sprintf(
+                'FONTCONFIG_FILE=%s %s -y -stream_loop -1 -i %s -i %s -i %s -filter_complex %s -map %s -map 2:a:0 -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -b:a 128k -movflags +faststart %s 2>&1',
+                escapeshellarg($fontconfigFile),
+                escapeshellcmd($ffmpeg),
+                escapeshellarg($backgroundPath),
+                escapeshellarg($svgFile),
+                escapeshellarg($audioPath),
+                escapeshellarg($filterComplex),
+                escapeshellarg('[vout]'),
+                escapeshellarg($outputFullPath)
+            );
+        } else {
+            // No audio available yet (Google TTS key not configured, and
+            // the text isn't a recognized Quran ayah) -- fall back to a
+            // silent video at the template's fixed duration, same as
+            // before audio support existed.
+            $cmd = sprintf(
+                'FONTCONFIG_FILE=%s %s -y -stream_loop -1 -i %s -i %s -t %d -filter_complex %s -map %s -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
+                escapeshellarg($fontconfigFile),
+                escapeshellcmd($ffmpeg),
+                escapeshellarg($backgroundPath),
+                escapeshellarg($svgFile),
+                (int) ($template->duration_seconds ?: 10),
+                escapeshellarg($filterComplex),
+                escapeshellarg('[vout]'),
+                escapeshellarg($outputFullPath)
+            );
+        }
 
         exec($cmd, $outputLines, $exitCode);
         @unlink($svgFile);
+        if ($audioPath && $audioIsTemp) {
+            @unlink($audioPath);
+        }
 
         if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
             $tail = implode("\n", array_slice($outputLines, -40));

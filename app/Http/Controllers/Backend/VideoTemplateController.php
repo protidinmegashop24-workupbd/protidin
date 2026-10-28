@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Library\VideoRenderer;
+use App\Models\VideoMakerSetting;
 use App\Models\VideoTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,7 +14,21 @@ class VideoTemplateController extends Controller
     public function index()
     {
         $templates = VideoTemplate::orderByDesc('id')->get();
-        return view('backend.pages.video-templates.index', compact('templates'));
+        $ttsSetting = VideoMakerSetting::first();
+        return view('backend.pages.video-templates.index', compact('templates', 'ttsSetting'));
+    }
+
+    public function saveTtsSettings(Request $request)
+    {
+        $request->validate([
+            'google_tts_api_key' => 'nullable|string|max:255',
+        ]);
+
+        $setting = VideoMakerSetting::first() ?: new VideoMakerSetting();
+        $setting->google_tts_api_key = $request->google_tts_api_key ?: null;
+        $setting->save();
+
+        return redirect()->back()->with('success', 'Voice settings saved.');
     }
 
     public function store(Request $request)

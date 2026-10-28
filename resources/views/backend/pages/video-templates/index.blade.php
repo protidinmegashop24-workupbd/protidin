@@ -39,6 +39,23 @@
             </div>
         @endif
 
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-microphone"></i> Voice / Narration Settings</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted" style="font-size:13px;">
+                    Generated videos get a voice reading the text aloud. If the text is exactly a known Quran ayah, a real reciter's recitation is used automatically (no setup needed for that). For everything else (regular text, or Arabic that isn't a recognized ayah), a Google Cloud Text-to-Speech API key is needed below -- without one, those videos render silently.
+                </p>
+                <form action="{{ route('admin.video-templates.tts-settings') }}" method="POST" class="form-inline">
+                    @csrf
+                    <label class="mr-2">Google Cloud TTS API Key</label>
+                    <input type="text" class="form-control mr-2" style="min-width:320px;" name="google_tts_api_key" value="{{ $ttsSetting->google_tts_api_key ?? '' }}" placeholder="Paste API key here">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+
         <div class="mb-3">
             <button type="button" class="btn btn-success" data-toggle="modal" data-target="#add_template_modal">
                 <i class="fas fa-plus"></i> Add New Template
@@ -165,6 +182,7 @@
                         <div class="form-group col-md-6">
                             <label>Duration (seconds)</label>
                             <input type="number" class="form-control" name="duration_seconds" value="10" min="3" max="60" required>
+                            <small class="text-muted">Used only when the video has no voice audio (narration off, or no match).</small>
                         </div>
                         <div class="form-group col-md-6">
                             <label>Cost ($)</label>
