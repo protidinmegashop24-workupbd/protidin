@@ -28,6 +28,24 @@
             font-weight: bold;
             font-size: 12px;
         }
+        .mv-status-note {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+            max-width: 160px;
+        }
+        .mv-spinner {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 2px solid #854d0e;
+            border-top-color: transparent;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: mv-spin 0.8s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes mv-spin { to { transform: rotate(360deg); } }
     </style>
 @endsection
 
@@ -45,6 +63,17 @@
                 <div class="alert alert-success">{{ session('message') }}</div>
             @endif
 
+            @php
+                $hasInProgress = $videos->whereIn('status', ['pending', 'processing'])->count() > 0;
+            @endphp
+
+            @if($hasInProgress)
+                <div class="alert alert-info" style="font-size:14px;">
+                    <span class="mv-spinner"></span>
+                    আপনার ভিডিও তৈরি হচ্ছে, সাধারণত ২-৫ মিনিট সময় লাগে। এই পেজ নিজে থেকেই আপডেট হবে, অপেক্ষা করুন।
+                </div>
+            @endif
+
             @forelse($videos as $video)
                 <div class="mv-card">
                     <div class="mv-text">
@@ -54,13 +83,16 @@
                     </div>
                     <div>
                         @if($video->status == 'pending')
-                            <span class="mv-badge mv-badge-pending">Pending</span>
+                            <span class="mv-badge mv-badge-pending"><span class="mv-spinner"></span>Pending</span>
+                            <div class="mv-status-note">কাজ শুরু হওয়ার অপেক্ষায় (লাইনে আছে)</div>
                         @elseif($video->status == 'processing')
-                            <span class="mv-badge mv-badge-processing">Processing</span>
+                            <span class="mv-badge mv-badge-processing"><span class="mv-spinner" style="border-color:#1e40af;border-top-color:transparent;"></span>Processing</span>
+                            <div class="mv-status-note">ভিডিও তৈরি হচ্ছে, প্রায় শেষ</div>
                         @elseif($video->status == 'completed')
-                            <span class="mv-badge mv-badge-completed">Ready</span>
+                            <span class="mv-badge mv-badge-completed">✔ Ready</span>
                         @elseif($video->status == 'failed')
                             <span class="mv-badge mv-badge-failed">Failed (Refunded)</span>
+                            <div class="mv-status-note">তৈরি করা যায়নি, টাকা ফেরত দেওয়া হয়েছে</div>
                         @endif
                     </div>
                     @if($video->status == 'completed')
@@ -76,4 +108,17 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('js')
+@if($hasInProgress)
+<script>
+    // Auto-refresh while anything is still pending/processing, so the user
+    // sees it flip to "Ready" on its own without needing to hit refresh --
+    // stops automatically once nothing is in progress anymore.
+    setTimeout(function () {
+        window.location.reload();
+    }, 15000);
+</script>
+@endif
 @endsection
