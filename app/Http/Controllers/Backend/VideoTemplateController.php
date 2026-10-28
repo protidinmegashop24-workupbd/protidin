@@ -67,7 +67,7 @@ class VideoTemplateController extends Controller
         // fine without one (falls back to a plain card), so a failure here
         // never blocks saving the template itself.
         try {
-            $thumbName = pathinfo($filename, PATHINFO_FILENAME) . '.jpg';
+            $thumbName = pathinfo($cleanFilename, PATHINFO_FILENAME) . '.jpg';
             $thumbFull = base_path($uploadDir . $thumbName);
             if ((new VideoRenderer())->generateThumbnail(base_path($template->background_path), $thumbFull)) {
                 $template->thumbnail_path = $uploadDir . $thumbName;

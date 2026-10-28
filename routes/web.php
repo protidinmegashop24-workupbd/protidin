@@ -3243,6 +3243,48 @@ Route::get('/system-video-maker-diagnostic/{token}', function ($token) {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+// One-off: backfill thumbnail_path for any video_templates row that's
+// missing one -- store() had a bug (used an undefined $filename instead
+// of $cleanFilename) that silently skipped thumbnail generation for
+// every template uploaded before the fix. Safe to run more than once.
+Route::get('/system-fix-video-thumbnails/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $results = [];
+    $templates = \App\Models\VideoTemplate::whereNull('thumbnail_path')->orWhere('thumbnail_path', '')->get();
+
+    foreach ($templates as $template) {
+        $backgroundFull = base_path($template->background_path);
+        if (!file_exists($backgroundFull)) {
+            $results[$template->id] = 'background file missing: ' . $template->background_path;
+            continue;
+        }
+
+        $thumbName = pathinfo($template->background_path, PATHINFO_FILENAME) . '.jpg';
+        $thumbRelative = 'uploads/video-templates/' . $thumbName;
+        $thumbFull = base_path($thumbRelative);
+
+        try {
+            if ((new \App\Library\VideoRenderer())->generateThumbnail($backgroundFull, $thumbFull)) {
+                $template->thumbnail_path = $thumbRelative;
+                $template->save();
+                $results[$template->id] = 'thumbnail created';
+            } else {
+                $results[$template->id] = 'generateThumbnail returned false';
+            }
+        } catch (\Throwable $e) {
+            $results[$template->id] = 'error: ' . $e->getMessage();
+        }
+    }
+
+    return response()->json([
+        'processed' => count($templates),
+        'results' => $results,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-off: Video Maker feature. Admin uploads background video templates
 // (category + per-video cost); users pick one, type their own text (any
 // language -- Bengali/Arabic/English), and FFmpeg renders a real MP4
