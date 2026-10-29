@@ -3464,12 +3464,8 @@ Route::get('/system-setup-quran-audio/{token}', function (\Illuminate\Http\Reque
         mkdir(dirname($outPath), 0755, true);
     }
 
-    if (!$request->boolean('batch')) {
-        // Fast path: the whole Quran in ONE request instead of 114
-        // separate ones -- the original per-surah loop was tripping the
-        // shared host's own connection/proxy timeout, a server-level
-        // limit that PHP's set_time_limit() does not control.
-        $ch = curl_init('https://api.alquran.cloud/v1/quran/quran-simple');
+    $fetchEdition = function (string $edition) {
+        $ch = curl_init("https://api.alquran.cloud/v1/quran/{$edition}");
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 90]);
         $response = curl_exec($ch);
         $curlError = curl_error($ch);
@@ -3479,28 +3475,69 @@ Route::get('/system-setup-quran-audio/{token}', function (\Illuminate\Http\Reque
         $decoded = $response !== false ? json_decode($response, true) : null;
         $surahsData = $decoded['data']['surahs'] ?? null;
 
-        if ($response === false || $httpCode !== 200 || !is_array($surahsData)) {
+        return [
+            'ok' => $response !== false && $httpCode === 200 && is_array($surahsData),
+            'surahs' => $surahsData,
+            'http_code' => $httpCode,
+            'curl_error' => $curlError,
+            'response_preview' => $response !== false ? substr((string) $response, 0, 500) : null,
+        ];
+    };
+
+    if (!$request->boolean('batch')) {
+        // Fast path: the whole Quran in ONE request per edition instead
+        // of 114 -- the original per-surah loop was tripping the shared
+        // host's own connection/proxy timeout, a server-level limit that
+        // PHP's set_time_limit() does not control. Three editions are
+        // fetched: "quran-simple" (undiacritized, for text matching),
+        // "quran-uthmani" (traditional Mushaf script, for display), and
+        // "bn.bengali" (Bengali translation, for display under the
+        // Arabic). Only the first is required -- if the other two fail,
+        // ayah matching/audio still works, just without the nicer Quran-
+        // style display text/translation (falls back to the simple text).
+        $simple = $fetchEdition('quran-simple');
+        if (!$simple['ok']) {
             return response()->json([
                 'bulk_fetch_failed' => true,
-                'http_code' => $httpCode,
-                'curl_error' => $curlError,
-                'response_preview' => $response !== false ? substr((string) $response, 0, 500) : null,
+                'edition' => 'quran-simple',
+                'http_code' => $simple['http_code'],
+                'curl_error' => $simple['curl_error'],
+                'response_preview' => $simple['response_preview'],
                 'next_step' => 'The slower batch mode is also available: open this same URL with ?batch=1&start=1 appended, and keep opening the "next_url" each reply gives you until "done" is true.',
             ], 500, [], JSON_PRETTY_PRINT);
         }
 
+        $uthmani = $fetchEdition('quran-uthmani');
+        $bengali = $fetchEdition('bn.bengali');
+
+        $uthmaniBySurah = [];
+        if ($uthmani['ok']) {
+            foreach ($uthmani['surahs'] as $s) {
+                $uthmaniBySurah[(int) ($s['number'] ?? 0)] = $s['ayahs'] ?? [];
+            }
+        }
+        $bengaliBySurah = [];
+        if ($bengali['ok']) {
+            foreach ($bengali['surahs'] as $s) {
+                $bengaliBySurah[(int) ($s['number'] ?? 0)] = $s['ayahs'] ?? [];
+            }
+        }
+
         $ayahs = [];
         $surahsMeta = [];
-        foreach ($surahsData as $surah) {
+        foreach ($simple['surahs'] as $surah) {
             $surahNumber = (int) ($surah['number'] ?? 0);
             $ayahList = $surah['ayahs'] ?? [];
-            foreach ($ayahList as $ayah) {
+            foreach ($ayahList as $i => $ayah) {
                 $text = $ayah['text'] ?? '';
+                $numberInSurah = (int) ($ayah['numberInSurah'] ?? 0);
                 $ayahs[] = [
                     'surah' => $surahNumber,
-                    'ayah' => (int) ($ayah['numberInSurah'] ?? 0),
+                    'ayah' => $numberInSurah,
                     'text' => $text,
                     'normalized' => $matcher->normalize($text),
+                    'text_uthmani' => $uthmaniBySurah[$surahNumber][$i]['text'] ?? $text,
+                    'translation_bn' => $bengaliBySurah[$surahNumber][$i]['text'] ?? '',
                 ];
             }
             $surahsMeta[] = [
@@ -3519,6 +3556,8 @@ Route::get('/system-setup-quran-audio/{token}', function (\Illuminate\Http\Reque
             'mode' => 'bulk',
             'ayahs_saved' => count($ayahs),
             'surahs_saved' => count($surahsMeta),
+            'uthmani_fetched' => $uthmani['ok'],
+            'bengali_translation_fetched' => $bengali['ok'],
             'sample_ayah' => array_slice($ayahs, 0, 2),
             'sample_surah' => array_slice($surahsMeta, 0, 2),
             'saved_to' => [$outPath, $surahsPath],
@@ -3528,7 +3567,11 @@ Route::get('/system-setup-quran-audio/{token}', function (\Illuminate\Http\Reque
     // Batch mode (?batch=1&start=N): processes a handful of surahs per
     // hit and merges into whatever's already saved, so no single request
     // runs long enough to hit the host's connection timeout. Keep
-    // opening the "next_url" this returns until "done" is true.
+    // opening the "next_url" this returns until "done" is true. Only
+    // fetches the matching/audio text (quran-simple), not the Uthmani
+    // display script or Bengali translation -- this is a fallback path
+    // for when the single-request bulk mode above doesn't work at all,
+    // so display falls back to the simple script in that case.
     $start = max(1, (int) $request->query('start', 1));
     $batchSize = 10;
     $end = min(114, $start + $batchSize - 1);

@@ -131,6 +131,64 @@ class QuranAudioMatcher
         return static::$ayahTextBySurahAyah;
     }
 
+    protected static ?array $rowsBySurahAyah = null;
+
+    protected function loadRowIndex(): array
+    {
+        if (static::$rowsBySurahAyah !== null) {
+            return static::$rowsBySurahAyah;
+        }
+
+        static::$rowsBySurahAyah = [];
+        foreach ($this->loadRows() as $row) {
+            if (isset($row['surah'], $row['ayah'])) {
+                static::$rowsBySurahAyah[(int) $row['surah'] . ':' . (int) $row['ayah']] = $row;
+            }
+        }
+
+        return static::$rowsBySurahAyah;
+    }
+
+    /**
+     * Per-ayah display data for a surah/ayah range -- the Uthmani
+     * (traditional Mushaf script) text and Bengali translation for each
+     * ayah, used to build the Quran-style video instead of the plain
+     * undiacritized matching text. Falls back to the simple script if
+     * the Uthmani edition wasn't fetched, and to an empty translation if
+     * the Bengali edition wasn't fetched -- either way the video still
+     * renders, just without that polish.
+     *
+     * @return array<int, array{ayah:int, uthmani:string, translation:string}>|null
+     */
+    public function ayahRangeDisplayData(int $surah, int $from, int $to): ?array
+    {
+        $index = $this->loadRowIndex();
+        $result = [];
+        for ($ayah = $from; $ayah <= $to; $ayah++) {
+            $row = $index[$surah . ':' . $ayah] ?? null;
+            if (!$row) {
+                return null;
+            }
+            $result[] = [
+                'ayah' => $ayah,
+                'uthmani' => $row['text_uthmani'] ?? $row['text'] ?? '',
+                'translation' => $row['translation_bn'] ?? '',
+            ];
+        }
+
+        return $result;
+    }
+
+    public function surahNameArabic(int $surah): ?string
+    {
+        foreach ($this->surahList() as $s) {
+            if ((int) ($s['number'] ?? 0) === $surah) {
+                return $s['name_arabic'] ?? null;
+            }
+        }
+        return null;
+    }
+
     /**
      * @return array<int, array{number:int, name_arabic:string, name_english:string, name_translation:string, ayah_count:int}>
      */

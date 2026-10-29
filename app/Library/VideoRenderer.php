@@ -225,6 +225,152 @@ SVG;
         return self::CANVAS_HEIGHT;
     }
 
+    protected function arabicIndicDigits(int $number): string
+    {
+        $western = (string) $number;
+        $arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        return strtr($western, array_combine(range(0, 9), $arabicIndic));
+    }
+
+    protected function bengaliDigits(int $number): string
+    {
+        $western = (string) $number;
+        $bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+        return strtr($western, array_combine(range(0, 9), $bengali));
+    }
+
+    /**
+     * Builds a full black-background frame (not an overlay -- this IS
+     * the whole picture, used as a static image in render() instead of
+     * compositing over an admin-uploaded background) in the style of
+     * dedicated Quran-video apps: surah name header, the ayah range in
+     * traditional Uthmani Mushaf script (Amiri Quran font) with each
+     * ayah's number set as an ornate Arabic-Indic numeral in ﴿ ﴾ brackets
+     * inline in the text (real Quran typesetting convention, and much
+     * simpler than positioning a separate circle graphic against wrapped
+     * RTL lines), a decorative divider, then the Bengali translation
+     * with Bengali-numeral verse markers.
+     *
+     * Font sizes shrink together (never line count/wrapping, same
+     * approach as buildSvg()) if the combined content would run past
+     * ~85% of the canvas height, so a long multi-ayah selection never
+     * overflows.
+     */
+    protected function buildQuranSvg(UserVideo $video): string
+    {
+        $matcher = new QuranAudioMatcher();
+        $surahName = $matcher->surahNameArabic((int) $video->quran_surah) ?: '';
+        $ayahData = $matcher->ayahRangeDisplayData(
+            (int) $video->quran_surah,
+            (int) $video->quran_ayah_from,
+            (int) $video->quran_ayah_to
+        ) ?: [];
+
+        $arabicText = '';
+        $translationText = '';
+        foreach ($ayahData as $a) {
+            $arabicText .= $a['uthmani'] . ' ﴿' . $this->arabicIndicDigits($a['ayah']) . '﴾ ';
+            if ($a['translation'] !== '') {
+                $translationText .= '(' . $this->bengaliDigits($a['ayah']) . ') ' . $a['translation'] . ' ';
+            }
+        }
+        $arabicText = trim($arabicText);
+        $translationText = trim($translationText);
+
+        $gold = '#d4af37';
+        $cream = '#f0e6d2';
+        $marginX = 90;
+        $contentWidth = self::CANVAS_WIDTH - ($marginX * 2);
+        $maxContentHeight = (int) round(self::CANVAS_HEIGHT * 0.85);
+
+        $headerSize = 54;
+        $arabicSize = 58;
+        $translationSize = 32;
+        $minArabicSize = 30;
+        $minTranslationSize = 20;
+
+        do {
+            $headerLines = $surahName !== '' ? [$surahName] : [];
+            $arabicLines = $this->wrapLines($arabicText, 15);
+            $translationLines = $translationText !== '' ? $this->wrapLines($translationText, 34) : [];
+
+            $headerHeight = $headerLines ? (int) round($headerSize * 1.5) + 40 : 0;
+            $arabicLineHeight = (int) round($arabicSize * 1.7);
+            $arabicHeight = count($arabicLines) * $arabicLineHeight;
+            $translationLineHeight = (int) round($translationSize * 1.5);
+            $translationHeight = count($translationLines) * $translationLineHeight;
+            $dividerHeight = 70;
+
+            $totalHeight = $headerHeight + $arabicHeight + ($translationLines ? $dividerHeight + $translationHeight : 0);
+
+            if ($totalHeight <= $maxContentHeight || ($arabicSize <= $minArabicSize && $translationSize <= $minTranslationSize)) {
+                break;
+            }
+            if ($arabicSize > $minArabicSize) {
+                $arabicSize -= 2;
+                $headerSize = max(34, $headerSize - 1);
+            }
+            if ($translationSize > $minTranslationSize) {
+                $translationSize -= 1;
+            }
+        } while (true);
+
+        $y = (int) round((self::CANVAS_HEIGHT - $totalHeight) / 2);
+        $elements = '';
+
+        if ($headerLines) {
+            $y += (int) round($headerSize * 1.2);
+            $elements .= sprintf(
+                '<text x="%d" y="%d" font-size="%d" font-family="Amiri Quran" text-anchor="middle" fill="%s">%s</text>' . "\n",
+                self::CANVAS_WIDTH / 2, $y, $headerSize, $gold, htmlspecialchars($headerLines[0], ENT_XML1 | ENT_COMPAT, 'UTF-8')
+            );
+            $y += 40;
+            $elements .= sprintf(
+                '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="2"/>' . "\n" .
+                '<circle cx="%d" cy="%d" r="8" fill="%s"/>' . "\n",
+                self::CANVAS_WIDTH / 2 - 160, $y, self::CANVAS_WIDTH / 2 - 40, $y, $gold,
+                self::CANVAS_WIDTH / 2, $y, $gold
+            );
+            $elements .= sprintf(
+                '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="2"/>' . "\n",
+                self::CANVAS_WIDTH / 2 + 40, $y, self::CANVAS_WIDTH / 2 + 160, $y, $gold
+            );
+            $y += 20;
+        }
+
+        foreach ($arabicLines as $line) {
+            $y += $arabicLineHeight;
+            $elements .= sprintf(
+                '<text x="%d" y="%d" font-size="%d" font-family="Amiri Quran" text-anchor="middle" fill="%s">%s</text>' . "\n",
+                self::CANVAS_WIDTH / 2, $y, $arabicSize, $gold, htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8')
+            );
+        }
+
+        if ($translationLines) {
+            $y += 35;
+            $elements .= sprintf(
+                '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1" stroke-opacity="0.5"/>' . "\n",
+                self::CANVAS_WIDTH / 2 - 100, $y, self::CANVAS_WIDTH / 2 + 100, $y, $gold
+            );
+            $y += 35;
+
+            foreach ($translationLines as $line) {
+                $y += $translationLineHeight;
+                $elements .= sprintf(
+                    '<text x="%d" y="%d" font-size="%d" font-family="Noto Sans Bengali" text-anchor="middle" fill="%s">%s</text>' . "\n",
+                    self::CANVAS_WIDTH / 2, $y, $translationSize, $cream, htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8')
+                );
+            }
+        }
+
+        return <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="{$this->canvasWidth()}" height="{$this->canvasHeight()}">
+<rect width="{$this->canvasWidth()}" height="{$this->canvasHeight()}" fill="#000000"/>
+{$elements}
+</svg>
+SVG;
+    }
+
     /**
      * Picks the video's audio track, in priority order:
      *  1. If the video was made through the Quran-ayah picker
@@ -296,6 +442,85 @@ SVG;
 
     public function render(UserVideo $video): string
     {
+        $ffmpeg = $this->ffmpegBinary();
+        if (trim((string) shell_exec('which ffmpeg 2>/dev/null')) === '' && !file_exists($ffmpeg)) {
+            throw new RuntimeException('FFmpeg is not available on this server.');
+        }
+
+        $outDir = base_path('uploads/user-videos');
+        if (!is_dir($outDir)) {
+            mkdir($outDir, 0755, true);
+        }
+
+        $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
+        $outputFullPath = $outDir . '/' . $outputFilename;
+
+        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video);
+        $fontconfigFile = $this->ensureFontconfig();
+
+        try {
+            if ($video->source_type === 'quran_ayah') {
+                return $this->renderQuranVideo($video, $ffmpeg, $fontconfigFile, $audioPath, $outputFullPath);
+            }
+            return $this->renderCustomTextVideo($video, $ffmpeg, $fontconfigFile, $audioPath, $outputFullPath);
+        } finally {
+            if ($audioPath && $audioIsTemp) {
+                @unlink($audioPath);
+            }
+        }
+    }
+
+    /**
+     * Plain black-background Quran-style video: buildQuranSvg() already
+     * produces the entire frame (not just an overlay), so it's looped
+     * directly as the video source -- no background file, no overlay
+     * compositing needed. Confirmed locally that `-loop 1` on an SVG
+     * input loops it correctly, with or without -shortest against an
+     * audio track.
+     */
+    protected function renderQuranVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, ?string $audioPath, string $outputFullPath): string
+    {
+        $svg = $this->buildQuranSvg($video);
+        $svgFile = tempnam(sys_get_temp_dir(), 'vtq_') . '.svg';
+        file_put_contents($svgFile, $svg);
+
+        if ($audioPath) {
+            $cmd = sprintf(
+                'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -i %s -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -b:a 128k -movflags +faststart %s 2>&1',
+                escapeshellarg($fontconfigFile),
+                escapeshellcmd($ffmpeg),
+                escapeshellarg($svgFile),
+                escapeshellarg($audioPath),
+                escapeshellarg($outputFullPath)
+            );
+        } else {
+            // No audio (TTS not configured and this ayah's audio
+            // couldn't be fetched) -- fall back to a fixed duration
+            // since there's no audio length to follow via -shortest.
+            $duration = (int) ($video->template->duration_seconds ?? 10) ?: 10;
+            $cmd = sprintf(
+                'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -t %d -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
+                escapeshellarg($fontconfigFile),
+                escapeshellcmd($ffmpeg),
+                escapeshellarg($svgFile),
+                $duration,
+                escapeshellarg($outputFullPath)
+            );
+        }
+
+        exec($cmd, $outputLines, $exitCode);
+        @unlink($svgFile);
+
+        if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
+            $tail = implode("\n", array_slice($outputLines, -40));
+            throw new RuntimeException('FFmpeg Quran render failed (exit ' . $exitCode . '): ' . $tail);
+        }
+
+        return 'uploads/user-videos/' . basename($outputFullPath);
+    }
+
+    protected function renderCustomTextVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, ?string $audioPath, string $outputFullPath): string
+    {
         $template = $video->template;
         if (!$template) {
             throw new RuntimeException('Template not found.');
@@ -306,19 +531,9 @@ SVG;
             throw new RuntimeException('Template background file missing on disk: ' . $template->background_path);
         }
 
-        $ffmpeg = $this->ffmpegBinary();
-        if (trim((string) shell_exec('which ffmpeg 2>/dev/null')) === '' && !file_exists($ffmpeg)) {
-            throw new RuntimeException('FFmpeg is not available on this server.');
-        }
-
         $font = $this->fontPathForText($video->text_content);
         if (!file_exists($font)) {
             throw new RuntimeException('Font file missing: ' . $font);
-        }
-
-        $outDir = base_path('uploads/user-videos');
-        if (!is_dir($outDir)) {
-            mkdir($outDir, 0755, true);
         }
 
         $rtl = $this->isArabic($video->text_content);
@@ -331,11 +546,6 @@ SVG;
 
         $svgFile = tempnam(sys_get_temp_dir(), 'vt_') . '.svg';
         file_put_contents($svgFile, $svg);
-
-        $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
-        $outputFullPath = $outDir . '/' . $outputFilename;
-
-        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video);
 
         // fps=25 and setsar=1 are defensive: an admin-uploaded background
         // can carry an odd/variable frame rate or non-square pixel aspect
@@ -361,8 +571,7 @@ SVG;
         // happened on an input that already matched the normalized
         // baseline exactly). Forcing a single thread keeps it within the
         // account's limits.
-        $fontconfigFile = $this->ensureFontconfig();
-
+        //
         // FONTCONFIG_FILE points librsvg's Pango text layout at our
         // bundled Bengali/Arabic fonts by family name, instead of relying
         // on the SVG's own @font-face (see the class docblock for why
@@ -405,16 +614,13 @@ SVG;
 
         exec($cmd, $outputLines, $exitCode);
         @unlink($svgFile);
-        if ($audioPath && $audioIsTemp) {
-            @unlink($audioPath);
-        }
 
         if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
             $tail = implode("\n", array_slice($outputLines, -40));
             throw new RuntimeException('FFmpeg render failed (exit ' . $exitCode . '): ' . $tail);
         }
 
-        return 'uploads/user-videos/' . $outputFilename;
+        return 'uploads/user-videos/' . basename($outputFullPath);
     }
 
     /**
