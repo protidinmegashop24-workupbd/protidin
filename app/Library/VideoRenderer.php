@@ -7,9 +7,16 @@ use App\Models\VideoMakerSetting;
 use RuntimeException;
 
 /**
- * Renders a UserVideo by overlaying its text onto its template's
- * background video with FFmpeg. Output is always 1080x1920 (vertical,
- * matching Reels/Shorts/Status format).
+ * Renders a UserVideo. Two distinct styles depending on source_type:
+ *  - 'custom_text' (renderCustomTextVideo): the user's own text
+ *    overlaid on their chosen template's background video.
+ *  - 'quran_ayah' (renderQuranVideo): a dedicated black-background
+ *    Quran-style slideshow -- one frame per ayah in Uthmani script with
+ *    its Bengali translation, each synced to that exact ayah's own
+ *    recitation audio and concatenated in sequence, ignoring whatever
+ *    template was picked (its background/font are irrelevant here).
+ * Output is always 1080x1920 (vertical, matching Reels/Shorts/Status
+ * format).
  *
  * Text is NOT drawn with FFmpeg's drawtext filter -- live testing (on
  * this exact server's FFmpeg build, not just a local one) confirmed
@@ -39,12 +46,14 @@ use RuntimeException;
  * Sans Bengali, which has both scripts' glyphs merged into one file so it
  * never needs picking either.
  *
- * Audio: see resolveAudio() -- a real Quran reciter's audio for a
- * recognized ayah (QuranAudioMatcher), else a Google Cloud TTS voice
- * (GoogleTtsService) if configured, else silent. When there's audio, the
- * rendered video's length follows the audio exactly (ffmpeg -shortest
- * against an indefinitely-looped background), not the template's fixed
- * duration_seconds.
+ * Custom-text audio: see resolveAudio() -- a real Quran reciter's audio
+ * if the free-typed text happens to exactly match a known ayah
+ * (QuranAudioMatcher), else a Google Cloud TTS voice (GoogleTtsService)
+ * if configured, else silent. When there's audio, the rendered video's
+ * length follows the audio exactly (ffmpeg -shortest against an
+ * indefinitely-looped background), not the template's fixed
+ * duration_seconds. (Quran-ayah videos resolve audio per-ayah inside
+ * renderQuranVideo() instead -- see there.)
  */
 class VideoRenderer
 {
@@ -241,31 +250,29 @@ SVG;
 
     /**
      * Builds a full black-background frame (not an overlay -- this IS
-     * the whole picture, used as a static image in render() instead of
-     * compositing over an admin-uploaded background) in the style of
-     * dedicated Quran-video apps: surah name header, the ayah range in
-     * traditional Uthmani Mushaf script (Amiri Quran font) with each
-     * ayah's number set as an ornate Arabic-Indic numeral in ﴿ ﴾ brackets
-     * inline in the text (real Quran typesetting convention, and much
-     * simpler than positioning a separate circle graphic against wrapped
-     * RTL lines), a decorative divider, then the Bengali translation
-     * with Bengali-numeral verse markers.
+     * the whole picture) in the style of dedicated Quran-video apps:
+     * surah name header, the given ayah(s) in traditional Uthmani Mushaf
+     * script (Amiri Quran font) with each ayah's number set as an ornate
+     * Arabic-Indic numeral in ﴿ ﴾ brackets inline in the text (real Quran
+     * typesetting convention, and much simpler than positioning a
+     * separate circle graphic against wrapped RTL lines), a decorative
+     * divider, then the Bengali translation with Bengali-numeral verse
+     * markers.
+     *
+     * Takes already-resolved ayah data (not a UserVideo) so it works
+     * both for a single ayah -- one frame per slide, see
+     * renderQuranVideo() -- and, if ever needed again, a whole range in
+     * one frame.
      *
      * Font sizes shrink together (never line count/wrapping, same
-     * approach as buildSvg()) if the combined content would run past
-     * ~85% of the canvas height, so a long multi-ayah selection never
-     * overflows.
+     * approach as buildSvg()) if the content would run past ~85% of the
+     * canvas height, so even the Quran's longest single ayah (2:282)
+     * never overflows.
+     *
+     * @param array<int, array{ayah:int, uthmani:string, translation:string}> $ayahData
      */
-    protected function buildQuranSvg(UserVideo $video): string
+    protected function buildQuranFrameSvg(string $surahName, array $ayahData): string
     {
-        $matcher = new QuranAudioMatcher();
-        $surahName = $matcher->surahNameArabic((int) $video->quran_surah) ?: '';
-        $ayahData = $matcher->ayahRangeDisplayData(
-            (int) $video->quran_surah,
-            (int) $video->quran_ayah_from,
-            (int) $video->quran_ayah_to
-        ) ?: [];
-
         $arabicText = '';
         $translationText = '';
         foreach ($ayahData as $a) {
@@ -372,20 +379,18 @@ SVG;
     }
 
     /**
-     * Picks the video's audio track, in priority order:
-     *  1. If the video was made through the Quran-ayah picker
-     *     (source_type 'quran_ayah'), the exact surah/ayah range's
-     *     recitation -- a direct lookup, not text matching, so it's
-     *     always reliable. 'temp' is true only for a multi-ayah range
-     *     (QuranAudioMatcher concatenates those into a one-off file);
-     *     a single ayah returns its shared cached copy untouched.
-     *  2. Otherwise, a real reciter's recitation if the free-typed text
-     *     happens to exactly match a known ayah (QuranAudioMatcher's
-     *     fuzzy match) -- 'temp' is false, it's a shared cached copy.
-     *  3. A Google Cloud TTS voice reading the text aloud, if an API key
+     * Picks a custom-text video's audio track, in priority order:
+     *  1. A real reciter's recitation if the free-typed text happens to
+     *     exactly match a known ayah (QuranAudioMatcher's fuzzy match)
+     *     -- 'temp' is false, it's a shared cached copy. (A video made
+     *     through the Quran-ayah picker never reaches this method --
+     *     renderQuranVideo() resolves each ayah's audio directly via
+     *     QuranAudioMatcher::singleAyahAudio(), since picker selections
+     *     are an exact surah/ayah lookup, not text to match.)
+     *  2. A Google Cloud TTS voice reading the text aloud, if an API key
      *     is configured in admin settings -- 'temp' is true, it's a
      *     one-off file for this render only.
-     *  4. Neither -- 'path' is null and render() falls back to a silent
+     *  3. Neither -- 'path' is null and render() falls back to a silent
      *     video (e.g. admin hasn't added a Google TTS key yet, or both
      *     attempts failed). A failure here is deliberately swallowed
      *     rather than failing the whole render, so a temporary TTS
@@ -393,26 +398,9 @@ SVG;
      *
      * @return array{path: ?string, temp: bool}
      */
-    protected function resolveAudio(UserVideo $video): array
+    protected function resolveAudio(string $text): array
     {
-        $text = $video->text_content;
         $matcher = new QuranAudioMatcher();
-
-        if ($video->source_type === 'quran_ayah' && $video->quran_surah && $video->quran_ayah_from && $video->quran_ayah_to) {
-            try {
-                $path = $matcher->ayahRangeAudio(
-                    (int) $video->quran_surah,
-                    (int) $video->quran_ayah_from,
-                    (int) $video->quran_ayah_to,
-                    $video->reciter ?: QuranAudioMatcher::DEFAULT_RECITER
-                );
-                return ['path' => $path, 'temp' => $video->quran_ayah_to > $video->quran_ayah_from];
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('video-maker-quran-range-audio-failed', ['error' => $e->getMessage()]);
-                // Falls through to TTS below rather than failing the
-                // whole render over a transient everyayah.com hiccup.
-            }
-        }
 
         if ($this->isArabic($text)) {
             try {
@@ -454,73 +442,126 @@ SVG;
 
         $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
         $outputFullPath = $outDir . '/' . $outputFilename;
-
-        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video);
         $fontconfigFile = $this->ensureFontconfig();
 
-        try {
-            if ($video->source_type === 'quran_ayah') {
-                return $this->renderQuranVideo($video, $ffmpeg, $fontconfigFile, $audioPath, $outputFullPath);
-            }
-            return $this->renderCustomTextVideo($video, $ffmpeg, $fontconfigFile, $audioPath, $outputFullPath);
-        } finally {
-            if ($audioPath && $audioIsTemp) {
-                @unlink($audioPath);
-            }
+        if ($video->source_type === 'quran_ayah') {
+            return $this->renderQuranVideo($video, $ffmpeg, $fontconfigFile, $outputFullPath);
         }
+        return $this->renderCustomTextVideo($video, $ffmpeg, $fontconfigFile, $outputFullPath);
     }
 
     /**
-     * Plain black-background Quran-style video: buildQuranSvg() already
-     * produces the entire frame (not just an overlay), so it's looped
-     * directly as the video source -- no background file, no overlay
-     * compositing needed. Confirmed locally that `-loop 1` on an SVG
-     * input loops it correctly, with or without -shortest against an
-     * audio track.
+     * Slide-by-slide Quran video: one black-background frame per ayah
+     * (buildQuranFrameSvg() with a single-element ayah array), each
+     * looped against that exact ayah's own recitation audio via
+     * -shortest, then all per-ayah segments concatenated end-to-end --
+     * so the Arabic/translation on screen always matches whichever ayah
+     * is currently being recited, advancing automatically as the
+     * previous one's audio ends. Every segment is encoded with the same
+     * video/audio parameters (forcing -ar 44100 -ac 1 regardless of the
+     * source recitation's own sample rate) so the final concat (-c copy,
+     * no re-encode) stays stream-compatible across segments -- confirmed
+     * locally end-to-end.
+     *
+     * A segment whose recitation audio can't be fetched (network hiccup)
+     * gets a few seconds of silence instead of being skipped, so the
+     * concat step always sees a consistent audio+video stream layout
+     * rather than some segments lacking audio entirely.
      */
-    protected function renderQuranVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, ?string $audioPath, string $outputFullPath): string
+    protected function renderQuranVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, string $outputFullPath): string
     {
-        $svg = $this->buildQuranSvg($video);
-        $svgFile = tempnam(sys_get_temp_dir(), 'vtq_') . '.svg';
-        file_put_contents($svgFile, $svg);
+        $matcher = new QuranAudioMatcher();
+        $surahName = $matcher->surahNameArabic((int) $video->quran_surah) ?: '';
+        $ayahData = $matcher->ayahRangeDisplayData(
+            (int) $video->quran_surah,
+            (int) $video->quran_ayah_from,
+            (int) $video->quran_ayah_to
+        );
 
-        if ($audioPath) {
-            $cmd = sprintf(
-                'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -i %s -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -b:a 128k -movflags +faststart %s 2>&1',
-                escapeshellarg($fontconfigFile),
-                escapeshellcmd($ffmpeg),
-                escapeshellarg($svgFile),
-                escapeshellarg($audioPath),
-                escapeshellarg($outputFullPath)
-            );
-        } else {
-            // No audio (TTS not configured and this ayah's audio
-            // couldn't be fetched) -- fall back to a fixed duration
-            // since there's no audio length to follow via -shortest.
-            $duration = (int) ($video->template->duration_seconds ?? 10) ?: 10;
-            $cmd = sprintf(
-                'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -t %d -an -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -movflags +faststart %s 2>&1',
-                escapeshellarg($fontconfigFile),
-                escapeshellcmd($ffmpeg),
-                escapeshellarg($svgFile),
-                $duration,
-                escapeshellarg($outputFullPath)
-            );
+        if (!$ayahData) {
+            throw new RuntimeException('Ayah data not available for this surah/ayah range.');
         }
 
-        exec($cmd, $outputLines, $exitCode);
-        @unlink($svgFile);
+        $reciter = $video->reciter ?: QuranAudioMatcher::DEFAULT_RECITER;
+        $tempFiles = [];
+        $segmentFiles = [];
 
-        if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
-            $tail = implode("\n", array_slice($outputLines, -40));
-            throw new RuntimeException('FFmpeg Quran render failed (exit ' . $exitCode . '): ' . $tail);
+        try {
+            foreach ($ayahData as $ayah) {
+                $svg = $this->buildQuranFrameSvg($surahName, [$ayah]);
+                $svgFile = tempnam(sys_get_temp_dir(), 'vtqs_') . '.svg';
+                file_put_contents($svgFile, $svg);
+                $tempFiles[] = $svgFile;
+
+                $audioPath = null;
+                try {
+                    $audioPath = $matcher->singleAyahAudio((int) $video->quran_surah, (int) $ayah['ayah'], $reciter);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('video-maker-quran-slide-audio-failed', ['error' => $e->getMessage()]);
+                }
+
+                $segmentPath = tempnam(sys_get_temp_dir(), 'vtqseg_') . '.mp4';
+                $tempFiles[] = $segmentPath;
+
+                if ($audioPath) {
+                    $cmd = sprintf(
+                        'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -i %s -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -ar 44100 -ac 1 -b:a 128k -movflags +faststart %s 2>&1',
+                        escapeshellarg($fontconfigFile),
+                        escapeshellcmd($ffmpeg),
+                        escapeshellarg($svgFile),
+                        escapeshellarg($audioPath),
+                        escapeshellarg($segmentPath)
+                    );
+                } else {
+                    $cmd = sprintf(
+                        'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -f lavfi -i %s -t 4 -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -ar 44100 -ac 1 -b:a 128k -movflags +faststart %s 2>&1',
+                        escapeshellarg($fontconfigFile),
+                        escapeshellcmd($ffmpeg),
+                        escapeshellarg($svgFile),
+                        escapeshellarg('anullsrc=r=44100:cl=mono'),
+                        escapeshellarg($segmentPath)
+                    );
+                }
+
+                exec($cmd, $outputLines, $exitCode);
+                if ($exitCode !== 0 || !file_exists($segmentPath) || filesize($segmentPath) < 500) {
+                    $tail = implode("\n", array_slice($outputLines, -40));
+                    throw new RuntimeException('FFmpeg Quran slide render failed for ayah ' . $ayah['ayah'] . ' (exit ' . $exitCode . '): ' . $tail);
+                }
+
+                $segmentFiles[] = $segmentPath;
+            }
+
+            $listFile = tempnam(sys_get_temp_dir(), 'vtqlist_') . '.txt';
+            $tempFiles[] = $listFile;
+            $listContent = implode("\n", array_map(fn($f) => "file '" . str_replace("'", "'\\''", $f) . "'", $segmentFiles));
+            file_put_contents($listFile, $listContent);
+
+            $concatCmd = sprintf(
+                '%s -y -f concat -safe 0 -i %s -c copy -movflags +faststart %s 2>&1',
+                escapeshellcmd($ffmpeg),
+                escapeshellarg($listFile),
+                escapeshellarg($outputFullPath)
+            );
+            exec($concatCmd, $concatOutput, $concatExit);
+
+            if ($concatExit !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
+                $tail = implode("\n", array_slice($concatOutput, -40));
+                throw new RuntimeException('FFmpeg slide concatenation failed (exit ' . $concatExit . '): ' . $tail);
+            }
+
+            return 'uploads/user-videos/' . basename($outputFullPath);
+        } finally {
+            foreach ($tempFiles as $f) {
+                @unlink($f);
+            }
         }
-
-        return 'uploads/user-videos/' . basename($outputFullPath);
     }
 
-    protected function renderCustomTextVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, ?string $audioPath, string $outputFullPath): string
+    protected function renderCustomTextVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, string $outputFullPath): string
     {
+        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video->text_content);
+
         $template = $video->template;
         if (!$template) {
             throw new RuntimeException('Template not found.');
@@ -614,6 +655,9 @@ SVG;
 
         exec($cmd, $outputLines, $exitCode);
         @unlink($svgFile);
+        if ($audioPath && $audioIsTemp) {
+            @unlink($audioPath);
+        }
 
         if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 1000) {
             $tail = implode("\n", array_slice($outputLines, -40));

@@ -226,6 +226,16 @@ class QuranAudioMatcher
         return $parts === [] ? null : implode(' ', $parts);
     }
 
+    /**
+     * A single ayah's recitation audio (downloading and caching it on
+     * first use), for the slide-by-slide Quran video where each ayah
+     * gets its own synced segment instead of one combined track.
+     */
+    public function singleAyahAudio(int $surah, int $ayah, string $reciterKey): ?string
+    {
+        return $this->downloadAyah($surah, $ayah, $reciterKey);
+    }
+
     protected function downloadAyah(int $surah, int $ayah, string $reciterKey): ?string
     {
         if (!is_dir($this->cacheDir())) {
@@ -272,44 +282,6 @@ class QuranAudioMatcher
      * @throws \RuntimeException if any ayah's audio can't be fetched, or
      *         ffmpeg concatenation fails.
      */
-    public function ayahRangeAudio(int $surah, int $from, int $to, string $reciterKey): string
-    {
-        $files = [];
-        for ($ayah = $from; $ayah <= $to; $ayah++) {
-            $path = $this->downloadAyah($surah, $ayah, $reciterKey);
-            if (!$path) {
-                throw new \RuntimeException("Could not fetch recitation audio for surah $surah ayah $ayah (reciter $reciterKey).");
-            }
-            $files[] = $path;
-        }
-
-        if (count($files) === 1) {
-            return $files[0];
-        }
-
-        $listFile = tempnam(sys_get_temp_dir(), 'qaudio_list_') . '.txt';
-        $listContent = implode("\n", array_map(fn($f) => "file '" . str_replace("'", "'\\''", $f) . "'", $files));
-        file_put_contents($listFile, $listContent);
-
-        $outFile = tempnam(sys_get_temp_dir(), 'qaudio_concat_') . '.m4a';
-        $ffmpeg = trim((string) shell_exec('which ffmpeg 2>/dev/null')) ?: '/usr/bin/ffmpeg';
-
-        $cmd = sprintf(
-            '%s -y -f concat -safe 0 -i %s -c:a aac -b:a 128k -threads 1 %s 2>&1',
-            escapeshellcmd($ffmpeg),
-            escapeshellarg($listFile),
-            escapeshellarg($outFile)
-        );
-        exec($cmd, $output, $exitCode);
-        @unlink($listFile);
-
-        if ($exitCode !== 0 || !file_exists($outFile) || filesize($outFile) < 1000) {
-            throw new \RuntimeException('Failed to concatenate ayah audio: ' . implode("\n", array_slice($output, -20)));
-        }
-
-        return $outFile;
-    }
-
     /**
      * Returns a local file path to the matched ayah's recitation audio
      * (downloading and caching it on first use), or null if the text
