@@ -286,6 +286,48 @@ class TelegramController extends Controller
         return view('backend.pages.telegram.broadcast');
     }
 
+    /**
+     * Resolves a @username chat reference to its real numeric chat id via
+     * getChat, caching the result -- sendMessage with a @username chat_id
+     * is unreliable for groups specifically ("PEER_ID_INVALID"), a known
+     * Telegram Bot API quirk where username-based peer resolution mostly
+     * only works reliably for channels. Falls back to the original
+     * username if getChat itself fails, so the caller's own error
+     * handling still surfaces whatever Telegram says.
+     */
+    private function resolveChatId(string $usernameOrId)
+    {
+        if (is_numeric($usernameOrId)) {
+            return $usernameOrId;
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember(
+            'telegram_chat_id_' . $usernameOrId,
+            now()->addDay(),
+            function () use ($usernameOrId) {
+                $token = $this->botToken();
+                if (!$token) {
+                    return $usernameOrId;
+                }
+
+                $response = Http::get("https://api.telegram.org/bot{$token}/getChat", [
+                    'chat_id' => $usernameOrId,
+                ]);
+
+                if ($response->json('ok') && $response->json('result.id')) {
+                    return $response->json('result.id');
+                }
+
+                Log::warning('Telegram getChat failed to resolve username to numeric id', [
+                    'username' => $usernameOrId,
+                    'response' => $response->json(),
+                ]);
+
+                return $usernameOrId;
+            }
+        );
+    }
+
     public function broadcastSend(Request $request)
     {
         $request->validate([
@@ -299,7 +341,7 @@ class TelegramController extends Controller
             return redirect()->back()->withInput()->with('error', 'TELEGRAM_BOT_TOKEN is missing in .env -- the bot cannot send messages.');
         }
 
-        $chatId = $request->target === 'channel' ? self::CHANNEL_USERNAME : self::GROUP_USERNAME;
+        $chatId = $this->resolveChatId($request->target === 'channel' ? self::CHANNEL_USERNAME : self::GROUP_USERNAME);
 
         $buttonRows = [];
         if ($request->filled('button_text') && $request->filled('button_url')) {

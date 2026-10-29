@@ -3661,6 +3661,38 @@ Route::get('/system-check-google-tts/{token}', function ($token) {
     return response()->file($outputPath, ['Content-Type' => 'audio/mpeg']);
 });
 
+// One-off, READ-ONLY: resolves the broadcast feature's @username chat
+// references to their real numeric chat ids via Telegram's getChat API,
+// to confirm/diagnose the PEER_ID_INVALID fix -- sending with a
+// @username chat_id is unreliable for groups specifically.
+Route::get('/system-telegram-resolve-chats/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $botToken = env('TELEGRAM_BOT_TOKEN');
+    if (!$botToken) {
+        return response()->json(['error' => 'TELEGRAM_BOT_TOKEN is missing in .env'], 400);
+    }
+
+    $results = [];
+    foreach (['channel' => '@WorkUpBD24', 'group' => '@WorkUpB'] as $label => $username) {
+        $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getChat", [
+            'chat_id' => $username,
+        ]);
+        $results[$label] = [
+            'username' => $username,
+            'ok' => $response->json('ok'),
+            'resolved_numeric_id' => $response->json('result.id'),
+            'type' => $response->json('result.type'),
+            'title' => $response->json('result.title'),
+            'raw_error' => $response->json('ok') ? null : $response->json(),
+        ];
+    }
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+});
+
 // One-off, READ-ONLY: checks which of the candidate everyayah.com
 // reciter folder names (QuranAudioMatcher::RECITERS) actually serve
 // audio, by requesting Surah 1 Ayah 1 from each -- names were picked
