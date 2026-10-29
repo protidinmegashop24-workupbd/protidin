@@ -3450,21 +3450,100 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
 // it's large (6,236 ayahs across 114 surahs) and is best pulled directly
 // by this server rather than relayed through anything else. Safe to run
 // more than once -- re-fetches and overwrites.
-Route::get('/system-setup-quran-audio/{token}', function ($token) {
+Route::get('/system-setup-quran-audio/{token}', function (\Illuminate\Http\Request $request, $token) {
     if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
         abort(403);
     }
 
     set_time_limit(280);
-
     $matcher = new \App\Library\QuranAudioMatcher();
-    $ayahs = [];
-    $surahsMeta = [];
-    $errors = [];
 
-    for ($surah = 1; $surah <= 114; $surah++) {
+    $outPath = storage_path('app/quran-ayahs.json');
+    $surahsPath = storage_path('app/quran-surahs.json');
+    if (!is_dir(dirname($outPath))) {
+        mkdir(dirname($outPath), 0755, true);
+    }
+
+    if (!$request->boolean('batch')) {
+        // Fast path: the whole Quran in ONE request instead of 114
+        // separate ones -- the original per-surah loop was tripping the
+        // shared host's own connection/proxy timeout, a server-level
+        // limit that PHP's set_time_limit() does not control.
+        $ch = curl_init('https://api.alquran.cloud/v1/quran/quran-simple');
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 90]);
+        $response = curl_exec($ch);
+        $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $decoded = $response !== false ? json_decode($response, true) : null;
+        $surahsData = $decoded['data']['surahs'] ?? null;
+
+        if ($response === false || $httpCode !== 200 || !is_array($surahsData)) {
+            return response()->json([
+                'bulk_fetch_failed' => true,
+                'http_code' => $httpCode,
+                'curl_error' => $curlError,
+                'response_preview' => $response !== false ? substr((string) $response, 0, 500) : null,
+                'next_step' => 'The slower batch mode is also available: open this same URL with ?batch=1&start=1 appended, and keep opening the "next_url" each reply gives you until "done" is true.',
+            ], 500, [], JSON_PRETTY_PRINT);
+        }
+
+        $ayahs = [];
+        $surahsMeta = [];
+        foreach ($surahsData as $surah) {
+            $surahNumber = (int) ($surah['number'] ?? 0);
+            $ayahList = $surah['ayahs'] ?? [];
+            foreach ($ayahList as $ayah) {
+                $text = $ayah['text'] ?? '';
+                $ayahs[] = [
+                    'surah' => $surahNumber,
+                    'ayah' => (int) ($ayah['numberInSurah'] ?? 0),
+                    'text' => $text,
+                    'normalized' => $matcher->normalize($text),
+                ];
+            }
+            $surahsMeta[] = [
+                'number' => $surahNumber,
+                'name_arabic' => $surah['name'] ?? '',
+                'name_english' => $surah['englishName'] ?? '',
+                'name_translation' => $surah['englishNameTranslation'] ?? '',
+                'ayah_count' => count($ayahList),
+            ];
+        }
+
+        file_put_contents($outPath, json_encode($ayahs, JSON_UNESCAPED_UNICODE));
+        file_put_contents($surahsPath, json_encode($surahsMeta, JSON_UNESCAPED_UNICODE));
+
+        return response()->json([
+            'mode' => 'bulk',
+            'ayahs_saved' => count($ayahs),
+            'surahs_saved' => count($surahsMeta),
+            'sample_ayah' => array_slice($ayahs, 0, 2),
+            'sample_surah' => array_slice($surahsMeta, 0, 2),
+            'saved_to' => [$outPath, $surahsPath],
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    // Batch mode (?batch=1&start=N): processes a handful of surahs per
+    // hit and merges into whatever's already saved, so no single request
+    // runs long enough to hit the host's connection timeout. Keep
+    // opening the "next_url" this returns until "done" is true.
+    $start = max(1, (int) $request->query('start', 1));
+    $batchSize = 10;
+    $end = min(114, $start + $batchSize - 1);
+
+    $existingAyahs = file_exists($outPath) ? (json_decode((string) file_get_contents($outPath), true) ?: []) : [];
+    $existingSurahs = file_exists($surahsPath) ? (json_decode((string) file_get_contents($surahsPath), true) ?: []) : [];
+    // Drop any previous entries for the surahs this batch is about to
+    // redo, so re-running a batch (or the whole sequence) is safe.
+    $existingAyahs = array_values(array_filter($existingAyahs, fn($a) => $a['surah'] < $start || $a['surah'] > $end));
+    $existingSurahs = array_values(array_filter($existingSurahs, fn($s) => $s['number'] < $start || $s['number'] > $end));
+
+    $errors = [];
+    for ($surah = $start; $surah <= $end; $surah++) {
         $ch = curl_init("https://api.alquran.cloud/v1/surah/{$surah}/quran-simple");
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20]);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -3483,15 +3562,14 @@ Route::get('/system-setup-quran-audio/{token}', function ($token) {
 
         foreach ($ayahList as $ayah) {
             $text = $ayah['text'] ?? '';
-            $ayahs[] = [
+            $existingAyahs[] = [
                 'surah' => $surah,
                 'ayah' => (int) ($ayah['numberInSurah'] ?? 0),
                 'text' => $text,
                 'normalized' => $matcher->normalize($text),
             ];
         }
-
-        $surahsMeta[] = [
+        $existingSurahs[] = [
             'number' => $surah,
             'name_arabic' => $decoded['data']['name'] ?? '',
             'name_english' => $decoded['data']['englishName'] ?? '',
@@ -3500,21 +3578,19 @@ Route::get('/system-setup-quran-audio/{token}', function ($token) {
         ];
     }
 
-    $outPath = storage_path('app/quran-ayahs.json');
-    $surahsPath = storage_path('app/quran-surahs.json');
-    if (!is_dir(dirname($outPath))) {
-        mkdir(dirname($outPath), 0755, true);
-    }
-    file_put_contents($outPath, json_encode($ayahs, JSON_UNESCAPED_UNICODE));
-    file_put_contents($surahsPath, json_encode($surahsMeta, JSON_UNESCAPED_UNICODE));
+    file_put_contents($outPath, json_encode($existingAyahs, JSON_UNESCAPED_UNICODE));
+    file_put_contents($surahsPath, json_encode($existingSurahs, JSON_UNESCAPED_UNICODE));
+
+    $done = $end >= 114;
 
     return response()->json([
-        'ayahs_saved' => count($ayahs),
-        'surahs_saved' => count($surahsMeta),
-        'surahs_with_errors' => $errors,
-        'sample_ayah' => array_slice($ayahs, 0, 2),
-        'sample_surah' => array_slice($surahsMeta, 0, 2),
-        'saved_to' => [$outPath, $surahsPath],
+        'mode' => 'batch',
+        'processed_surahs' => "$start-$end",
+        'errors_this_batch' => $errors,
+        'total_ayahs_saved_so_far' => count($existingAyahs),
+        'total_surahs_saved_so_far' => count($existingSurahs),
+        'done' => $done,
+        'next_url' => $done ? null : url('/system-setup-quran-audio/' . $token . '?batch=1&start=' . ($end + 1)),
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
