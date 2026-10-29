@@ -32,9 +32,11 @@ class QuranAudioMatcher
      * trusting one in production -- everyayah.com isn't reachable from
      * this sandbox to confirm them directly.
      */
+    // Confirmed live via /system-check-reciters on the real server --
+    // 'Abdul_Basit_Murattal_128kbps' 404'd and was dropped; add him back
+    // with the correct folder name if/when one is confirmed.
     public const RECITERS = [
         'alafasy' => ['Alafasy_128kbps', 'Mishary Rashid Alafasy'],
-        'abdulbasit' => ['Abdul_Basit_Murattal_128kbps', 'Abdul Basit (Murattal)'],
         'husary' => ['Husary_128kbps', 'Mahmoud Khalil Al-Husary'],
         'minshawy' => ['Minshawy_Murattal_128kbps', 'Mohamed Siddiq El-Minshawi'],
         'sudais' => ['Abdurrahmaan_As-Sudais_192kbps', 'Abdul Rahman Al-Sudais'],
