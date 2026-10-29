@@ -1,0 +1,437 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class TelegramController extends Controller
+{
+    private const CHANNEL_USERNAME = '@WorkUpBD24';
+    private const GROUP_USERNAME = '@WorkUpB';
+    private const CHANNEL_URL = 'https://t.me/WorkUpBD24';
+    private const GROUP_URL = 'https://t.me/WorkUpB';
+
+    private function webhookSecret()
+    {
+        return env('TELEGRAM_WEBHOOK_SECRET');
+    }
+
+    private function botToken()
+    {
+        return env('TELEGRAM_BOT_TOKEN');
+    }
+
+    public function webhook(Request $request, $secret)
+    {
+        $expected = $this->webhookSecret();
+        if (!$expected || !hash_equals($expected, (string) $secret)) {
+            abort(403);
+        }
+
+        if ($callback = $request->input('callback_query')) {
+            return $this->handleCallback($callback);
+        }
+
+        $message = $request->input('message');
+        $chatId = $message['chat']['id'] ?? null;
+        $chatType = $message['chat']['type'] ?? null;
+        $text = trim((string) ($message['text'] ?? ''));
+
+        if (!$chatId) {
+            return response()->json(['ok' => true]);
+        }
+
+        // The bot is an admin in the promo group, so Telegram also forwards
+        // every message posted THERE to this webhook. Moderate links there
+        // instead of replying (never post the join-gate back into the group).
+        if (in_array($chatType, ['group', 'supergroup'], true)) {
+            $this->moderateGroupMessage($message);
+
+            return response()->json(['ok' => true]);
+        }
+
+        // Ignore channel posts and anything else that isn't a private DM.
+        if ($chatType !== 'private') {
+            return response()->json(['ok' => true]);
+        }
+
+        $refCode = null;
+        if (Str::startsWith($text, '/start')) {
+            $parts = explode(' ', $text, 2);
+            $refCode = isset($parts[1]) ? trim($parts[1]) : null;
+        }
+
+        $this->sendJoinGate($chatId, $refCode);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Deletes messages containing links posted by non-admins in the group,
+     * per the site owner's request that no one but admins share links there.
+     */
+    private function moderateGroupMessage(array $message)
+    {
+        $chatId = $message['chat']['id'] ?? null;
+        $userId = $message['from']['id'] ?? null;
+        $messageId = $message['message_id'] ?? null;
+
+        if (!$chatId || !$userId || !$messageId) {
+            return;
+        }
+
+        if (!$this->containsLink($message)) {
+            return;
+        }
+
+        if ($this->isChatAdmin($chatId, $userId)) {
+            return;
+        }
+
+        // Deleted silently -- posting a "your message was removed" notice
+        // for every deletion was disturbing other members in the group.
+        $this->deleteMessage($chatId, $messageId);
+    }
+
+    private function containsLink(array $message)
+    {
+        $text = $message['text'] ?? $message['caption'] ?? '';
+
+        foreach (array_merge($message['entities'] ?? [], $message['caption_entities'] ?? []) as $entity) {
+            if (in_array($entity['type'] ?? null, ['url', 'text_link'], true)) {
+                return true;
+            }
+        }
+
+        return (bool) preg_match('/(https?:\/\/|www\.|t\.me\/|telegram\.me\/)/i', $text);
+    }
+
+    private function isChatAdmin($chatId, $userId)
+    {
+        $token = $this->botToken();
+        if (!$token) {
+            return false;
+        }
+
+        $response = Http::get("https://api.telegram.org/bot{$token}/getChatMember", [
+            'chat_id' => $chatId,
+            'user_id' => $userId,
+        ]);
+
+        if (!$response->json('ok')) {
+            // Can't confirm the sender's admin status -- e.g. the bot itself
+            // isn't a member/admin of this chat anymore. Treat as "not
+            // admin" so link moderation still runs, and log it since a
+            // failing lookup here usually means the bot's own status in the
+            // group has changed.
+            Log::warning('Telegram getChatMember failed', [
+                'chat_id' => $chatId,
+                'user_id' => $userId,
+                'response' => $response->json(),
+            ]);
+        }
+
+        $status = $response->json('result.status');
+
+        return in_array($status, ['administrator', 'creator'], true);
+    }
+
+    private function deleteMessage($chatId, $messageId)
+    {
+        $token = $this->botToken();
+        if (!$token) {
+            return;
+        }
+
+        $response = Http::asForm()->post("https://api.telegram.org/bot{$token}/deleteMessage", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+        ]);
+
+        if (!$response->json('ok')) {
+            // Most common cause: the bot isn't an admin in the group (or
+            // lost the "Delete messages" permission), so Telegram silently
+            // refused the delete. This used to fail with no trace at all.
+            Log::warning('Telegram deleteMessage failed -- bot may not have delete permission in this group', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'response' => $response->json(),
+            ]);
+        }
+    }
+
+    private function sendJoinGate($chatId, $refCode)
+    {
+        $this->sendMessage(
+            $chatId,
+            "🎉 Welcome to Protidin Mega Earn!\n\n".
+            "আপনি কি অনলাইনে কাজ করে আয় করতে চান? 🚀\n\n".
+            "শুরু করার আগে নিচের চ্যানেল ও গ্রুপে জয়েন হয়ে নিন, তারপর ✅ বাটনে চাপুন।",
+            [
+                [['text' => '📢 Join Channel', 'url' => self::CHANNEL_URL]],
+                [['text' => '👥 Join Group', 'url' => self::GROUP_URL]],
+                [['text' => '✅ জয়েন করেছি, Continue', 'callback_data' => 'verify_join:' . ($refCode ?? '')]],
+            ]
+        );
+    }
+
+    private function handleCallback(array $callback)
+    {
+        $data = $callback['data'] ?? '';
+        $callbackId = $callback['id'] ?? null;
+        $chatId = $callback['message']['chat']['id'] ?? null;
+        $userId = $callback['from']['id'] ?? null;
+
+        if (!Str::startsWith($data, 'verify_join:') || !$chatId || !$userId) {
+            return response()->json(['ok' => true]);
+        }
+
+        $refCode = substr($data, strlen('verify_join:'));
+        $refCode = $refCode !== '' ? $refCode : null;
+
+        $joinedChannel = $this->isMember(self::CHANNEL_USERNAME, $userId);
+        $joinedGroup = $this->isMember(self::GROUP_USERNAME, $userId);
+
+        if ($joinedChannel && $joinedGroup) {
+            $this->answerCallback($callbackId, '✅ ধন্যবাদ! এখন রেজিস্ট্রেশন করুন।');
+
+            $registerUrl = $refCode ? url('/register/' . $refCode) : url('/register');
+
+            $this->sendMessage(
+                $chatId,
+                "🎉 চমৎকার! আপনি চ্যানেল ও গ্রুপে জয়েন করেছেন।\n\nএখন নিচের বাটনে ক্লিক করে ফ্রি অ্যাকাউন্ট খুলে আজই ইনকাম শুরু করুন।",
+                [[['text' => '✅ Register Now', 'url' => $registerUrl]]]
+            );
+        } else {
+            $missing = [];
+            if (!$joinedChannel) {
+                $missing[] = 'চ্যানেল';
+            }
+            if (!$joinedGroup) {
+                $missing[] = 'গ্রুপ';
+            }
+
+            $this->answerCallback(
+                $callbackId,
+                '⚠️ আগে ' . implode(' ও ', $missing) . ' জয়েন করুন, তারপর আবার চেষ্টা করুন।',
+                true
+            );
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    private function isMember($chatUsername, $userId)
+    {
+        $token = $this->botToken();
+        if (!$token) {
+            return false;
+        }
+
+        $response = Http::get("https://api.telegram.org/bot{$token}/getChatMember", [
+            'chat_id' => $chatUsername,
+            'user_id' => $userId,
+        ]);
+
+        $status = $response->json('result.status');
+
+        return in_array($status, ['member', 'administrator', 'creator'], true);
+    }
+
+    private function answerCallback($callbackId, $text, $showAlert = false)
+    {
+        $token = $this->botToken();
+        if (!$token || !$callbackId) {
+            return;
+        }
+
+        Http::asForm()->post("https://api.telegram.org/bot{$token}/answerCallbackQuery", [
+            'callback_query_id' => $callbackId,
+            'text' => $text,
+            'show_alert' => $showAlert,
+        ]);
+    }
+
+    private function sendMessage($chatId, $text, array $buttonRows = [])
+    {
+        $token = $this->botToken();
+        if (!$token) {
+            return null;
+        }
+
+        $params = [
+            'chat_id' => $chatId,
+            'text' => $text,
+        ];
+
+        if (!empty($buttonRows)) {
+            $params['reply_markup'] = json_encode(['inline_keyboard' => $buttonRows]);
+        }
+
+        return Http::asForm()->post("https://api.telegram.org/bot{$token}/sendMessage", $params);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin: broadcast a message (with an optional button) to the channel
+    | or group, using the same bot already wired up for the join gate and
+    | link moderation.
+    |--------------------------------------------------------------------------
+    */
+    public function broadcastForm()
+    {
+        return view('backend.pages.telegram.broadcast');
+    }
+
+    /**
+     * Resolves a @username chat reference to its real numeric chat id via
+     * getChat, caching the result -- sendMessage with a @username chat_id
+     * is unreliable for groups specifically ("PEER_ID_INVALID"), a known
+     * Telegram Bot API quirk where username-based peer resolution mostly
+     * only works reliably for channels. Falls back to the original
+     * username if getChat itself fails, so the caller's own error
+     * handling still surfaces whatever Telegram says.
+     */
+    private function resolveChatId(string $usernameOrId)
+    {
+        if (is_numeric($usernameOrId)) {
+            return $usernameOrId;
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember(
+            'telegram_chat_id_' . $usernameOrId,
+            now()->addDay(),
+            function () use ($usernameOrId) {
+                $token = $this->botToken();
+                if (!$token) {
+                    return $usernameOrId;
+                }
+
+                $response = Http::get("https://api.telegram.org/bot{$token}/getChat", [
+                    'chat_id' => $usernameOrId,
+                ]);
+
+                if ($response->json('ok') && $response->json('result.id')) {
+                    return $response->json('result.id');
+                }
+
+                Log::warning('Telegram getChat failed to resolve username to numeric id', [
+                    'username' => $usernameOrId,
+                    'response' => $response->json(),
+                ]);
+
+                return $usernameOrId;
+            }
+        );
+    }
+
+    public function broadcastSend(Request $request)
+    {
+        $request->validate([
+            'target' => 'required|in:channel,group',
+            'message' => 'required|string|max:4000',
+            'button_text' => 'nullable|string|max:60|required_with:button_url',
+            'button_url' => 'nullable|url|max:2000|required_with:button_text',
+        ]);
+
+        if (!$this->botToken()) {
+            return redirect()->back()->withInput()->with('error', 'TELEGRAM_BOT_TOKEN is missing in .env -- the bot cannot send messages.');
+        }
+
+        $chatId = $this->resolveChatId($request->target === 'channel' ? self::CHANNEL_USERNAME : self::GROUP_USERNAME);
+
+        $buttonRows = [];
+        if ($request->filled('button_text') && $request->filled('button_url')) {
+            $buttonRows = [[['text' => $request->button_text, 'url' => $request->button_url]]];
+        }
+
+        $response = $this->sendMessage($chatId, $request->message, $buttonRows);
+
+        if (!$response || !$response->json('ok')) {
+            return redirect()->back()->withInput()->with(
+                'error',
+                'Telegram rejected the message: ' . ($response ? $response->json('description') : 'no response from Telegram.')
+            );
+        }
+
+        return redirect()->back()->with('success', 'Message sent successfully to the ' . $request->target . '.');
+    }
+
+    /**
+     * One-off, token-protected debug route: exercises the REAL
+     * resolveChatId() + sendMessage() code path this class uses (not a
+     * parallel diagnostic script), so a persistent PEER_ID_INVALID after
+     * deploying the resolveChatId() fix can be traced to its exact
+     * cause -- e.g. a stale cached id, or the resolved numeric id itself
+     * still being rejected (which would point to a bot-permission issue
+     * in the group rather than a username-resolution one). Sends one
+     * short, clearly-labeled test message to the group.
+     */
+    public function debugSendTest(Request $request, $token)
+    {
+        if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+            abort(403);
+        }
+
+        \Illuminate\Support\Facades\Cache::forget('telegram_chat_id_' . self::GROUP_USERNAME);
+        $resolvedId = $this->resolveChatId(self::GROUP_USERNAME);
+
+        $response = $this->sendMessage($resolvedId, '🔧 Debug test message -- please ignore.');
+
+        return response()->json([
+            'group_username' => self::GROUP_USERNAME,
+            'resolved_chat_id' => $resolvedId,
+            'bot_token_set' => (bool) $this->botToken(),
+            'send_response' => $response ? $response->json() : 'sendMessage() returned null (no bot token?)',
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * One-off, READ-ONLY: PEER_ID_INVALID persisted even when sending to
+     * the exact numeric id getChat resolved for @WorkUpB -- that rules
+     * out username resolution as the cause. The likely remaining
+     * explanation: the chat currently holding that @username isn't the
+     * same chat the bot actually has standing membership in (this
+     * happens when a group gets upgraded/recreated as a supergroup and
+     * the username follows the new chat while the bot stays added only
+     * to the old one). getChat can return public info for a chat a bot
+     * isn't a member of; sendMessage cannot send to one. This checks the
+     * bot's own getChatMember status in that exact chat id to confirm.
+     */
+    public function debugCheckMembership($token)
+    {
+        if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+            abort(403);
+        }
+
+        $botTokenValue = $this->botToken();
+        if (!$botTokenValue) {
+            return response()->json(['error' => 'TELEGRAM_BOT_TOKEN missing'], 400);
+        }
+
+        $me = Http::get("https://api.telegram.org/bot{$botTokenValue}/getMe");
+        $botId = $me->json('result.id');
+
+        $resolvedGroupId = $this->resolveChatId(self::GROUP_USERNAME);
+        $resolvedChannelId = $this->resolveChatId(self::CHANNEL_USERNAME);
+
+        $membership = null;
+        if ($botId) {
+            $memberResponse = Http::get("https://api.telegram.org/bot{$botTokenValue}/getChatMember", [
+                'chat_id' => $resolvedGroupId,
+                'user_id' => $botId,
+            ]);
+            $membership = $memberResponse->json();
+        }
+
+        return response()->json([
+            'bot_info' => $me->json('result'),
+            'resolved_group_id' => $resolvedGroupId,
+            'resolved_channel_id' => $resolvedChannelId,
+            'bot_membership_in_group' => $membership,
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+}
