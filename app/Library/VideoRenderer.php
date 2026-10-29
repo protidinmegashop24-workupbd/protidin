@@ -298,7 +298,19 @@ SVG;
 
         do {
             $headerLines = $surahName !== '' ? [$surahName] : [];
-            $arabicLines = $this->wrapLines($arabicText, 15);
+            // Width-aware, not a fixed character count: a fixed count
+            // (previously 15) wrapped even short ayahs onto several
+            // lines needlessly, since mb_strlen counts each Arabic
+            // diacritic (harakat) as its own character even though it
+            // adds ~no horizontal width. ~0.30 * fontSize px/char is a
+            // conservative (safe-to-overflow-the-wrong-way) estimate for
+            // Amiri Quran, calibrated by rendering real ayah text at
+            // font-size 58 and measuring the actual pixel width (ranged
+            // ~12-16 px/char across two sample ayahs depending on
+            // diacritic density; 0.30 errs toward wrapping a little
+            // early rather than running wide).
+            $arabicMaxChars = max(8, (int) floor($contentWidth / (0.30 * $arabicSize)));
+            $arabicLines = $this->wrapLines($arabicText, $arabicMaxChars);
             $translationLines = $translationText !== '' ? $this->wrapLines($translationText, 34) : [];
 
             $headerHeight = $headerLines ? (int) round($headerSize * 1.5) + 40 : 0;
