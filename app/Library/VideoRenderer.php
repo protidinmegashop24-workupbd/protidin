@@ -286,15 +286,23 @@ SVG;
 
         $gold = '#d4af37';
         $cream = '#f0e6d2';
-        $marginX = 90;
+        $marginX = 70;
         $contentWidth = self::CANVAS_WIDTH - ($marginX * 2);
         $maxContentHeight = (int) round(self::CANVAS_HEIGHT * 0.85);
 
-        $headerSize = 54;
-        $arabicSize = 58;
-        $translationSize = 32;
-        $minArabicSize = 30;
-        $minTranslationSize = 20;
+        // Each slide is now a single ayah (see renderQuranVideo()), so
+        // starting small and only shrinking for overflow left most short
+        // ayahs looking tiny against a mostly-empty frame. Starting
+        // large instead and shrinking only the (now rarer) long ayahs
+        // down to these floors matches how dedicated Quran-video apps
+        // size their text -- confirmed by rendering real sample ayahs at
+        // several sizes and comparing against a quranvideomaker.com
+        // reference screenshot the user provided.
+        $headerSize = 64;
+        $arabicSize = 100;
+        $translationSize = 42;
+        $minArabicSize = 36;
+        $minTranslationSize = 24;
 
         do {
             $headerLines = $surahName !== '' ? [$surahName] : [];
