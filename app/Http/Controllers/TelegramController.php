@@ -388,4 +388,50 @@ class TelegramController extends Controller
             'send_response' => $response ? $response->json() : 'sendMessage() returned null (no bot token?)',
         ], 200, [], JSON_PRETTY_PRINT);
     }
+
+    /**
+     * One-off, READ-ONLY: PEER_ID_INVALID persisted even when sending to
+     * the exact numeric id getChat resolved for @WorkUpB -- that rules
+     * out username resolution as the cause. The likely remaining
+     * explanation: the chat currently holding that @username isn't the
+     * same chat the bot actually has standing membership in (this
+     * happens when a group gets upgraded/recreated as a supergroup and
+     * the username follows the new chat while the bot stays added only
+     * to the old one). getChat can return public info for a chat a bot
+     * isn't a member of; sendMessage cannot send to one. This checks the
+     * bot's own getChatMember status in that exact chat id to confirm.
+     */
+    public function debugCheckMembership($token)
+    {
+        if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+            abort(403);
+        }
+
+        $botTokenValue = $this->botToken();
+        if (!$botTokenValue) {
+            return response()->json(['error' => 'TELEGRAM_BOT_TOKEN missing'], 400);
+        }
+
+        $me = Http::get("https://api.telegram.org/bot{$botTokenValue}/getMe");
+        $botId = $me->json('result.id');
+
+        $resolvedGroupId = $this->resolveChatId(self::GROUP_USERNAME);
+        $resolvedChannelId = $this->resolveChatId(self::CHANNEL_USERNAME);
+
+        $membership = null;
+        if ($botId) {
+            $memberResponse = Http::get("https://api.telegram.org/bot{$botTokenValue}/getChatMember", [
+                'chat_id' => $resolvedGroupId,
+                'user_id' => $botId,
+            ]);
+            $membership = $memberResponse->json();
+        }
+
+        return response()->json([
+            'bot_info' => $me->json('result'),
+            'resolved_group_id' => $resolvedGroupId,
+            'resolved_channel_id' => $resolvedChannelId,
+            'bot_membership_in_group' => $membership,
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
 }

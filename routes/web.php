@@ -3667,6 +3667,7 @@ Route::get('/system-check-google-tts/{token}', function ($token) {
 // after the resolveChatId() fix, to see exactly what id it resolves to
 // and what Telegram says when sending to that exact id.
 Route::get('/system-telegram-debug-send/{token}', [\App\Http\Controllers\TelegramController::class, 'debugSendTest']);
+Route::get('/system-telegram-check-membership/{token}', [\App\Http\Controllers\TelegramController::class, 'debugCheckMembership']);
 
 // One-off, READ-ONLY: resolves the broadcast feature's @username chat
 // references to their real numeric chat ids via Telegram's getChat API,
