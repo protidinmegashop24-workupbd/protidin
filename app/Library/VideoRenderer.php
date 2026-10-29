@@ -227,13 +227,19 @@ SVG;
 
     /**
      * Picks the video's audio track, in priority order:
-     *  1. A real reciter's recitation, if the text is exactly a known
-     *     Quran ayah (QuranAudioMatcher) -- 'temp' is false since that
-     *     file is a shared, cached copy that must not be deleted.
-     *  2. A Google Cloud TTS voice reading the text aloud, if an API key
+     *  1. If the video was made through the Quran-ayah picker
+     *     (source_type 'quran_ayah'), the exact surah/ayah range's
+     *     recitation -- a direct lookup, not text matching, so it's
+     *     always reliable. 'temp' is true only for a multi-ayah range
+     *     (QuranAudioMatcher concatenates those into a one-off file);
+     *     a single ayah returns its shared cached copy untouched.
+     *  2. Otherwise, a real reciter's recitation if the free-typed text
+     *     happens to exactly match a known ayah (QuranAudioMatcher's
+     *     fuzzy match) -- 'temp' is false, it's a shared cached copy.
+     *  3. A Google Cloud TTS voice reading the text aloud, if an API key
      *     is configured in admin settings -- 'temp' is true, it's a
      *     one-off file for this render only.
-     *  3. Neither -- 'path' is null and render() falls back to a silent
+     *  4. Neither -- 'path' is null and render() falls back to a silent
      *     video (e.g. admin hasn't added a Google TTS key yet, or both
      *     attempts failed). A failure here is deliberately swallowed
      *     rather than failing the whole render, so a temporary TTS
@@ -241,11 +247,30 @@ SVG;
      *
      * @return array{path: ?string, temp: bool}
      */
-    protected function resolveAudio(string $text): array
+    protected function resolveAudio(UserVideo $video): array
     {
+        $text = $video->text_content;
+        $matcher = new QuranAudioMatcher();
+
+        if ($video->source_type === 'quran_ayah' && $video->quran_surah && $video->quran_ayah_from && $video->quran_ayah_to) {
+            try {
+                $path = $matcher->ayahRangeAudio(
+                    (int) $video->quran_surah,
+                    (int) $video->quran_ayah_from,
+                    (int) $video->quran_ayah_to,
+                    $video->reciter ?: QuranAudioMatcher::DEFAULT_RECITER
+                );
+                return ['path' => $path, 'temp' => $video->quran_ayah_to > $video->quran_ayah_from];
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('video-maker-quran-range-audio-failed', ['error' => $e->getMessage()]);
+                // Falls through to TTS below rather than failing the
+                // whole render over a transient everyayah.com hiccup.
+            }
+        }
+
         if ($this->isArabic($text)) {
             try {
-                $ayahAudio = (new QuranAudioMatcher())->findAyahAudio($text);
+                $ayahAudio = $matcher->findAyahAudio($text);
                 if ($ayahAudio) {
                     return ['path' => $ayahAudio, 'temp' => false];
                 }
@@ -310,7 +335,7 @@ SVG;
         $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
         $outputFullPath = $outDir . '/' . $outputFilename;
 
-        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video->text_content);
+        ['path' => $audioPath, 'temp' => $audioIsTemp] = $this->resolveAudio($video);
 
         // fps=25 and setsar=1 are defensive: an admin-uploaded background
         // can carry an odd/variable frame rate or non-square pixel aspect

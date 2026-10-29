@@ -14,6 +14,11 @@ class UserVideo extends Model
         'output_path',
         'cost',
         'error_message',
+        'source_type',
+        'quran_surah',
+        'quran_ayah_from',
+        'quran_ayah_to',
+        'reciter',
     ];
 
     protected $casts = [

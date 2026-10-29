@@ -922,6 +922,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/video-maker', [VideoMakerController::class, 'index'])->name('user.video-maker.index');
     Route::get('/video-maker/create/{id}', [VideoMakerController::class, 'create'])->name('user.video-maker.create');
     Route::post('/video-maker/store', [VideoMakerController::class, 'store'])->name('user.video-maker.store');
+    Route::get('/video-maker/surahs', [VideoMakerController::class, 'surahs'])->name('user.video-maker.surahs');
+    Route::get('/video-maker/ayah-preview', [VideoMakerController::class, 'ayahPreview'])->name('user.video-maker.ayah-preview');
     Route::get('/video-maker/my-videos', [VideoMakerController::class, 'myVideos'])->name('user.video-maker.my-videos');
     Route::get('/video-maker/download/{id}', [VideoMakerController::class, 'download'])->name('user.video-maker.download');
     Route::delete('/video-maker/{id}', [VideoMakerController::class, 'destroy'])->name('user.video-maker.destroy');
@@ -3388,6 +3390,11 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
             $table->string('output_path')->nullable();
             $table->decimal('cost', 10, 4)->default(0);
             $table->text('error_message')->nullable();
+            $table->string('source_type', 20)->default('custom_text'); // custom_text, quran_ayah
+            $table->unsignedSmallInteger('quran_surah')->nullable();
+            $table->unsignedSmallInteger('quran_ayah_from')->nullable();
+            $table->unsignedSmallInteger('quran_ayah_to')->nullable();
+            $table->string('reciter', 30)->nullable();
             $table->timestamps();
             $table->index(['user_id', 'status']);
             $table->index('status');
@@ -3395,6 +3402,22 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
         $log[] = 'Created user_videos table.';
     } else {
         $log[] = 'user_videos table already exists.';
+
+        $newColumns = [
+            'source_type' => fn($t) => $t->string('source_type', 20)->default('custom_text')->after('error_message'),
+            'quran_surah' => fn($t) => $t->unsignedSmallInteger('quran_surah')->nullable()->after('source_type'),
+            'quran_ayah_from' => fn($t) => $t->unsignedSmallInteger('quran_ayah_from')->nullable()->after('quran_surah'),
+            'quran_ayah_to' => fn($t) => $t->unsignedSmallInteger('quran_ayah_to')->nullable()->after('quran_ayah_from'),
+            'reciter' => fn($t) => $t->string('reciter', 30)->nullable()->after('quran_ayah_to'),
+        ];
+        foreach ($newColumns as $column => $definer) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('user_videos', $column)) {
+                \Illuminate\Support\Facades\Schema::table('user_videos', function ($table) use ($definer) {
+                    $definer($table);
+                });
+                $log[] = "Added user_videos.$column column.";
+            }
+        }
     }
 
     if (!\Illuminate\Support\Facades\Schema::hasTable('video_maker_settings')) {
@@ -3436,6 +3459,7 @@ Route::get('/system-setup-quran-audio/{token}', function ($token) {
 
     $matcher = new \App\Library\QuranAudioMatcher();
     $ayahs = [];
+    $surahsMeta = [];
     $errors = [];
 
     for ($surah = 1; $surah <= 114; $surah++) {
@@ -3466,19 +3490,31 @@ Route::get('/system-setup-quran-audio/{token}', function ($token) {
                 'normalized' => $matcher->normalize($text),
             ];
         }
+
+        $surahsMeta[] = [
+            'number' => $surah,
+            'name_arabic' => $decoded['data']['name'] ?? '',
+            'name_english' => $decoded['data']['englishName'] ?? '',
+            'name_translation' => $decoded['data']['englishNameTranslation'] ?? '',
+            'ayah_count' => count($ayahList),
+        ];
     }
 
     $outPath = storage_path('app/quran-ayahs.json');
+    $surahsPath = storage_path('app/quran-surahs.json');
     if (!is_dir(dirname($outPath))) {
         mkdir(dirname($outPath), 0755, true);
     }
     file_put_contents($outPath, json_encode($ayahs, JSON_UNESCAPED_UNICODE));
+    file_put_contents($surahsPath, json_encode($surahsMeta, JSON_UNESCAPED_UNICODE));
 
     return response()->json([
         'ayahs_saved' => count($ayahs),
+        'surahs_saved' => count($surahsMeta),
         'surahs_with_errors' => $errors,
-        'sample' => array_slice($ayahs, 0, 2),
-        'saved_to' => $outPath,
+        'sample_ayah' => array_slice($ayahs, 0, 2),
+        'sample_surah' => array_slice($surahsMeta, 0, 2),
+        'saved_to' => [$outPath, $surahsPath],
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
@@ -3504,6 +3540,40 @@ Route::get('/system-check-google-tts/{token}', function ($token) {
     }
 
     return response()->file($outputPath, ['Content-Type' => 'audio/mpeg']);
+});
+
+// One-off, READ-ONLY: checks which of the candidate everyayah.com
+// reciter folder names (QuranAudioMatcher::RECITERS) actually serve
+// audio, by requesting Surah 1 Ayah 1 from each -- names were picked
+// from general knowledge, not confirmed against the live site (it isn't
+// reachable from the environment this was built in), so this confirms
+// or rules each one out on the real server before it's offered to users.
+Route::get('/system-check-reciters/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $results = [];
+    foreach (\App\Library\QuranAudioMatcher::RECITERS as $key => [$folder, $displayName]) {
+        $url = "https://everyayah.com/data/{$folder}/001001.mp3";
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [CURLOPT_NOBODY => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_FOLLOWLOCATION => true]);
+        curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $contentLength = curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+        curl_close($ch);
+
+        $results[$key] = [
+            'folder' => $folder,
+            'display_name' => $displayName,
+            'url' => $url,
+            'http_code' => $httpCode,
+            'content_length' => $contentLength,
+            'working' => $httpCode === 200 && $contentLength > 1000,
+        ];
+    }
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });
 
 // Cron: processes ONE pending video per hit (set up as a real cPanel Cron
