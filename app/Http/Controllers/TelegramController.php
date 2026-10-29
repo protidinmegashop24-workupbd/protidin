@@ -359,4 +359,33 @@ class TelegramController extends Controller
 
         return redirect()->back()->with('success', 'Message sent successfully to the ' . $request->target . '.');
     }
+
+    /**
+     * One-off, token-protected debug route: exercises the REAL
+     * resolveChatId() + sendMessage() code path this class uses (not a
+     * parallel diagnostic script), so a persistent PEER_ID_INVALID after
+     * deploying the resolveChatId() fix can be traced to its exact
+     * cause -- e.g. a stale cached id, or the resolved numeric id itself
+     * still being rejected (which would point to a bot-permission issue
+     * in the group rather than a username-resolution one). Sends one
+     * short, clearly-labeled test message to the group.
+     */
+    public function debugSendTest(Request $request, $token)
+    {
+        if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+            abort(403);
+        }
+
+        \Illuminate\Support\Facades\Cache::forget('telegram_chat_id_' . self::GROUP_USERNAME);
+        $resolvedId = $this->resolveChatId(self::GROUP_USERNAME);
+
+        $response = $this->sendMessage($resolvedId, '🔧 Debug test message -- please ignore.');
+
+        return response()->json([
+            'group_username' => self::GROUP_USERNAME,
+            'resolved_chat_id' => $resolvedId,
+            'bot_token_set' => (bool) $this->botToken(),
+            'send_response' => $response ? $response->json() : 'sendMessage() returned null (no bot token?)',
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
 }

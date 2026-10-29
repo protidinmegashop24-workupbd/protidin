@@ -3661,6 +3661,13 @@ Route::get('/system-check-google-tts/{token}', function ($token) {
     return response()->file($outputPath, ['Content-Type' => 'audio/mpeg']);
 });
 
+// One-off: exercises TelegramController's REAL resolveChatId() +
+// sendMessage() code path (not a parallel script) and sends one visible
+// test message to the group -- for when PEER_ID_INVALID persists even
+// after the resolveChatId() fix, to see exactly what id it resolves to
+// and what Telegram says when sending to that exact id.
+Route::get('/system-telegram-debug-send/{token}', [\App\Http\Controllers\TelegramController::class, 'debugSendTest']);
+
 // One-off, READ-ONLY: resolves the broadcast feature's @username chat
 // references to their real numeric chat ids via Telegram's getChat API,
 // to confirm/diagnose the PEER_ID_INVALID fix -- sending with a
