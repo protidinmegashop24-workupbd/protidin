@@ -264,6 +264,13 @@ SVG;
      * renderQuranVideo() -- and, if ever needed again, a whole range in
      * one frame.
      *
+     * Transparent outside a semi-opaque box fitted to the text content
+     * (not an opaque full-canvas background) -- renderQuranVideo()
+     * composites this over the user's chosen template's background
+     * video (a scenic loop instead of plain black), with the box there
+     * purely to keep the gold text readable against whatever's behind
+     * it.
+     *
      * Font sizes shrink together (never line count/wrapping, same
      * approach as buildSvg()) if the content would run past ~85% of the
      * canvas height, so even the Quran's longest single ayah (2:282)
@@ -342,6 +349,9 @@ SVG;
             }
         } while (true);
 
+        $boxPaddingX = 50;
+        $boxPaddingY = 50;
+        $boxTop = (int) round((self::CANVAS_HEIGHT - $totalHeight) / 2) - $boxPaddingY;
         $y = (int) round((self::CANVAS_HEIGHT - $totalHeight) / 2);
         $elements = '';
 
@@ -390,9 +400,15 @@ SVG;
             }
         }
 
+        $boxBottom = min(self::CANVAS_HEIGHT, $y + $boxPaddingY);
+        $boxTop = max(0, $boxTop);
+        $boxWidth = min($contentWidth + ($boxPaddingX * 2), self::CANVAS_WIDTH - 40);
+        $boxX = (int) round((self::CANVAS_WIDTH - $boxWidth) / 2);
+        $boxHeight = $boxBottom - $boxTop;
+
         return <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="{$this->canvasWidth()}" height="{$this->canvasHeight()}">
-<rect width="{$this->canvasWidth()}" height="{$this->canvasHeight()}" fill="#000000"/>
+<rect x="{$boxX}" y="{$boxTop}" width="{$boxWidth}" height="{$boxHeight}" rx="28" fill="black" fill-opacity="0.5"/>
 {$elements}
 </svg>
 SVG;
@@ -471,17 +487,19 @@ SVG;
     }
 
     /**
-     * Slide-by-slide Quran video: one black-background frame per ayah
-     * (buildQuranFrameSvg() with a single-element ayah array), each
-     * looped against that exact ayah's own recitation audio via
-     * -shortest, then all per-ayah segments concatenated end-to-end --
-     * so the Arabic/translation on screen always matches whichever ayah
-     * is currently being recited, advancing automatically as the
-     * previous one's audio ends. Every segment is encoded with the same
-     * video/audio parameters (forcing -ar 44100 -ac 1 regardless of the
-     * source recitation's own sample rate) so the final concat (-c copy,
-     * no re-encode) stays stream-compatible across segments -- confirmed
-     * locally end-to-end.
+     * Slide-by-slide Quran video: one frame per ayah (buildQuranFrameSvg()
+     * with a single-element ayah array, transparent outside its text
+     * box) composited over the chosen template's scenic background loop
+     * (falls back to plain black only if that background is somehow
+     * missing), each looped against that exact ayah's own recitation
+     * audio via -shortest, then all per-ayah segments concatenated
+     * end-to-end -- so the Arabic/translation on screen always matches
+     * whichever ayah is currently being recited, advancing automatically
+     * as the previous one's audio ends. Every segment is encoded with
+     * the same video/audio parameters (forcing -ar 44100 -ac 1
+     * regardless of the source recitation's own sample rate) so the
+     * final concat (-c copy, no re-encode) stays stream-compatible
+     * across segments -- confirmed locally end-to-end.
      *
      * A segment whose recitation audio can't be fetched (network hiccup)
      * gets a few seconds of silence instead of being skipped, so the
@@ -502,9 +520,29 @@ SVG;
             throw new RuntimeException('Ayah data not available for this surah/ayah range.');
         }
 
+        // The user's chosen template supplies the scenic background loop
+        // (the same copyright-free, originally-generated gradient videos
+        // as the custom-text path, or anything else the admin uploads)
+        // instead of plain black -- falls back to black only if the
+        // template/background is somehow missing, so a render never
+        // hard-fails over this.
+        $backgroundPath = null;
+        if ($video->template && $video->template->background_path) {
+            $candidate = base_path($video->template->background_path);
+            if (file_exists($candidate)) {
+                $backgroundPath = $candidate;
+            }
+        }
+
         $reciter = $video->reciter ?: QuranAudioMatcher::DEFAULT_RECITER;
         $tempFiles = [];
         $segmentFiles = [];
+
+        $filterComplex = sprintf(
+            '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d,fps=25,setsar=1[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0,format=yuv420p[vout]',
+            self::CANVAS_WIDTH,
+            self::CANVAS_HEIGHT
+        );
 
         try {
             foreach ($ayahData as $ayah) {
@@ -523,7 +561,21 @@ SVG;
                 $segmentPath = tempnam(sys_get_temp_dir(), 'vtqseg_') . '.mp4';
                 $tempFiles[] = $segmentPath;
 
-                if ($audioPath) {
+                if ($backgroundPath) {
+                    $cmd = $audioPath
+                        ? sprintf(
+                            'FONTCONFIG_FILE=%s %s -y -stream_loop -1 -i %s -i %s -i %s -filter_complex %s -map %s -map 2:a:0 -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -ar 44100 -ac 1 -b:a 128k -movflags +faststart %s 2>&1',
+                            escapeshellarg($fontconfigFile), escapeshellcmd($ffmpeg), escapeshellarg($backgroundPath),
+                            escapeshellarg($svgFile), escapeshellarg($audioPath), escapeshellarg($filterComplex),
+                            escapeshellarg('[vout]'), escapeshellarg($segmentPath)
+                        )
+                        : sprintf(
+                            'FONTCONFIG_FILE=%s %s -y -stream_loop -1 -i %s -i %s -f lavfi -i %s -t 4 -filter_complex %s -map %s -map 2:a:0 -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -ar 44100 -ac 1 -b:a 128k -movflags +faststart %s 2>&1',
+                            escapeshellarg($fontconfigFile), escapeshellcmd($ffmpeg), escapeshellarg($backgroundPath),
+                            escapeshellarg($svgFile), escapeshellarg('anullsrc=r=44100:cl=mono'), escapeshellarg($filterComplex),
+                            escapeshellarg('[vout]'), escapeshellarg($segmentPath)
+                        );
+                } elseif ($audioPath) {
                     $cmd = sprintf(
                         'FONTCONFIG_FILE=%s %s -y -loop 1 -i %s -i %s -shortest -r 25 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -threads 1 -x264-params threads=1 -c:a aac -ar 44100 -ac 1 -b:a 128k -movflags +faststart %s 2>&1',
                         escapeshellarg($fontconfigFile),
