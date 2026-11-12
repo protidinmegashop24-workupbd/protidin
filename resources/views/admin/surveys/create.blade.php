@@ -47,6 +47,12 @@
           <textarea class="form-control" name="description" rows="3"></textarea>
         </div>
 
+        <div class="mb-3">
+          <label class="form-label">Gateway / Ad Page URL (optional)</label>
+          <input class="form-control" type="url" name="gateway_url" placeholder="https://your-blog.blogspot.com/p/quiz-gateway.html">
+          <small class="text-muted">If set, "Start Survey" sends the user here first (e.g. a Blogger post with AdSense ads) instead of straight to the quiz -- the quiz itself only unlocks after this page's "Start Quiz" link is used. Leave blank to skip this step (same as before).</small>
+        </div>
+
         <button class="btn btn-success">Create</button>
         <a href="{{ route('admin.surveys.index') }}" class="btn btn-secondary">Back</a>
       </form>

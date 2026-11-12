@@ -47,6 +47,12 @@
           <textarea class="form-control" name="description" rows="3">{{ old('description', $survey->description) }}</textarea>
         </div>
 
+        <div class="mb-3">
+          <label class="form-label">Gateway / Ad Page URL (optional)</label>
+          <input class="form-control" type="url" name="gateway_url" value="{{ old('gateway_url', $survey->gateway_url) }}" placeholder="https://your-blog.blogspot.com/p/quiz-gateway.html">
+          <small class="text-muted">If set, "Start Survey" sends the user here first (e.g. a Blogger post with AdSense ads) instead of straight to the quiz -- the quiz itself only unlocks after this page's "Start Quiz" link is used. Leave blank to skip this step (same as before).</small>
+        </div>
+
         <div class="mb-3 form-check">
           <input class="form-check-input" type="checkbox" name="is_active" value="1" id="is_active" @checked(old('is_active', $survey->is_active))>
           <label class="form-check-label" for="is_active">Active</label>

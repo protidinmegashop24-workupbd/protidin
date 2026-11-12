@@ -33,7 +33,7 @@
     </ol>
     <div class="sv-sub">২) নিচের কার্ডের সার্ভেগুলো (নিজস্ব প্রশ্নোত্তর)</div>
     <ol start="1">
-      <li>যেকোনো একটা সার্ভে কার্ডে "Start Survey" চাপুন।</li>
+      <li>যেকোনো একটা সার্ভে কার্ডে "Start Survey" চাপুন। (কিছু সার্ভের ক্ষেত্রে প্রথমে একটা পেজ দেখাবে, সেখান থেকে "Start Quiz" চাপলে আসল প্রশ্নে চলে আসবেন -- এটা বাধ্যতামূলক ধাপ, এড়ানো যাবে না।)</li>
       <li>একের পর এক প্রশ্নের উত্তর দিয়ে "Next" চাপুন, শেষ প্রশ্নে "Finish & Get Code" চাপুন।</li>
       <li>শেষ হলে একটা <strong>ইউনিক কোড</strong> পাবেন এবং কত টাকা আয় হয়েছে তা দেখাবে — কিন্তু এই টাকা তখনো আপনার ব্যালেন্সে যোগ হয়নি।</li>
       <li>কোডটা কপি করে <strong>"Verify Code"</strong> বাটনে চাপুন (অথবা মেনু থেকে Verify পেজে গিয়ে কোডটা বসান) — তবেই টাকা ব্যালেন্সে যোগ হবে।</li>
@@ -126,7 +126,7 @@
 
             <div class="mt-3">
               <a class="btn btn-success btn-sm w-100 svOpen"
-                 href="{{ route('surveys.show', $s->id) }}"
+                 href="{{ route('surveys.start-gateway', $s->id) }}"
                  target="_blank"
                  data-id="{{ $s->id }}">
                 Start Survey (New Tab)

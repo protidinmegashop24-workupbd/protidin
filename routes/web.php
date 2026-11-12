@@ -910,6 +910,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/verify', [VerifyController::class, 'show'])->name('verify.show');
     Route::post('/verify', [VerifyController::class, 'verify'])->name('verify.verify');
 
+    Route::get('/surveys/{survey}/start-gateway', [\App\Http\Controllers\SurveyController::class, 'startGateway'])->name('surveys.start-gateway');
     Route::get('/surveys/{survey}', [\App\Http\Controllers\SurveyController::class, 'show'])->name('surveys.show');
     Route::post('/surveys/{survey}/save', [\App\Http\Controllers\SurveyController::class, 'saveAnswer'])->name('surveys.saveAnswer');
     Route::post('/surveys/{survey}/submit', [\App\Http\Controllers\SurveyController::class, 'submit'])->name('surveys.submit');
@@ -3354,6 +3355,46 @@ Route::get('/system-fix-video-thumbnails/{token}', function ($token) {
 // just costs a small amount of the user's EXISTING earning_balance,
 // exactly like every other paid feature on this site (boost jobs, SMM
 // orders). Safe to run more than once.
+// One-off: adds the ad-gateway feature to Surveys -- a 'gateway_url'
+// column on surveys (an admin-set external page, e.g. a Blogger post
+// with AdSense ads, that must be visited before a fresh survey attempt
+// unlocks) and a survey_gateway_tokens table (short-lived, single-use
+// tokens proving that visit happened). See SurveyController::
+// startGateway()/show() for the enforcement. Safe to run more than once.
+Route::get('/system-add-survey-gateway/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'gateway_url')) {
+        \Illuminate\Support\Facades\Schema::table('surveys', function ($table) {
+            $table->string('gateway_url')->nullable()->after('description');
+        });
+        $log[] = 'Added surveys.gateway_url column.';
+    } else {
+        $log[] = 'surveys.gateway_url already exists.';
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('survey_gateway_tokens')) {
+        \Illuminate\Support\Facades\Schema::create('survey_gateway_tokens', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('survey_id');
+            $table->unsignedBigInteger('user_id');
+            $table->string('token', 64)->unique();
+            $table->timestamp('used_at')->nullable();
+            $table->timestamps();
+            $table->index(['survey_id', 'user_id']);
+        });
+        $log[] = 'Created survey_gateway_tokens table.';
+    } else {
+        $log[] = 'survey_gateway_tokens table already exists.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
 Route::get('/system-add-video-maker/{token}', function ($token) {
     if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
         abort(403);

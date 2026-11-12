@@ -26,6 +26,7 @@ class AdminSurveyController extends Controller
             'reward' => 'required|numeric|min:0.0001',
             'topic' => 'required|in:islamic,general,bangladesh_gk,sports',
             'questions_per_attempt' => 'required|integer|min:5|max:50',
+            'gateway_url' => 'nullable|url|max:2000',
         ]);
 
         Survey::create([
@@ -35,6 +36,7 @@ class AdminSurveyController extends Controller
             'topic' => strtolower(trim($request->topic)),
             'questions_per_attempt' => (int)$request->questions_per_attempt,
             'is_active' => 1,
+            'gateway_url' => $request->gateway_url ?: null,
         ]);
 
         return redirect()->route('admin.surveys.index')->with('success', '✅ Survey Created (Auto Daily Questions)');
@@ -52,6 +54,7 @@ class AdminSurveyController extends Controller
             'reward' => 'required|numeric|min:0.0001',
             'topic' => 'required|in:islamic,general,bangladesh_gk,sports',
             'questions_per_attempt' => 'required|integer|min:5|max:50',
+            'gateway_url' => 'nullable|url|max:2000',
         ]);
 
         $survey->update([
@@ -61,6 +64,7 @@ class AdminSurveyController extends Controller
             'topic' => strtolower(trim($request->topic)),
             'questions_per_attempt' => (int) $request->questions_per_attempt,
             'is_active' => $request->has('is_active') ? 1 : 0,
+            'gateway_url' => $request->gateway_url ?: null,
         ]);
 
         return redirect()->route('admin.surveys.index')->with('success', '✅ Survey Updated');

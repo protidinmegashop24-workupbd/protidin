@@ -6,6 +6,9 @@
     {{ $message ?? 'Something went wrong.' }}
   </div>
 
+  @if(!empty($gatewayUrl))
+    <a class="btn btn-success" href="{{ $gatewayUrl }}" target="_blank">আবার চেষ্টা করুন (Start Survey)</a>
+  @endif
   <a class="btn btn-dark" href="{{ route('surveys.index') }}">Back to list</a>
 </div>
 @endsection

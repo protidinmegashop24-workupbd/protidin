@@ -5,13 +5,97 @@ namespace App\Http\Controllers;
 use App\Models\Survey;
 use App\Models\SurveySubmission;
 use App\Models\SurveyDailySet;
+use App\Models\SurveyGatewayToken;
 use App\Models\QuestionBank;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SurveyController extends Controller
 {
     // ✅ Daily verify limit
     private int $dailyLimit = 20;
+
+    // How long a gateway token stays valid once issued -- long enough
+    // that someone reading a Blogger post isn't rushed, short enough
+    // that a link can't be bookmarked and replayed days later.
+    private int $gatewayTokenMinutes = 120;
+
+    /**
+     * "Start Survey" sends the user here first instead of straight to
+     * show(). If the survey has a gateway_url configured (an admin-set
+     * external page -- a Blogger post with AdSense ads, say), this
+     * issues a short-lived single-use token and sends them there; that
+     * page's own "Start Quiz" link (built from a tiny JS snippet reading
+     * survey_id+token off its own URL) is what actually reaches show().
+     * Surveys with no gateway_url configured skip this entirely and
+     * behave exactly as before.
+     */
+    public function startGateway(Survey $survey)
+    {
+        if (!$survey->gateway_url) {
+            return redirect()->route('surveys.show', $survey->id);
+        }
+
+        $token = bin2hex(random_bytes(24));
+        SurveyGatewayToken::create([
+            'survey_id' => $survey->id,
+            'user_id' => Auth::id(),
+            'token' => $token,
+        ]);
+
+        $separator = str_contains($survey->gateway_url, '?') ? '&' : '?';
+        $url = $survey->gateway_url . $separator . http_build_query([
+            'survey_id' => $survey->id,
+            'token' => $token,
+        ]);
+
+        return redirect()->away($url);
+    }
+
+    /**
+     * True if this survey requires passing through startGateway() before
+     * show() -- only when a gateway_url is configured AND the user
+     * doesn't already have a submission in progress today (someone
+     * reloading/paging through an attempt they already properly entered
+     * doesn't need to re-prove the gateway visit; a brand new attempt
+     * does, every day, since the whole point is a fresh ad view each
+     * time).
+     */
+    private function gatewayRequired(Survey $survey, int $userId): bool
+    {
+        if (!$survey->gateway_url) {
+            return false;
+        }
+
+        return !SurveySubmission::where('survey_id', $survey->id)
+            ->where('user_id', $userId)
+            ->where('code_status', 'new')
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+    }
+
+    private function consumeGatewayToken(Survey $survey, int $userId, ?string $token): bool
+    {
+        if (!$token) {
+            return false;
+        }
+
+        $row = SurveyGatewayToken::where('survey_id', $survey->id)
+            ->where('user_id', $userId)
+            ->where('token', $token)
+            ->whereNull('used_at')
+            ->where('created_at', '>=', now()->subMinutes($this->gatewayTokenMinutes))
+            ->first();
+
+        if (!$row) {
+            return false;
+        }
+
+        $row->used_at = now();
+        $row->save();
+
+        return true;
+    }
 
     public function index(Request $request)
     {
@@ -52,6 +136,17 @@ class SurveyController extends Controller
     public function show(Request $request, Survey $survey)
     {
         if (!$survey->is_active) abort(404);
+
+        $userId = $request->user()->id;
+
+        if ($this->gatewayRequired($survey, $userId)) {
+            if (!$this->consumeGatewayToken($survey, $userId, $request->query('token'))) {
+                return view('surveys.show_error', [
+                    'message' => '⚠️ এই সার্ভে শুরু করতে আগে বিজ্ঞাপন পেজ ঘুরে আসতে হবে।',
+                    'gatewayUrl' => route('surveys.start-gateway', $survey->id),
+                ]);
+            }
+        }
 
         $today = now()->toDateString();
 
