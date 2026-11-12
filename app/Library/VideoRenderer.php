@@ -487,19 +487,49 @@ SVG;
     }
 
     /**
+     * Picks the scenic background for a Quran video at random from every
+     * ENABLED template (not necessarily the one the user clicked to get
+     * to the create-video form) -- the background is purely cosmetic
+     * for Quran mode now (see buildQuranFrameSvg()/renderQuranVideo()),
+     * so letting it vary keeps different users' (or the same user's
+     * repeat) videos from all looking identical just because they share
+     * a background clip. The same random pick is used for every ayah
+     * segment within one video (chosen once, outside the per-ayah loop),
+     * so a single video's slides don't jump between backgrounds.
+     *
+     * Falls back to the video's own originally-selected template, then
+     * to no background at all (plain black) only if neither resolves to
+     * an existing file -- a render never hard-fails over this.
+     */
+    protected function pickQuranBackgroundPath(UserVideo $video): ?string
+    {
+        $template = \App\Models\VideoTemplate::where('enabled', true)->inRandomOrder()->first()
+            ?: $video->template;
+
+        if ($template && $template->background_path) {
+            $candidate = base_path($template->background_path);
+            if (file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Slide-by-slide Quran video: one frame per ayah (buildQuranFrameSvg()
      * with a single-element ayah array, transparent outside its text
-     * box) composited over the chosen template's scenic background loop
-     * (falls back to plain black only if that background is somehow
-     * missing), each looped against that exact ayah's own recitation
-     * audio via -shortest, then all per-ayah segments concatenated
-     * end-to-end -- so the Arabic/translation on screen always matches
-     * whichever ayah is currently being recited, advancing automatically
-     * as the previous one's audio ends. Every segment is encoded with
-     * the same video/audio parameters (forcing -ar 44100 -ac 1
-     * regardless of the source recitation's own sample rate) so the
-     * final concat (-c copy, no re-encode) stays stream-compatible
-     * across segments -- confirmed locally end-to-end.
+     * box) composited over a randomly-picked enabled template's scenic
+     * background loop (falls back to plain black only if no usable
+     * background resolves), each looped against that exact ayah's own
+     * recitation audio via -shortest, then all per-ayah segments
+     * concatenated end-to-end -- so the Arabic/translation on screen
+     * always matches whichever ayah is currently being recited,
+     * advancing automatically as the previous one's audio ends. Every
+     * segment is encoded with the same video/audio parameters (forcing
+     * -ar 44100 -ac 1 regardless of the source recitation's own sample
+     * rate) so the final concat (-c copy, no re-encode) stays stream-
+     * compatible across segments -- confirmed locally end-to-end.
      *
      * A segment whose recitation audio can't be fetched (network hiccup)
      * gets a few seconds of silence instead of being skipped, so the
@@ -520,19 +550,7 @@ SVG;
             throw new RuntimeException('Ayah data not available for this surah/ayah range.');
         }
 
-        // The user's chosen template supplies the scenic background loop
-        // (the same copyright-free, originally-generated gradient videos
-        // as the custom-text path, or anything else the admin uploads)
-        // instead of plain black -- falls back to black only if the
-        // template/background is somehow missing, so a render never
-        // hard-fails over this.
-        $backgroundPath = null;
-        if ($video->template && $video->template->background_path) {
-            $candidate = base_path($video->template->background_path);
-            if (file_exists($candidate)) {
-                $backgroundPath = $candidate;
-            }
-        }
+        $backgroundPath = $this->pickQuranBackgroundPath($video);
 
         $reciter = $video->reciter ?: QuranAudioMatcher::DEFAULT_RECITER;
         $tempFiles = [];
