@@ -67,10 +67,16 @@ class SurveyController extends Controller
             return false;
         }
 
-        return !SurveySubmission::where('survey_id', $survey->id)
+        // Checked against the gateway token itself (consumed today), not
+        // the submission row -- a submission left over from a previous
+        // day's unfinished/unverified attempt still carries code_status
+        // 'new', and keying off that would wrongly re-demand the gateway
+        // on every later step of today's attempt once that old row got
+        // reused.
+        return !SurveyGatewayToken::where('survey_id', $survey->id)
             ->where('user_id', $userId)
-            ->where('code_status', 'new')
-            ->whereDate('created_at', now()->toDateString())
+            ->whereNotNull('used_at')
+            ->whereDate('used_at', now()->toDateString())
             ->exists();
     }
 
@@ -161,19 +167,27 @@ class SurveyController extends Controller
         }
 
         // ✅ create draft submission immediately => vanish today
-        $sub = SurveySubmission::firstOrCreate(
-            [
+        // Scoped to today's set_date -- without this, a 'new' row left
+        // over from a previous day's unfinished/unverified attempt would
+        // get silently resumed (old answers, old unique_code) instead of
+        // starting a fresh attempt for today.
+        $sub = SurveySubmission::where('survey_id', $survey->id)
+            ->where('user_id', $request->user()->id)
+            ->where('code_status', 'new')
+            ->where('set_date', $today)
+            ->first();
+
+        if (!$sub) {
+            $sub = SurveySubmission::create([
                 'survey_id' => $survey->id,
                 'user_id'   => $request->user()->id,
-                'code_status' => 'new',
-            ],
-            [
                 'answers' => [],
                 'unique_code' => $this->generateCode(),
+                'code_status' => 'new',
                 'verify_status' => 'pending',
                 'set_date' => $today,
-            ]
-        );
+            ]);
+        }
 
         $questionsCount = count($qids);
 
@@ -224,6 +238,7 @@ class SurveyController extends Controller
         $sub = SurveySubmission::where('survey_id', $survey->id)
             ->where('user_id', $request->user()->id)
             ->where('code_status', 'new')
+            ->where('set_date', $today)
             ->latest()
             ->first();
 
@@ -267,6 +282,7 @@ class SurveyController extends Controller
         $sub = SurveySubmission::where('survey_id', $survey->id)
             ->where('user_id', $request->user()->id)
             ->where('code_status', 'new')
+            ->where('set_date', $today)
             ->latest()
             ->first();
 
