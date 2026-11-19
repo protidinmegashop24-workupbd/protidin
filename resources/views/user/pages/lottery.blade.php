@@ -4,249 +4,210 @@
     <link href="{{ asset('frontend/user/assets/css/fontawesome-all.css') }}" id="app-style" rel="stylesheet" type="text/css">
     <link href="{{ asset('frontend/user/assets/css/argon.css') }}" id="app-style" rel="stylesheet" type="text/css">
     <link href="{{ asset('frontend/user/assets/css/myapp.css') }}" id="app-style" rel="stylesheet" type="text/css">
-    {{-- select2 --}}
-    <link rel="stylesheet" href="{{ asset('backend/plugins/select2/css/select2.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('backend/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
     <style>
-        .container-fluid {
-            padding-right: 0px;
-            padding-left: 0px;
-        }
-        
-        .ads-rate-area{
-            padding: 0.375rem 0.75rem;
-            border: 1px solid #ced4da;
-            border-radius: 0.25rem;
-            display: flex;
-            justify-content: space-between;
-        }
-        .ads-rate-area-active{
-            border: 1px solid #31bd21 !important;
-        }
-        
-        .package-area img{
-            width: 100%;
-            height: 165px;
-        }
-        
-        .cost-area{
-            background: #4285f4;
-            padding: 6px 8px;
-            border-radius: 3px;
-            color: #ffffff;
-        }
-        
-        .cost_currency{
-            position: relative;
-            bottom: 6px;
-            font-size: 12px;
-            margin-left: 5px;
-        }
-        
-        .countdown {
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        
-        .countdown span {
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
-            font-size: 3rem;
-            margin-left: 0.8rem;
-        }
-        
-        .countdown span:first-of-type {
-            margin-left: 0;
-        }
-        
-        .countdown-circles {
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        
-        .countdown-circles span {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .countdown-circles span:first-of-type {
-            margin-left: 0;
-        }
-        
-        .bg-gradient-4 {
+        .container-fluid { padding-right: 0px; padding-left: 0px; }
+
+        .ld-card { border-radius: 1rem; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+        .ld-head {
             background: #007991;
-            background: -webkit-linear-gradient(to right, #007991, #78ffd6);
             background: linear-gradient(to right, #007991, #78ffd6);
-        }
-        
-        .rounded {
-            border-radius: 1rem !important;
-        }
-        
-        .btn-demo {
-            padding: 0.5rem 2rem !important;
-            border-radius: 30rem !important;
-            background: rgba(255, 255, 255, 0.3);
             color: #fff;
-            text-transform: uppercase;
-            font-weight: bold !important;
+            padding: 18px 20px;
         }
-        
-        .btn-demo:hover, .btn-demo:focus {
-            color: #fff;
-            background: rgba(255, 255, 255, 0.5);
-        }
+        .ld-head h4 { font-weight: 900; margin: 0; }
+        .ld-body { background: #fff; padding: 18px 20px; }
+
+        .countdown { text-transform: uppercase; font-weight: bold; text-align: center; }
+        .countdown span { display: block; font-size: 1.8rem; }
+        .countdown small { font-size: 11px; opacity: .85; }
+        .countdown .cd-row { display: flex; justify-content: center; gap: 18px; margin-top: 6px; }
+
+        .ld-prizes { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
+        .ld-prize-box { flex: 1; min-width: 90px; text-align: center; background: #f8f9fe; border: 1px solid #eee; border-radius: 10px; padding: 10px 6px; }
+        .ld-prize-box .rank { font-size: 20px; }
+        .ld-prize-box .pct { font-weight: 900; color: #0d6efd; }
+
+        .ld-stats { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #555; margin-bottom: 10px; }
+
+        .winner-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-weight: 700; font-size: 14px; }
+        .winner-row:last-child { border-bottom: none; }
     </style>
 @endsection
 @section('user-content')
 
-    <div class="card card-body mt-2 p-3" style="background-color: rgb(248, 249, 254);height: auto !important;">
-        <div class="card-header">
-            <div class="card-title text-center" style="font-weight: 500; color: green; font-size: 20px;">Lottery System</div>
+<div class="container-fluid mt-2">
+    <div class="card card-body mb-3" style="background-color: rgb(248, 249, 254);">
+        <div class="card-title text-center mb-0" style="font-weight: 900; color: #16a34a; font-size: 22px;">
+            🎟️ Lucky Draw
         </div>
-        <div class="row justify-content-center mt-2">
-            @foreach($datas as $data)
-                <div class="col-md-6 data-area">
-                    <div class="card">
-                        <div class="card-body rounded bg-gradient-4 text-white shadow text-center">
-                            <div id="clock-c" class="countdown py-4"></div>
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-            
-            <div class="modal fade" id="modalBuy" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered" role="document">
-                    <div class="modal-content">
-                        <div class="modal-body">
-                            <h3>Are you confirm to Investment?</h3>
-                            <br>
-                            <input type="hidden" id="lottery_id" value="">
-                            <label for="balanceType">Select Balance</label>
-                            <select class="form-control" id="balanceType">
-                                <option value="deposit">Deposit Balance</option>
-                                <option value="earning">Earning Balance</option>
-                            </select>
-                            <br>
-                            <p>
-                                <b>Package:</b> <span id="txt_pkg_type"></span>
-                                <br>
-                                <b>Price:</b> $<span id="txt_pkg_price">0</span>
-                            </p>
-                            <br>
-                            <!--<p class="text-info">Note: You can buy one package and never change this package within one year .</p>-->
-            
-                            <div class="alert alert-dismissible" style="display:none;" role="alert" id="topAlertMainDeposit">
-                                <span class="alert-text"><strong><span id="error-text-deposit"></span></strong></span>
+        <p class="text-center text-muted mb-0" style="font-size: 13px;">
+            Earning balance দিয়ে টিকিট কিনুন, প্রতি সপ্তাহে ড্র হবে, ১ম/২য়/৩য় বিজয়ীরা পুরস্কার পাবেন।
+        </p>
+    </div>
+
+    @if(session('success'))
+        <div class="alert alert-success" style="font-weight:800;">{{ session('success') }}</div>
+    @endif
+
+    <div class="row justify-content-center">
+        @forelse($openRounds as $round)
+            <div class="col-md-6 mb-4">
+                <div class="ld-card">
+                    <div class="ld-head">
+                        <h4>{{ $round->title }}</h4>
+                        <div class="countdown" data-draw-at="{{ $round->draws_at ? $round->draws_at->toIso8601String() : '' }}">
+                            <div class="cd-row">
+                                <div><span class="cd-d">--</span><small>Day</small></div>
+                                <div><span class="cd-h">--</span><small>Hr</small></div>
+                                <div><span class="cd-m">--</span><small>Min</small></div>
+                                <div><span class="cd-s">--</span><small>Sec</small></div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-success" id="btnBuyConfirm">Yes, Confirm</button>
-                            <button type="button" class="btn btn-default" onclick="closeModal()">No</button>
+                    </div>
+                    <div class="ld-body">
+                        <div class="ld-stats">
+                            <span>টিকিট দাম: ${{ number_format((float)$round->price, 4) }}</span>
+                            <span>মোট বিক্রি: {{ $round->total_tickets }}</span>
+                            <span>বর্তমান পুল: ${{ number_format($round->pool, 4) }}</span>
                         </div>
+
+                        <div class="ld-prizes">
+                            <div class="ld-prize-box">
+                                <div class="rank">🥇</div>
+                                <div class="pct">{{ $round->prize_percent_1st }}%</div>
+                                <small>১ম পুরস্কার</small>
+                            </div>
+                            <div class="ld-prize-box">
+                                <div class="rank">🥈</div>
+                                <div class="pct">{{ $round->prize_percent_2nd }}%</div>
+                                <small>২য় পুরস্কার</small>
+                            </div>
+                            <div class="ld-prize-box">
+                                <div class="rank">🥉</div>
+                                <div class="pct">{{ $round->prize_percent_3rd }}%</div>
+                                <small>৩য় পুরস্কার</small>
+                            </div>
+                        </div>
+
+                        <p class="text-center" style="font-weight:800;">আপনার টিকিট: {{ $round->my_tickets }}টা</p>
+
+                        <div class="form-row align-items-end justify-content-center">
+                            <div class="col-5">
+                                <label style="font-weight:700;font-size:13px;">কয়টা টিকিট?</label>
+                                <input type="number" class="form-control ld-qty" min="1" value="1"
+                                    @if($round->max_tickets_per_user) max="{{ max(1, $round->max_tickets_per_user - $round->my_tickets) }}" @endif>
+                            </div>
+                            <div class="col-7">
+                                <button type="button" class="btn btn-success btn-block ld-buy-btn" data-id="{{ $round->id }}">
+                                    Buy Ticket(s)
+                                </button>
+                            </div>
+                        </div>
+                        @if($round->max_tickets_per_user)
+                            <p class="text-center text-muted mt-2" style="font-size:12px;">সর্বোচ্চ {{ $round->max_tickets_per_user }}টা টিকিট কেনা যাবে এই রাউন্ডে।</p>
+                        @endif
+
+                        <div class="alert mt-2" style="display:none;" id="ldMsg{{ $round->id }}"></div>
                     </div>
                 </div>
-           </div>
-        </div>
+            </div>
+        @empty
+            <div class="col-12">
+                <div class="p-4 bg-white text-center" style="border:1px solid rgba(0,0,0,.12);border-radius:12px;font-weight:900;">
+                    এই মুহূর্তে কোনো Lucky Draw রাউন্ড চালু নেই। শীঘ্রই আবার আসবে।
+                </div>
+            </div>
+        @endforelse
     </div>
+
+    @if($pastResults->count())
+        <div class="card card-body mt-2 mb-4">
+            <div class="card-title" style="font-weight:900;">🏆 আগের ড্র-এর ফলাফল</div>
+            @foreach($pastResults as $result)
+                <div class="mb-3 pb-2" style="border-bottom:1px solid #eee;">
+                    <div style="font-weight:800;">
+                        {{ $result->title }}
+                        <span class="text-muted" style="font-size:12px;font-weight:600;">— {{ $result->drawn_at->format('d M Y, h:i A') }}</span>
+                    </div>
+                    @forelse($result->winning_tickets as $w)
+                        <div class="winner-row">
+                            <span>
+                                @if($w->prize_rank == 1) 🥇 ১ম
+                                @elseif($w->prize_rank == 2) 🥈 ২য়
+                                @else 🥉 ৩য়
+                                @endif
+                                — {{ $w->user->name ?? 'User' }} (টিকিট #{{ $w->code }})
+                            </span>
+                            <span class="text-success">${{ number_format((float)$w->prize_amount, 4) }}</span>
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0" style="font-size:13px;">এই রাউন্ডে কোনো টিকিট বিক্রি হয়নি।</p>
+                    @endforelse
+                </div>
+            @endforeach
+        </div>
+    @endif
+</div>
 
 @endsection
 @section('js')
-    <!-- Select2 -->
-    <script src="{{ asset('backend/plugins/select2/js/select2.full.min.js') }}"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.countdown/2.2.0/jquery.countdown.min.js" integrity="sha512-lteuRD+aUENrZPTXWFRPTBcDDxIGWe5uu0apPEn+3ZKYDwDaEErIK9rvR0QzUGmUQ55KFE2RqGTVoZsKctGMVw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>
-        $( document ).ready(function() {
-            function get15dayFromNow() {
-                console.log('dfgd');
-                return new Date(new Date().valueOf() + 15 * 24 * 60 * 60 * 1000);
-            }
-        
-            $('#clock-c').countdown(get15dayFromNow(), function(event) {
-                var $this = $(this).html(event.strftime(''
-                + '<span class="h1 font-weight-bold">%D</span> Day%!d'
-                + '<span class="h1 font-weight-bold">%H</span> Hr'
-                + '<span class="h1 font-weight-bold">%M</span> Min'
-                + '<span class="h1 font-weight-bold">%S</span> Sec'));
-            });
-        });
+<script>
+    // Countdown: plain JS (no extra plugin), re-ticks every second for
+    // every round card found on the page.
+    function ldPad(n) { return n < 10 ? '0' + n : '' + n; }
 
-    
-        $(function () {
-            $('.select2').select2();
-        });
-        function filterItem(){
-            var value = $('#filter_item').val().toLowerCase();
-            $(".data-area").filter(function() {
-                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
-            });
-        }
-        
-        var packageType="none";
-        function buySelect(package_id,type,price){
-            packageType=type;
-            $('#topAlertMainDeposit').hide();
-            $('#lottery_id').val(package_id);
-            $('#txt_pkg_type').text(type);
-            $('#txt_pkg_price').text(price);
-            $('#modalBuy').modal('toggle');
-        }
-        
-        function closeModal(){
-            $('#lottery_id').val('');
-            $('#modalBuy').modal('toggle');
-        }
-        
-        $(document).on('click', '#btnBuyConfirm', function () {
-            let tho = $(this);
-            tho.prop('disabled', true);
-            var balanceType = $('#balanceType').val();
-            var lottery_id = $('#lottery_id').val();
+    function ldTickAll() {
+        document.querySelectorAll('.countdown[data-draw-at]').forEach(function (el) {
+            var target = el.getAttribute('data-draw-at');
+            if (!target) return;
+            var diff = new Date(target).getTime() - Date.now();
+            if (diff < 0) diff = 0;
 
-            jQuery.ajax({
-                url: "{{ route('user.lottery-buy-confirm') }}",
-                type: "POST",
-                data: {_token: '{{csrf_token()}}',lottery_id: lottery_id,balanceType:balanceType},
-                success: function (data) {
-                    // console.log(data);
-                    if (data.error == 1) {
-                        responseMessage(0, data.msg);
-                    } else {
-                        responseMessage(1, data.msg);
-                        setTimeout(function(){
-                            location.reload();
-                        }, 2000);
-                    }
-                    tho.prop('disabled', false);
-                },
-                error: function (data) {
-                    tho.prop('disabled', false);
+            var d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            var h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            var m = Math.floor((diff / (1000 * 60)) % 60);
+            var s = Math.floor((diff / 1000) % 60);
+
+            var dEl = el.querySelector('.cd-d'), hEl = el.querySelector('.cd-h'),
+                mEl = el.querySelector('.cd-m'), sEl = el.querySelector('.cd-s');
+            if (dEl) dEl.textContent = d;
+            if (hEl) hEl.textContent = ldPad(h);
+            if (mEl) mEl.textContent = ldPad(m);
+            if (sEl) sEl.textContent = ldPad(s);
+        });
+    }
+    ldTickAll();
+    setInterval(ldTickAll, 1000);
+
+    $(document).on('click', '.ld-buy-btn', function () {
+        var btn = $(this);
+        var id = btn.data('id');
+        var card = btn.closest('.ld-card');
+        var qty = parseInt(card.find('.ld-qty').val(), 10) || 1;
+        var msgBox = $('#ldMsg' + id);
+
+        btn.prop('disabled', true).text('অপেক্ষা করুন...');
+
+        $.ajax({
+            url: "{{ route('user.lottery-buy-confirm') }}",
+            type: "POST",
+            data: { _token: '{{ csrf_token() }}', lottery_id: id, quantity: qty },
+            success: function (data) {
+                msgBox.removeClass('alert-success alert-danger')
+                    .addClass(data.error == '0' ? 'alert-success' : 'alert-danger')
+                    .text(data.msg).show();
+                if (data.error == '0') {
+                    setTimeout(function () { location.reload(); }, 1500);
+                } else {
+                    btn.prop('disabled', false).text('Buy Ticket(s)');
                 }
-            });
-        });
-        
-        function responseMessage(type, msg) {
-            const topAlertMainDeposit = $('#topAlertMainDeposit');
-            const error_text_deposit = $('#error-text-deposit');
-            switch (type) {
-                case 1:
-                    topAlertMainDeposit.removeClass('alert-danger');
-                    topAlertMainDeposit.addClass('alert-success');
-                    error_text_deposit.text(msg);
-                    topAlertMainDeposit.fadeIn();
-                    break;
-                case 0:
-                    topAlertMainDeposit.removeClass('alert-success');
-                    topAlertMainDeposit.addClass('alert-danger');
-                    error_text_deposit.text(msg);
-                    topAlertMainDeposit.fadeIn();
-                break;
+            },
+            error: function () {
+                msgBox.removeClass('alert-success').addClass('alert-danger')
+                    .text('কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন।').show();
+                btn.prop('disabled', false).text('Buy Ticket(s)');
             }
-        }
-    </script>
+        });
+    });
+</script>
 @endsection

@@ -472,6 +472,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'a
     Route::get('lottery-active-{id}', [LotteryController::class, 'lottery_active'])->name('lottery.active');
     Route::get('lottery-deactive-{id}', [LotteryController::class, 'lottery_deactive'])->name('lottery.deactive');
     Route::get('lottery-bought-user-{id}', [LotteryController::class, 'lottery_bought_user'])->name('lottery-bought-user');
+    Route::get('lottery-draw-now-{id}', [LotteryController::class, 'draw_now'])->name('lottery.draw-now');
 
     Route::get('service-item', [ServiceItemController::class, 'index'])->name('service-item');
     Route::post('service-item-store', [ServiceItemController::class, 'store'])->name('service-item.store');
@@ -4261,4 +4262,80 @@ Route::get('/system-add-review-pinned-column/{token}', function ($token) {
     }
 
     return response()->json(['message' => 'pinned column already exists on site_reviews.']);
+});
+
+// One-off, idempotent: adds the columns the "Lucky Draw" (weekly lottery)
+// feature needs on top of the already-existing (pre-Laravel-migration)
+// `lotteries` and `lottery_ticket_books` tables.
+Route::get('/system-setup-lucky-draw/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('lotteries')) {
+        \Illuminate\Support\Facades\Schema::table('lotteries', function ($table) use (&$log) {
+            foreach ([
+                'prize_percent_1st' => fn($t) => $t->decimal('prize_percent_1st', 5, 2)->default(40),
+                'prize_percent_2nd' => fn($t) => $t->decimal('prize_percent_2nd', 5, 2)->default(25),
+                'prize_percent_3rd' => fn($t) => $t->decimal('prize_percent_3rd', 5, 2)->default(15),
+                'max_tickets_per_user' => fn($t) => $t->unsignedInteger('max_tickets_per_user')->nullable(),
+                'draws_at' => fn($t) => $t->dateTime('draws_at')->nullable(),
+                'drawn_at' => fn($t) => $t->dateTime('drawn_at')->nullable(),
+                'auto_renew' => fn($t) => $t->boolean('auto_renew')->default(true),
+            ] as $column => $definer) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('lotteries', $column)) {
+                    $definer($table);
+                    $log[] = "Added lotteries.$column";
+                } else {
+                    $log[] = "lotteries.$column already exists";
+                }
+            }
+        });
+    } else {
+        $log[] = 'lotteries table does not exist!';
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books')) {
+        \Illuminate\Support\Facades\Schema::table('lottery_ticket_books', function ($table) use (&$log) {
+            foreach ([
+                'is_winner' => fn($t) => $t->boolean('is_winner')->default(false),
+                'prize_rank' => fn($t) => $t->unsignedTinyInteger('prize_rank')->nullable(),
+                'prize_amount' => fn($t) => $t->decimal('prize_amount', 10, 4)->nullable(),
+            ] as $column => $definer) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('lottery_ticket_books', $column)) {
+                    $definer($table);
+                    $log[] = "Added lottery_ticket_books.$column";
+                } else {
+                    $log[] = "lottery_ticket_books.$column already exists";
+                }
+            }
+        });
+    } else {
+        $log[] = 'lottery_ticket_books table does not exist!';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
+});
+
+// Hit this on a schedule (cPanel Cron Jobs) to execute any Lucky Draw round
+// whose draws_at time has passed. Idempotent -- a round with drawn_at
+// already set is simply skipped, so hitting this more often than needed
+// (e.g. hourly) is harmless.
+Route::get('/system-lucky-draw-cron/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $results = [];
+    foreach (\App\Library\LotteryDrawer::dueRounds() as $lottery) {
+        $results[] = [
+            'lottery_id' => $lottery->id,
+            'title' => $lottery->title,
+            'result' => \App\Library\LotteryDrawer::draw($lottery),
+        ];
+    }
+
+    return response()->json(['drawn' => $results, 'ran_at' => (string) now()]);
 });

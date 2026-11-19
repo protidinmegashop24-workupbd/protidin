@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Library\LotteryDrawer;
 use App\Models\Admin\Website;
 use App\Models\Lottery;
 use App\Models\LotteryTicketBook;
@@ -12,211 +13,167 @@ use Illuminate\Support\Str;
 
 class LotteryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
         $website = Website::latest()->first();
-        $datas = Lottery::orderBy('id', 'ASC')->get();
-        $title = 'Lottery';
+        $datas = Lottery::orderBy('id', 'DESC')->get()->map(function ($lottery) {
+            $lottery->tickets_sold = LotteryTicketBook::where('lottery_id', $lottery->id)->count();
+            $lottery->pool = round($lottery->tickets_sold * (float) $lottery->price, 4);
+            return $lottery;
+        });
+        $title = 'Lucky Draw';
 
         return view('backend.pages.lottery.index', compact('website', 'datas', 'title'));
     }
-    
-    public function service_item_booking_list()
-    {
-        $datas = LotteryTicketBook::latest()->get();
-        $website = Website::latest()->first();
-        $title = 'Service Booking List';
-        return view('backend.pages.lottery.lottery-booking-list', compact('title', 'datas', 'website'));
-    }
-
-    public function pending_service_item_booking()
-    {
-        $datas = LotteryTicketBook::where('status', 0)->latest()->get();
-        $website = Website::latest()->first();
-        $title = 'Pending Purchase List';
-        return view('backend.pages.lottery.lottery-booking-list', compact('title', 'datas', 'website'));
-    }
-
-    public function service_item_booking_approved(Request $request, $id)
-    {
-        $deposit = LotteryTicketBook::find($id);
-        $msg_user_id = $deposit->user_id;
-
-        if($request->approval == 1){
-            $user = User::find($deposit->user_id);
-            $user->referral_activated = 1;
-            $user->save();
-
-            // Unlike a deposit, the buyer's balance was already deducted
-            // when they bought this lottery ticket -- so we do NOT credit
-            // deposit_balance again here, only pay the referrer's
-            // commission on the ticket price.
-            $lottery = Lottery::find($deposit->lottery_id);
-            $ticketPrice = $lottery ? $lottery->price : 0;
-            credit_referral_deposit_commission($user, (float) $ticketPrice);
-        }elseif($request->approval == 2){
-            $deposit->reason = $request->reason;
-        
-            // $data = new UserMessage();
-            // $data->user_id = $msg_user_id;
-            // $data->message_title = 'Deposite';
-            // $data->message = 'Your last deposit rejected.';
-            // $data->save();
-        }
-        
-        $deposit->status = $request->approval;
-        $deposit->save();
-
-        return redirect()->back()->with('message','Successfully approved this deposit!');
-    }
 
     /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
+     * Ticket holders + (after the draw) winners for one round. The route
+     * for this already existed (lottery-bought-user-{id}) but called a
+     * method that was never actually implemented.
      */
-    public function create()
+    public function lottery_bought_user($id)
     {
-        //
+        $lottery = Lottery::findOrFail($id);
+        $website = Website::latest()->first();
+        $title = 'Tickets - ' . $lottery->title;
+
+        $tickets = LotteryTicketBook::where('lottery_id', $id)
+            ->with('user')
+            ->orderByDesc('is_winner')
+            ->orderBy('prize_rank')
+            ->latest()
+            ->get();
+
+        return view('backend.pages.lottery.bought-users', compact('website', 'title', 'lottery', 'tickets'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'price' => 'required',
-            'start_time' => 'required',
-            'end_time' => 'required',
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0.0001',
+            'draws_at' => 'required|date',
+            'prize_percent_1st' => 'required|numeric|min:0|max:100',
+            'prize_percent_2nd' => 'required|numeric|min:0|max:100',
+            'prize_percent_3rd' => 'required|numeric|min:0|max:100',
+            'max_tickets_per_user' => 'nullable|integer|min:1',
         ]);
 
         $data = new Lottery();
         $data->title = $request->input('title');
         $data->price = $request->input('price');
-        $data->winner = $request->input('winner');
-        $data->start_time = $request->input('start_time');
-        $data->end_time = $request->input('end_time');
-        
+        $data->prize_percent_1st = $request->input('prize_percent_1st');
+        $data->prize_percent_2nd = $request->input('prize_percent_2nd');
+        $data->prize_percent_3rd = $request->input('prize_percent_3rd');
+        $data->max_tickets_per_user = $request->input('max_tickets_per_user') ?: null;
+        $data->auto_renew = $request->boolean('auto_renew');
+        $data->draws_at = $request->input('draws_at');
+        $data->start_time = now();
+        $data->end_time = $request->input('draws_at');
+        $data->status = 1;
+
         $image = $request->file('image');
         if (isset($image)) {
             $favicon_name = Str::random(20);
             $ext = strtolower($image->getClientOriginalExtension());
-            $image_full_name = $favicon_name.'.'.$ext;
+            $image_full_name = $favicon_name . '.' . $ext;
             $upload_path = 'backend/img/investment/';
-            $image_url = $upload_path.$image_full_name;
-            $success = $image->move($upload_path, $image_full_name);
+            $image_url = $upload_path . $image_full_name;
+            $image->move($upload_path, $image_full_name);
             $data->image = $image_url;
         }
-        
+
         $data->save();
 
-        return redirect()->back()->with('message','Data added Successfully');
+        return redirect()->back()->with('message', 'Lucky Draw round created!');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
     {
-        $validatedData = $request->validate([
-            'price' => 'required',
-            'start_time' => 'required',
-            'end_time' => 'required',
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0.0001',
+            'draws_at' => 'required|date',
+            'prize_percent_1st' => 'required|numeric|min:0|max:100',
+            'prize_percent_2nd' => 'required|numeric|min:0|max:100',
+            'prize_percent_3rd' => 'required|numeric|min:0|max:100',
+            'max_tickets_per_user' => 'nullable|integer|min:1',
         ]);
 
-        $data = Lottery::find($id);
+        $data = Lottery::findOrFail($id);
         $data->title = $request->input('title');
         $data->price = $request->input('price');
-        $data->winner = $request->input('winner');
-        $data->start_time = $request->input('start_time');
-        $data->end_time = $request->input('end_time');
-        
+        $data->prize_percent_1st = $request->input('prize_percent_1st');
+        $data->prize_percent_2nd = $request->input('prize_percent_2nd');
+        $data->prize_percent_3rd = $request->input('prize_percent_3rd');
+        $data->max_tickets_per_user = $request->input('max_tickets_per_user') ?: null;
+        $data->auto_renew = $request->boolean('auto_renew');
+        $data->draws_at = $request->input('draws_at');
+        $data->end_time = $request->input('draws_at');
+
         $image = $request->file('image');
         if (isset($image)) {
-            if (file_exists($data->image)) {
+            if ($data->image && file_exists($data->image)) {
                 unlink($data->image);
             }
             $favicon_name = Str::random(20);
             $ext = strtolower($image->getClientOriginalExtension());
-            $image_full_name = $favicon_name.'.'.$ext;
+            $image_full_name = $favicon_name . '.' . $ext;
             $upload_path = 'backend/img/investment/';
-            $image_url = $upload_path.$image_full_name;
-            $success = $image->move($upload_path, $image_full_name);
+            $image_url = $upload_path . $image_full_name;
+            $image->move($upload_path, $image_full_name);
             $data->image = $image_url;
         }
-        
+
         $data->save();
 
-        return redirect()->back()->with('message','Data updated Successfully');
+        return redirect()->back()->with('message', 'Round updated!');
     }
 
     /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * Manual fallback for the automatic (cron-driven) draw -- lets the
+     * admin force a round's draw right now, e.g. if the cPanel cron job
+     * isn't set up yet or a round needs to close early.
      */
+    public function draw_now($id)
+    {
+        $lottery = Lottery::findOrFail($id);
+
+        if ($lottery->drawn_at) {
+            return redirect()->back()->with('message', 'This round was already drawn.');
+        }
+
+        $result = LotteryDrawer::draw($lottery);
+
+        return redirect()->back()->with('message', 'Draw complete! ' . count($result['winners'] ?? []) . ' winner(s) paid from a $' . number_format($result['pool'] ?? 0, 4) . ' pool.');
+    }
+
     public function lottery_active($id)
     {
         $data = Lottery::find($id);
         $data->status = 1;
         $data->save();
 
-        return redirect()->back()->with('message','Data Updated Successfully');
+        return redirect()->back()->with('message', 'Data Updated Successfully');
     }
-    
+
     public function lottery_deactive($id)
     {
         $data = Lottery::find($id);
         $data->status = 0;
         $data->save();
 
-        return redirect()->back()->with('message','Data Updated Successfully');
+        return redirect()->back()->with('message', 'Data Updated Successfully');
     }
-    
+
     public function destroy($id)
     {
         $data = Lottery::find($id);
-        if (file_exists($data->image)) {
+        if ($data->image && file_exists($data->image)) {
             unlink($data->image);
         }
         $data->delete();
 
-        return redirect()->back()->with('message','Data deleted Successfully');
+        return redirect()->back()->with('message', 'Data deleted Successfully');
     }
 }

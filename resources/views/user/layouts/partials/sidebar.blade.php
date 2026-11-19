@@ -476,6 +476,13 @@
                 @endif
 
                 <li>
+                    <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('user.lottery') }} @endif" @if(Auth::user()->status == 0) onclick="return alert('Your Account is blocked! {{ Auth::user()->reason }}. Please Contact with authority!')" @endif class=" waves-effect">
+                        <i class="fa fa-ticket-alt"></i>
+                        <span>Lucky Draw</span>
+                    </a>
+                </li>
+
+                <li>
                     <a href="javascript: void(0);" class="has-arrow waves-effect">
                         <i class="fas fa-align-center"></i>
                         <span>Transaction</span>

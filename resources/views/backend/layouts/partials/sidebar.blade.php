@@ -119,6 +119,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.lottery') }}" class="nav-link {{ Route::is('admin.lottery*') ? 'active' : '' }}">
+                        <i class="fa fa-ticket-alt" aria-hidden="true"></i>
+                        <p>&nbsp;Lucky Draw</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.smm-providers') }}" class="nav-link {{ Route::is('admin.smm-providers*') ? 'active' : '' }}">
                         <i class="fa fa-bullhorn" aria-hidden="true"></i>
                         <p>&nbsp;SMM Panel Providers</p>
