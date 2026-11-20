@@ -49,7 +49,7 @@
                         <tr>
                             <th>Title</th>
                             <th>Ticket Price</th>
-                            <th>Prize % (1st/2nd/3rd)</th>
+                            <th>Prize % (1st/2nd/3rd/Top Buyer)</th>
                             <th>Tickets Sold</th>
                             <th>Pool</th>
                             <th>Draws At</th>
@@ -62,7 +62,7 @@
                             <tr>
                                 <td>{{ $data->title }}</td>
                                 <td>${{ number_format((float)$data->price, 4) }}</td>
-                                <td>{{ $data->prize_percent_1st }}% / {{ $data->prize_percent_2nd }}% / {{ $data->prize_percent_3rd }}%</td>
+                                <td>{{ $data->prize_percent_1st }}% / {{ $data->prize_percent_2nd }}% / {{ $data->prize_percent_3rd }}% / {{ $data->prize_percent_top_buyer }}%</td>
                                 <td>
                                     <a href="{{ route('admin.lottery-bought-user', $data->id) }}">{{ $data->tickets_sold }}</a>
                                     @if($data->max_tickets_per_user)

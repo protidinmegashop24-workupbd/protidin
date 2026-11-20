@@ -58,6 +58,7 @@
                                     @if($t->prize_rank == 1) 🥇 1st
                                     @elseif($t->prize_rank == 2) 🥈 2nd
                                     @elseif($t->prize_rank == 3) 🥉 3rd
+                                    @elseif($t->prize_rank == 4) 🎟️ Top Buyer
                                     @else -
                                     @endif
                                 </td>

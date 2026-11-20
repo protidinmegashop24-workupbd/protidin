@@ -57,6 +57,7 @@ class LotteryController extends Controller
             'prize_percent_1st' => 'required|numeric|min:0|max:100',
             'prize_percent_2nd' => 'required|numeric|min:0|max:100',
             'prize_percent_3rd' => 'required|numeric|min:0|max:100',
+            'prize_percent_top_buyer' => 'required|numeric|min:0|max:100',
             'max_tickets_per_user' => 'nullable|integer|min:1',
         ]);
 
@@ -68,6 +69,7 @@ class LotteryController extends Controller
         $data->prize_percent_1st = $request->input('prize_percent_1st');
         $data->prize_percent_2nd = $request->input('prize_percent_2nd');
         $data->prize_percent_3rd = $request->input('prize_percent_3rd');
+        $data->prize_percent_top_buyer = $request->input('prize_percent_top_buyer');
         $data->max_tickets_per_user = $request->input('max_tickets_per_user') ?: null;
         $data->auto_renew = $request->boolean('auto_renew');
         $data->draws_at = $request->input('draws_at');
@@ -100,6 +102,7 @@ class LotteryController extends Controller
             'prize_percent_1st' => 'required|numeric|min:0|max:100',
             'prize_percent_2nd' => 'required|numeric|min:0|max:100',
             'prize_percent_3rd' => 'required|numeric|min:0|max:100',
+            'prize_percent_top_buyer' => 'required|numeric|min:0|max:100',
             'max_tickets_per_user' => 'nullable|integer|min:1',
         ]);
 
@@ -109,6 +112,7 @@ class LotteryController extends Controller
         $data->prize_percent_1st = $request->input('prize_percent_1st');
         $data->prize_percent_2nd = $request->input('prize_percent_2nd');
         $data->prize_percent_3rd = $request->input('prize_percent_3rd');
+        $data->prize_percent_top_buyer = $request->input('prize_percent_top_buyer');
         $data->max_tickets_per_user = $request->input('max_tickets_per_user') ?: null;
         $data->auto_renew = $request->boolean('auto_renew');
         $data->draws_at = $request->input('draws_at');

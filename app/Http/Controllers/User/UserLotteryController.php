@@ -59,8 +59,22 @@ class UserLotteryController extends Controller
     {
         $lottery = Lottery::find($id);
 
-        if (!$lottery || !$lottery->drawn_at) {
-            return response()->json(['drawn' => false]);
+        if (!$lottery) {
+            return response()->json(['drawn' => false, 'candidates' => []]);
+        }
+
+        if (!$lottery->drawn_at) {
+            // Real ticket-holders in this round, so the "spinning" display
+            // cycles actual candidates instead of made-up numbers.
+            $candidates = LotteryTicketBook::where('lottery_id', $lottery->id)
+                ->with('user')
+                ->get()
+                ->map(function ($t) {
+                    return ['name' => $t->user->name ?? ('User #' . $t->user_id), 'code' => $t->code];
+                })
+                ->values();
+
+            return response()->json(['drawn' => false, 'candidates' => $candidates]);
         }
 
         $winners = LotteryTicketBook::where('lottery_id', $lottery->id)

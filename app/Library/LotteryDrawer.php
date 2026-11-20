@@ -86,6 +86,50 @@ class LotteryDrawer
                 ];
             }
 
+            // "Most tickets bought" bonus -- a separate % of the same pool,
+            // paid to exactly one user (whoever holds the most tickets in
+            // this round), independent of the random 1st/2nd/3rd draw above
+            // (they can also win both).
+            $topBuyerPercent = (float) ($locked->prize_percent_top_buyer ?? 0);
+            if ($topBuyerPercent > 0 && $tickets->count() > 0) {
+                $top = $tickets->groupBy('user_id')
+                    ->map(function ($group) {
+                        return ['count' => $group->count(), 'ticket' => $group->sortBy('id')->first()];
+                    })
+                    ->sort(function ($a, $b) {
+                        return $a['count'] === $b['count']
+                            ? $a['ticket']->id <=> $b['ticket']->id
+                            : $b['count'] <=> $a['count'];
+                    })
+                    ->first();
+
+                if ($top) {
+                    $bonusAmount = round($pool * ($topBuyerPercent / 100), 4);
+                    $ticket = $top['ticket'];
+
+                    $ticket->is_winner = true;
+                    $ticket->prize_rank = 4;
+                    $ticket->prize_amount = $bonusAmount;
+                    $ticket->save();
+
+                    if ($bonusAmount > 0) {
+                        $buyerUser = User::find($ticket->user_id);
+                        if ($buyerUser) {
+                            $buyerUser->earning_balance = (float) $buyerUser->earning_balance + $bonusAmount;
+                            $buyerUser->save();
+                        }
+                    }
+
+                    $winners[] = [
+                        'rank' => 4,
+                        'user_id' => $ticket->user_id,
+                        'ticket_code' => $ticket->code,
+                        'prize_amount' => $bonusAmount,
+                        'ticket_count' => $top['count'],
+                    ];
+                }
+            }
+
             $locked->drawn_at = now();
             $locked->save();
 
@@ -108,6 +152,7 @@ class LotteryDrawer
     {
         $next = $lottery->replicate();
         $next->drawn_at = null;
+        $next->lottery_number = (int) (Lottery::max('lottery_number') ?? 0) + 1;
         $next->draws_at = Carbon::parse($lottery->draws_at)->addDays(7);
 
         if ($lottery->start_time) {

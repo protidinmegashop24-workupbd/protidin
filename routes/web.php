@@ -4281,6 +4281,7 @@ Route::get('/system-setup-lucky-draw/{token}', function ($token) {
                 'prize_percent_1st' => fn($t) => $t->decimal('prize_percent_1st', 5, 2)->default(40),
                 'prize_percent_2nd' => fn($t) => $t->decimal('prize_percent_2nd', 5, 2)->default(25),
                 'prize_percent_3rd' => fn($t) => $t->decimal('prize_percent_3rd', 5, 2)->default(15),
+                'prize_percent_top_buyer' => fn($t) => $t->decimal('prize_percent_top_buyer', 5, 2)->default(10),
                 'max_tickets_per_user' => fn($t) => $t->unsignedInteger('max_tickets_per_user')->nullable(),
                 'draws_at' => fn($t) => $t->dateTime('draws_at')->nullable(),
                 'drawn_at' => fn($t) => $t->dateTime('drawn_at')->nullable(),

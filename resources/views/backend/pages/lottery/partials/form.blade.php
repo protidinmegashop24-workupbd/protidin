@@ -31,8 +31,16 @@
         <input type="number" step="0.01" min="0" max="100" name="prize_percent_3rd" class="form-control" value="{{ $data->prize_percent_3rd ?? 15 }}" required>
     </div>
 </div>
+
+<div class="form-row">
+    <div class="form-group col-md-4">
+        <label>Most-Tickets-Bought Bonus %</label>
+        <input type="number" step="0.01" min="0" max="100" name="prize_percent_top_buyer" class="form-control" value="{{ $data->prize_percent_top_buyer ?? 10 }}" required>
+        <small class="text-muted">Paid to whichever single user buys the most tickets this round -- separate from, and on top of, the random 1st/2nd/3rd draw.</small>
+    </div>
+</div>
 <p class="text-muted" style="font-size:12px;margin-top:-8px;">
-    Pool = ticket price &times; total tickets sold. Each percentage above is paid out of that pool to the 1st/2nd/3rd place winner. Whatever's left over (100% &minus; the three percentages) stays as platform revenue.
+    Pool = ticket price &times; total tickets sold. Each percentage above is paid out of that pool. Whatever's left over (100% &minus; all four percentages) stays as platform revenue.
 </p>
 
 <div class="form-row">

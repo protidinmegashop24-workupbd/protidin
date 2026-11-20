@@ -78,7 +78,6 @@
                         <div class="ld-stats">
                             <span>টিকিট দাম: ${{ number_format((float)$round->price, 4) }}</span>
                             <span>মোট বিক্রি: {{ $round->total_tickets }}</span>
-                            <span>বর্তমান পুল: ${{ number_format($round->pool, 4) }}</span>
                         </div>
 
                         <div class="ld-prizes">
@@ -96,6 +95,11 @@
                                 <div class="rank">🥉</div>
                                 <div class="pct">{{ $round->prize_percent_3rd }}%</div>
                                 <small>৩য় পুরস্কার</small>
+                            </div>
+                            <div class="ld-prize-box">
+                                <div class="rank">🎟️</div>
+                                <div class="pct">{{ $round->prize_percent_top_buyer }}%</div>
+                                <small>সর্বোচ্চ টিকিট ক্রেতা</small>
                             </div>
                         </div>
 
@@ -148,7 +152,8 @@
                             <span>
                                 @if($w->prize_rank == 1) 🥇 ১ম
                                 @elseif($w->prize_rank == 2) 🥈 ২য়
-                                @else 🥉 ৩য়
+                                @elseif($w->prize_rank == 3) 🥉 ৩য়
+                                @else 🎟️ সর্বোচ্চ টিকিট ক্রেতা
                                 @endif
                                 — {{ $w->user->name ?? 'User' }} (টিকিট #{{ $w->code }})
                             </span>
@@ -201,10 +206,17 @@
     setInterval(ldTickAll, 1000);
 
     // Countdown hit zero: hide the buy form, show a spinning placeholder
+    // cycling REAL ticket-holders of this round (not made-up numbers)
     // while we poll the server every few seconds for the real result (the
-    // cron may take a little while after draws_at to actually run), then
-    // play a reveal animation once it's in.
-    var ldFakeCodes = ['7731', '4092', '5518', '2206', '8873', '1164', '9930'];
+    // cron may take a little while after draws_at to actually run). Once
+    // drawn, reveals 3rd -> 2nd -> 1st -> top-buyer-bonus one at a time
+    // with a short "congratulations" pause on each, for suspense.
+    function ldRankLabel(rank) {
+        if (rank == 1) return '🥇 ১ম স্থান';
+        if (rank == 2) return '🥈 ২য় স্থান';
+        if (rank == 3) return '🥉 ৩য় স্থান';
+        return '🎟️ সর্বোচ্চ টিকিট ক্রেতা বোনাস';
+    }
 
     function ldStartReveal(countdownEl) {
         var card = countdownEl.closest('.ld-card');
@@ -216,37 +228,65 @@
         if (!reveal) return;
 
         reveal.style.display = 'block';
-        reveal.innerHTML = '<div class="spin-box">🎰 ড্র চলছে... <span class="spin-code"></span></div>';
+        reveal.innerHTML = '<div class="spin-box">🎰 ড্র চলছে... <span class="spin-name">...</span></div>';
 
-        var spinCodeEl = reveal.querySelector('.spin-code');
+        var candidates = [];
+        var spinNameEl = reveal.querySelector('.spin-name');
         var spinTimer = setInterval(function () {
-            if (spinCodeEl) {
-                spinCodeEl.textContent = ldFakeCodes[Math.floor(Math.random() * ldFakeCodes.length)];
+            if (spinNameEl && candidates.length) {
+                var c = candidates[Math.floor(Math.random() * candidates.length)];
+                spinNameEl.textContent = c.name + ' (#' + c.code + ')';
             }
         }, 150);
 
         var statusUrl = countdownEl.getAttribute('data-status-url');
 
+        function playSequence(winners) {
+            var order = [3, 2, 1, 4];
+            var steps = order
+                .map(function (rank) { return winners.filter(function (w) { return w.rank == rank; })[0]; })
+                .filter(function (w) { return w; });
+
+            var i = 0;
+            function next() {
+                if (i >= steps.length) {
+                    var html = '<div style="font-weight:900;margin-bottom:6px;">🎉 সম্পূর্ণ ফলাফল</div>';
+                    steps.forEach(function (w) {
+                        html += '<div class="winner-row"><span>' + ldRankLabel(w.rank) + ' — ' + w.name + ' (টিকিট #' + w.code + ')</span>' +
+                            '<span class="text-success">$' + w.prize_amount.toFixed(4) + '</span></div>';
+                    });
+                    reveal.innerHTML = html;
+                    setTimeout(function () { location.reload(); }, 4000);
+                    return;
+                }
+
+                var w = steps[i];
+                reveal.innerHTML = '<div class="winner-row" style="justify-content:center;gap:10px;">' +
+                    '<span>🎊 অভিনন্দন! ' + ldRankLabel(w.rank) + ' — <strong>' + w.name + '</strong> (টিকিট #' + w.code + ')</span>' +
+                    '</div><div class="text-success" style="font-weight:900;font-size:18px;">$' + w.prize_amount.toFixed(4) + '</div>';
+
+                i++;
+                setTimeout(next, 2500);
+            }
+            next();
+        }
+
         var pollTimer = setInterval(function () {
             $.getJSON(statusUrl, function (data) {
+                if (data.candidates) candidates = data.candidates;
+
                 if (!data.drawn) return;
 
                 clearInterval(spinTimer);
                 clearInterval(pollTimer);
 
-                var html = '<div style="font-weight:900;margin-bottom:6px;">🎉 ফলাফল এসে গেছে!</div>';
                 if (!data.winners.length) {
-                    html += '<p class="text-muted" style="font-size:13px;">এই রাউন্ডে কোনো টিকিট বিক্রি হয়নি।</p>';
-                } else {
-                    data.winners.forEach(function (w) {
-                        var medal = w.rank == 1 ? '🥇 ১ম' : (w.rank == 2 ? '🥈 ২য়' : '🥉 ৩য়');
-                        html += '<div class="winner-row"><span>' + medal + ' — ' + w.name + ' (টিকিট #' + w.code + ')</span>' +
-                            '<span class="text-success">$' + w.prize_amount.toFixed(4) + '</span></div>';
-                    });
+                    reveal.innerHTML = '<p class="text-muted" style="font-size:13px;">এই রাউন্ডে কোনো টিকিট বিক্রি হয়নি।</p>';
+                    setTimeout(function () { location.reload(); }, 4000);
+                    return;
                 }
-                reveal.innerHTML = html;
 
-                setTimeout(function () { location.reload(); }, 4000);
+                playSequence(data.winners);
             });
         }, 3000);
     }
