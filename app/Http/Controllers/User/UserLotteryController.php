@@ -24,6 +24,27 @@ class UserLotteryController extends Controller
                 $lottery->total_tickets = LotteryTicketBook::where('lottery_id', $lottery->id)->count();
                 $lottery->my_tickets = LotteryTicketBook::where('lottery_id', $lottery->id)->where('user_id', $userId)->count();
                 $lottery->pool = round($lottery->total_tickets * (float) $lottery->price, 4);
+
+                // Live leaderboard for the "most tickets bought" bonus --
+                // shown publicly so other users see who's currently ahead
+                // and are tempted to buy more to take the lead.
+                $topRow = LotteryTicketBook::where('lottery_id', $lottery->id)
+                    ->selectRaw('user_id, COUNT(*) as cnt')
+                    ->groupBy('user_id')
+                    ->orderByDesc('cnt')
+                    ->first();
+
+                if ($topRow) {
+                    $topUser = User::find($topRow->user_id);
+                    $lottery->top_buyer_name = $topUser->name ?? ('User #' . $topRow->user_id);
+                    $lottery->top_buyer_count = (int) $topRow->cnt;
+                    $lottery->top_buyer_is_me = (int) $topRow->user_id === (int) $userId;
+                } else {
+                    $lottery->top_buyer_name = null;
+                    $lottery->top_buyer_count = 0;
+                    $lottery->top_buyer_is_me = false;
+                }
+
                 return $lottery;
             });
 

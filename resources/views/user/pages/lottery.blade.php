@@ -128,6 +128,18 @@
 
                         <p class="text-center" style="font-weight:800;">আপনার টিকিট: {{ $round->my_tickets }}টা</p>
 
+                        @if($round->top_buyer_name)
+                            <p class="text-center" style="font-size:13px;font-weight:700;background:#fff7e6;border:1px solid #ffe2a8;border-radius:8px;padding:8px;">
+                                🏆 বর্তমানে সবচেয়ে বেশি টিকিট কিনেছেন:
+                                @if($round->top_buyer_is_me)
+                                    <span style="color:#16a34a;">আপনি</span>
+                                @else
+                                    {{ $round->top_buyer_name }}
+                                @endif
+                                ({{ $round->top_buyer_count }}টা) — আপনি বেশি কিনলে এগিয়ে যেতে পারবেন!
+                            </p>
+                        @endif
+
                         <div class="ld-buy-row">
                             <div class="form-row align-items-end justify-content-center">
                                 <div class="col-5">

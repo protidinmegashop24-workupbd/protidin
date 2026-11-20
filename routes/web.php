@@ -4344,6 +4344,12 @@ Route::get('/system-lucky-draw-cron/{token}', function ($token) {
         abort(403);
     }
 
+    // Recorded on every hit (whether or not a round was actually due) so
+    // /system-lucky-draw-cron-last-hit can answer "is cPanel's Cron Job
+    // actually reaching this URL at all" independently of whether any
+    // round happened to be due at the time.
+    \Illuminate\Support\Facades\Cache::put('lucky_draw_cron_last_hit', now()->toDateTimeString(), now()->addDays(30));
+
     $results = [];
     foreach (\App\Library\LotteryDrawer::dueRounds() as $lottery) {
         $results[] = [
@@ -4354,6 +4360,20 @@ Route::get('/system-lucky-draw-cron/{token}', function ($token) {
     }
 
     return response()->json(['drawn' => $results, 'ran_at' => (string) now()]);
+});
+
+// Read-only: shows the last time the cron URL above was actually hit, so
+// you can tell whether cPanel's Cron Job is reaching the server at all
+// (as opposed to it reaching the server but finding no round due yet).
+Route::get('/system-lucky-draw-cron-last-hit/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    return response()->json([
+        'last_hit_at' => \Illuminate\Support\Facades\Cache::get('lucky_draw_cron_last_hit', 'never hit yet'),
+        'checked_at' => (string) now(),
+    ]);
 });
 
 // Read-only diagnostic: the live `lotteries` table pre-dates Laravel
