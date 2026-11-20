@@ -99,8 +99,8 @@
 
                                         <a href="{{ route('admin.lottery-bought-user', $data->id) }}" class="btn btn-sm btn-secondary"><i class="fas fa-list"></i> View Tickets / Winners</a>
 
-                                        @if(!$data->tickets_sold)
-                                            <a href="{{ route('admin.lottery.delete', $data->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this round?');"><i class="fas fa-trash"></i> Delete</a>
+                                        @if(!$data->tickets_sold || $data->drawn_at)
+                                            <a href="{{ route('admin.lottery.delete', $data->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this round? This also deletes its ticket records.');"><i class="fas fa-trash"></i> Delete</a>
                                         @endif
                                     </div>
                                 </td>

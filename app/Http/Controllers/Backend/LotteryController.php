@@ -179,8 +179,9 @@ class LotteryController extends Controller
         if ($data->image && file_exists($data->image)) {
             unlink($data->image);
         }
+        LotteryTicketBook::where('lottery_id', $id)->delete();
         $data->delete();
 
-        return redirect()->back()->with('message', 'Data deleted Successfully');
+        return redirect()->back()->with('message', 'Round deleted.');
     }
 }

@@ -41,6 +41,28 @@
         @keyframes ldPulse { from { opacity: 1; } to { opacity: .6; } }
         .ld-reveal .winner-row { animation: ldReveal .4s ease-out; }
         @keyframes ldReveal { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        .ld-wheel-wrap { position: relative; width: 220px; height: 220px; margin: 10px auto 0; }
+        .ld-wheel {
+            width: 100%; height: 100%; border-radius: 50%; position: relative;
+            border: 6px solid #222; box-shadow: 0 2px 10px rgba(0,0,0,.25);
+            transform: rotate(0deg);
+        }
+        .ld-wheel-labels { position: absolute; inset: 0; }
+        .ld-wheel-labels span {
+            position: absolute; left: 50%; top: 50%; transform-origin: 0 0;
+            font-size: 10px; font-weight: 800; color: #fff; white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(0,0,0,.5);
+        }
+        .ld-wheel-pointer {
+            position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+            font-size: 28px; color: #222; z-index: 2;
+        }
+        .ld-wheel-hub {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 56px; height: 56px; border-radius: 50%; background: #222; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px;
+        }
     </style>
 @endsection
 @section('user-content')
@@ -84,22 +106,22 @@
                             <div class="ld-prize-box">
                                 <div class="rank">🥇</div>
                                 <div class="pct">${{ number_format($round->pool * $round->prize_percent_1st / 100, 4) }}</div>
-                                <small>১ম পুরস্কার ({{ $round->prize_percent_1st }}%)</small>
+                                <small>১ম পুরস্কার</small>
                             </div>
                             <div class="ld-prize-box">
                                 <div class="rank">🥈</div>
                                 <div class="pct">${{ number_format($round->pool * $round->prize_percent_2nd / 100, 4) }}</div>
-                                <small>২য় পুরস্কার ({{ $round->prize_percent_2nd }}%)</small>
+                                <small>২য় পুরস্কার</small>
                             </div>
                             <div class="ld-prize-box">
                                 <div class="rank">🥉</div>
                                 <div class="pct">${{ number_format($round->pool * $round->prize_percent_3rd / 100, 4) }}</div>
-                                <small>৩য় পুরস্কার ({{ $round->prize_percent_3rd }}%)</small>
+                                <small>৩য় পুরস্কার</small>
                             </div>
                             <div class="ld-prize-box">
                                 <div class="rank">🎟️</div>
                                 <div class="pct">${{ number_format($round->pool * $round->prize_percent_top_buyer / 100, 4) }}</div>
-                                <small>সর্বোচ্চ টিকিট ক্রেতা ({{ $round->prize_percent_top_buyer }}%)</small>
+                                <small>সর্বোচ্চ টিকিট ক্রেতা</small>
                             </div>
                         </div>
                         <p class="text-center text-muted" style="font-size:11px;margin-top:-6px;">টিকিট বিক্রি যত বাড়বে, পুরস্কারের টাকাও তত বাড়বে।</p>
@@ -219,6 +241,42 @@
         return '🎟️ সর্বোচ্চ টিকিট ক্রেতা বোনাস';
     }
 
+    var LD_WHEEL_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#009688', '#8bc34a', '#ff9800', '#f44336', '#00bcd4'];
+    var LD_WHEEL_SEGMENTS = 8;
+
+    function ldPaintWheel(wheelEl, labels) {
+        var n = labels.length;
+        var slice = 360 / n;
+        var parts = [];
+        for (var i = 0; i < n; i++) {
+            parts.push(LD_WHEEL_COLORS[i % LD_WHEEL_COLORS.length] + ' ' + (i * slice) + 'deg ' + ((i + 1) * slice) + 'deg');
+        }
+        wheelEl.style.background = 'conic-gradient(' + parts.join(',') + ')';
+
+        var labelsEl = wheelEl.querySelector('.ld-wheel-labels');
+        labelsEl.innerHTML = '';
+        labels.forEach(function (text, i) {
+            var mid = slice * i + slice / 2;
+            var span = document.createElement('span');
+            span.textContent = text;
+            span.style.transform = 'rotate(' + mid + 'deg) translate(72px) rotate(90deg)';
+            labelsEl.appendChild(span);
+        });
+    }
+
+    function ldSpinWheelTo(wheelEl, winIndex, segCount, callback) {
+        var slice = 360 / segCount;
+        var target = 1800 + (360 - (slice * winIndex + slice / 2));
+        wheelEl.style.transition = 'none';
+        wheelEl.style.transform = 'rotate(0deg)';
+        void wheelEl.offsetWidth;
+        requestAnimationFrame(function () {
+            wheelEl.style.transition = 'transform 4s cubic-bezier(.17,.67,.12,.99)';
+            wheelEl.style.transform = 'rotate(' + target + 'deg)';
+        });
+        setTimeout(callback, 4200);
+    }
+
     function ldStartReveal(countdownEl) {
         var card = countdownEl.closest('.ld-card');
         if (!card) return;
@@ -229,47 +287,84 @@
         if (!reveal) return;
 
         reveal.style.display = 'block';
-        reveal.innerHTML = '<div class="spin-box">🎰 ড্র চলছে... <span class="spin-name">...</span></div>';
+        reveal.innerHTML = '<div class="spin-box">🎰 ড্র চলছে, একটু অপেক্ষা করুন...</div>';
 
         var candidates = [];
-        var spinNameEl = reveal.querySelector('.spin-name');
-        var spinTimer = setInterval(function () {
-            if (spinNameEl && candidates.length) {
-                var c = candidates[Math.floor(Math.random() * candidates.length)];
-                spinNameEl.textContent = c.name + ' (#' + c.code + ')';
-            }
-        }, 150);
-
         var statusUrl = countdownEl.getAttribute('data-status-url');
 
+        // The wheel is only a dramatic visual -- the real winner was
+        // already decided server-side, so this just spins to land on
+        // whichever name the server already picked for each rank.
         function playSequence(winners) {
-            var order = [3, 2, 1, 4];
-            var steps = order
+            var wheelSteps = [3, 2, 1]
                 .map(function (rank) { return winners.filter(function (w) { return w.rank == rank; })[0]; })
                 .filter(function (w) { return w; });
+            var topBuyer = winners.filter(function (w) { return w.rank == 4; })[0];
+
+            reveal.innerHTML = '<div class="ld-wheel-wrap">' +
+                '<div class="ld-wheel-pointer">▼</div>' +
+                '<div class="ld-wheel"><div class="ld-wheel-labels"></div><div class="ld-wheel-hub">🎯 SPIN</div></div>' +
+                '</div>';
+            var wheelEl = reveal.querySelector('.ld-wheel');
 
             var i = 0;
-            function next() {
-                if (i >= steps.length) {
-                    var html = '<div style="font-weight:900;margin-bottom:6px;">🎉 সম্পূর্ণ ফলাফল</div>';
-                    steps.forEach(function (w) {
-                        html += '<div class="winner-row"><span>' + ldRankLabel(w.rank) + ' — ' + w.name + ' (টিকিট #' + w.code + ')</span>' +
-                            '<span class="text-success">$' + w.prize_amount.toFixed(4) + '</span></div>';
-                    });
-                    reveal.innerHTML = html;
-                    setTimeout(function () { location.reload(); }, 4000);
+            function nextSpin() {
+                if (i >= wheelSteps.length) {
+                    finish();
                     return;
                 }
 
-                var w = steps[i];
-                reveal.innerHTML = '<div class="winner-row" style="justify-content:center;gap:10px;">' +
-                    '<span>🎊 অভিনন্দন! ' + ldRankLabel(w.rank) + ' — <strong>' + w.name + '</strong> (টিকিট #' + w.code + ')</span>' +
-                    '</div><div class="text-success" style="font-weight:900;font-size:18px;">$' + w.prize_amount.toFixed(4) + '</div>';
+                var w = wheelSteps[i];
+                var winIndex = Math.floor(Math.random() * LD_WHEEL_SEGMENTS);
+                var pool = candidates.filter(function (c) { return c.code !== w.code; });
+                var labels = [];
+                for (var s = 0; s < LD_WHEEL_SEGMENTS; s++) {
+                    if (s === winIndex) {
+                        labels.push(w.name + ' #' + w.code);
+                    } else if (pool.length) {
+                        var c = pool[Math.floor(Math.random() * pool.length)];
+                        labels.push(c.name + ' #' + c.code);
+                    } else {
+                        labels.push('---');
+                    }
+                }
+                ldPaintWheel(wheelEl, labels);
 
-                i++;
-                setTimeout(next, 2500);
+                ldSpinWheelTo(wheelEl, winIndex, LD_WHEEL_SEGMENTS, function () {
+                    var msg = document.createElement('div');
+                    msg.className = 'ld-wheel-msg';
+                    msg.style.marginTop = '10px';
+                    msg.innerHTML = '<div style="font-weight:900;">🎊 অভিনন্দন! ' + ldRankLabel(w.rank) + '</div>' +
+                        '<div><strong>' + w.name + '</strong> (টিকিট #' + w.code + ')</div>' +
+                        '<div class="text-success" style="font-weight:900;font-size:18px;">$' + w.prize_amount.toFixed(4) + '</div>';
+                    reveal.appendChild(msg);
+
+                    i++;
+                    setTimeout(function () {
+                        var old = reveal.querySelector('.ld-wheel-msg');
+                        if (old) old.remove();
+                        nextSpin();
+                    }, 2500);
+                });
             }
-            next();
+
+            // Top-ticket-buyer bonus isn't a random pick, so it's just
+            // announced directly -- no wheel spin for it.
+            function finish() {
+                var html = '<div style="font-weight:900;margin-bottom:6px;">🎉 সম্পূর্ণ ফলাফল</div>';
+                wheelSteps.forEach(function (w) {
+                    html += '<div class="winner-row"><span>' + ldRankLabel(w.rank) + ' — ' + w.name + ' (টিকিট #' + w.code + ')</span>' +
+                        '<span class="text-success">$' + w.prize_amount.toFixed(4) + '</span></div>';
+                });
+                if (topBuyer) {
+                    html += '<div class="winner-row"><span>' + ldRankLabel(4) + ' — ' + topBuyer.name + ' (টিকিট #' + topBuyer.code + ')</span>' +
+                        '<span class="text-success">$' + topBuyer.prize_amount.toFixed(4) + '</span></div>';
+                }
+                reveal.innerHTML = html;
+                setTimeout(function () { location.reload(); }, 4000);
+            }
+
+            nextSpin();
         }
 
         var pollTimer = setInterval(function () {
@@ -278,7 +373,6 @@
 
                 if (!data.drawn) return;
 
-                clearInterval(spinTimer);
                 clearInterval(pollTimer);
 
                 if (!data.winners.length) {
