@@ -9,6 +9,7 @@ use App\Models\Lottery;
 use App\Models\LotteryTicketBook;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class LotteryController extends Controller
@@ -60,6 +61,7 @@ class LotteryController extends Controller
         ]);
 
         $data = new Lottery();
+        $data->user_id = Auth::id();
         $data->title = $request->input('title');
         $data->price = $request->input('price');
         $data->prize_percent_1st = $request->input('prize_percent_1st');
