@@ -21,7 +21,7 @@ class LotteryDrawer
      */
     public static function dueRounds()
     {
-        return Lottery::where('status', 1)
+        return Lottery::where('status', 'active')
             ->whereNull('drawn_at')
             ->whereNotNull('draws_at')
             ->where('draws_at', '<=', now())

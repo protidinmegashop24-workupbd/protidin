@@ -77,7 +77,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if($data->status == 1)
+                                    @if($data->status == 'active')
                                         <span class="badge badge-success">Active</span>
                                     @else
                                         <span class="badge badge-secondary">Inactive</span>
@@ -88,7 +88,7 @@
                                         <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editModal{{ $data->id }}"><i class="fas fa-edit"></i> Edit</button>
 
                                         @if(!$data->drawn_at)
-                                            @if($data->status == 1)
+                                            @if($data->status == 'active')
                                                 <a href="{{ route('admin.lottery.deactive', $data->id) }}" class="btn btn-sm btn-warning"><i class="fas fa-pause"></i> Deactivate (stop ticket sales)</a>
                                             @else
                                                 <a href="{{ route('admin.lottery.active', $data->id) }}" class="btn btn-sm btn-info"><i class="fas fa-play"></i> Activate (allow ticket sales)</a>

@@ -16,7 +16,7 @@ class UserLotteryController extends Controller
     {
         $userId = Auth::id();
 
-        $openRounds = Lottery::where('status', 1)
+        $openRounds = Lottery::where('status', 'active')
             ->whereNull('drawn_at')
             ->orderBy('draws_at')
             ->get()
@@ -57,7 +57,7 @@ class UserLotteryController extends Controller
         ]);
 
         $lottery = Lottery::find($request->lottery_id);
-        if (!$lottery || (int) $lottery->status !== 1 || $lottery->drawn_at) {
+        if (!$lottery || $lottery->status !== 'active' || $lottery->drawn_at) {
             return response()->json(['error' => '1', 'msg' => 'এই ড্র এখন আর খোলা নেই।']);
         }
 

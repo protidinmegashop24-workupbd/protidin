@@ -73,7 +73,7 @@ class LotteryController extends Controller
         $data->draws_at = $request->input('draws_at');
         $data->start_time = now();
         $data->end_time = $request->input('draws_at');
-        $data->status = 1;
+        $data->status = 'active';
 
         $image = $request->file('image');
         if (isset($image)) {
@@ -154,7 +154,7 @@ class LotteryController extends Controller
     public function lottery_active($id)
     {
         $data = Lottery::find($id);
-        $data->status = 1;
+        $data->status = 'active';
         $data->save();
 
         return redirect()->back()->with('message', 'Data Updated Successfully');
@@ -163,7 +163,7 @@ class LotteryController extends Controller
     public function lottery_deactive($id)
     {
         $data = Lottery::find($id);
-        $data->status = 0;
+        $data->status = 'inactive';
         $data->save();
 
         return redirect()->back()->with('message', 'Data Updated Successfully');
