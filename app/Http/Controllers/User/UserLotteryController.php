@@ -49,6 +49,37 @@ class UserLotteryController extends Controller
         return view('user.pages.user-lottery-list', compact('datas'));
     }
 
+    /**
+     * Polled by the Lucky Draw page's countdown once it hits zero, so it
+     * can show a spin/reveal animation the moment the cron has actually
+     * drawn the round (which may lag draws_at slightly depending on the
+     * cron's own schedule).
+     */
+    public function draw_status($id)
+    {
+        $lottery = Lottery::find($id);
+
+        if (!$lottery || !$lottery->drawn_at) {
+            return response()->json(['drawn' => false]);
+        }
+
+        $winners = LotteryTicketBook::where('lottery_id', $lottery->id)
+            ->where('is_winner', 1)
+            ->with('user')
+            ->orderBy('prize_rank')
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'rank' => (int) $t->prize_rank,
+                    'name' => $t->user->name ?? 'User',
+                    'code' => $t->code,
+                    'prize_amount' => (float) $t->prize_amount,
+                ];
+            });
+
+        return response()->json(['drawn' => true, 'title' => $lottery->title, 'winners' => $winners]);
+    }
+
     public function lottery_buy_confirm(Request $request)
     {
         $request->validate([

@@ -789,6 +789,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['auth', 'use
     Route::get('lottery', [UserLotteryController::class, 'index'])->name('lottery');
     Route::get('lottery-list', [UserLotteryController::class, 'lottery_list'])->name('lottery-list');
     Route::post('/lottery-buy-confirm', [UserLotteryController::class, 'lottery_buy_confirm'])->name('lottery-buy-confirm');
+    Route::get('lottery-draw-status-{id}', [UserLotteryController::class, 'draw_status'])->name('lottery-draw-status');
 
     Route::get('investment-package', [UserInvestmentController::class, 'index'])->name('investment-package');
     Route::get('investment-list', [UserInvestmentController::class, 'investment_list'])->name('investment-list');

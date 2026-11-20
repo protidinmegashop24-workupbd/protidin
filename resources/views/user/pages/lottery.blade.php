@@ -31,6 +31,16 @@
 
         .winner-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-weight: 700; font-size: 14px; }
         .winner-row:last-child { border-bottom: none; }
+
+        .ld-reveal { text-align: center; padding: 10px 0; }
+        .ld-reveal .spin-box {
+            font-weight: 900; font-size: 18px; padding: 14px;
+            background: #111; color: #0f0; border-radius: 10px; letter-spacing: 1px;
+            animation: ldPulse 0.6s infinite alternate;
+        }
+        @keyframes ldPulse { from { opacity: 1; } to { opacity: .6; } }
+        .ld-reveal .winner-row { animation: ldReveal .4s ease-out; }
+        @keyframes ldReveal { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 @endsection
 @section('user-content')
@@ -55,7 +65,7 @@
                 <div class="ld-card">
                     <div class="ld-head">
                         <h4>{{ $round->title }}</h4>
-                        <div class="countdown" data-draw-at="{{ $round->draws_at ? $round->draws_at->toIso8601String() : '' }}">
+                        <div class="countdown" data-draw-at="{{ $round->draws_at ? $round->draws_at->toIso8601String() : '' }}" data-status-url="{{ route('user.lottery-draw-status', $round->id) }}">
                             <div class="cd-row">
                                 <div><span class="cd-d">--</span><small>Day</small></div>
                                 <div><span class="cd-h">--</span><small>Hr</small></div>
@@ -91,23 +101,27 @@
 
                         <p class="text-center" style="font-weight:800;">আপনার টিকিট: {{ $round->my_tickets }}টা</p>
 
-                        <div class="form-row align-items-end justify-content-center">
-                            <div class="col-5">
-                                <label style="font-weight:700;font-size:13px;">কয়টা টিকিট?</label>
-                                <input type="number" class="form-control ld-qty" min="1" value="1"
-                                    @if($round->max_tickets_per_user) max="{{ max(1, $round->max_tickets_per_user - $round->my_tickets) }}" @endif>
+                        <div class="ld-buy-row">
+                            <div class="form-row align-items-end justify-content-center">
+                                <div class="col-5">
+                                    <label style="font-weight:700;font-size:13px;">কয়টা টিকিট?</label>
+                                    <input type="number" class="form-control ld-qty" min="1" value="1"
+                                        @if($round->max_tickets_per_user) max="{{ max(1, $round->max_tickets_per_user - $round->my_tickets) }}" @endif>
+                                </div>
+                                <div class="col-7">
+                                    <button type="button" class="btn btn-success btn-block ld-buy-btn" data-id="{{ $round->id }}">
+                                        Buy Ticket(s)
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-7">
-                                <button type="button" class="btn btn-success btn-block ld-buy-btn" data-id="{{ $round->id }}">
-                                    Buy Ticket(s)
-                                </button>
-                            </div>
+                            @if($round->max_tickets_per_user)
+                                <p class="text-center text-muted mt-2" style="font-size:12px;">সর্বোচ্চ {{ $round->max_tickets_per_user }}টা টিকিট কেনা যাবে এই রাউন্ডে।</p>
+                            @endif
                         </div>
-                        @if($round->max_tickets_per_user)
-                            <p class="text-center text-muted mt-2" style="font-size:12px;">সর্বোচ্চ {{ $round->max_tickets_per_user }}টা টিকিট কেনা যাবে এই রাউন্ডে।</p>
-                        @endif
 
                         <div class="alert mt-2" style="display:none;" id="ldMsg{{ $round->id }}"></div>
+
+                        <div class="ld-reveal" id="ldReveal{{ $round->id }}" style="display:none;"></div>
                     </div>
                 </div>
             </div>
@@ -161,7 +175,14 @@
             var target = el.getAttribute('data-draw-at');
             if (!target) return;
             var diff = new Date(target).getTime() - Date.now();
-            if (diff < 0) diff = 0;
+
+            if (diff <= 0) {
+                if (!el.dataset.watching) {
+                    el.dataset.watching = '1';
+                    ldStartReveal(el);
+                }
+                diff = 0;
+            }
 
             var d = Math.floor(diff / (1000 * 60 * 60 * 24));
             var h = Math.floor((diff / (1000 * 60 * 60)) % 24);
@@ -178,6 +199,57 @@
     }
     ldTickAll();
     setInterval(ldTickAll, 1000);
+
+    // Countdown hit zero: hide the buy form, show a spinning placeholder
+    // while we poll the server every few seconds for the real result (the
+    // cron may take a little while after draws_at to actually run), then
+    // play a reveal animation once it's in.
+    var ldFakeCodes = ['7731', '4092', '5518', '2206', '8873', '1164', '9930'];
+
+    function ldStartReveal(countdownEl) {
+        var card = countdownEl.closest('.ld-card');
+        if (!card) return;
+
+        var buyRow = card.querySelector('.ld-buy-row');
+        var reveal = card.querySelector('.ld-reveal');
+        if (buyRow) buyRow.style.display = 'none';
+        if (!reveal) return;
+
+        reveal.style.display = 'block';
+        reveal.innerHTML = '<div class="spin-box">🎰 ড্র চলছে... <span class="spin-code"></span></div>';
+
+        var spinCodeEl = reveal.querySelector('.spin-code');
+        var spinTimer = setInterval(function () {
+            if (spinCodeEl) {
+                spinCodeEl.textContent = ldFakeCodes[Math.floor(Math.random() * ldFakeCodes.length)];
+            }
+        }, 150);
+
+        var statusUrl = countdownEl.getAttribute('data-status-url');
+
+        var pollTimer = setInterval(function () {
+            $.getJSON(statusUrl, function (data) {
+                if (!data.drawn) return;
+
+                clearInterval(spinTimer);
+                clearInterval(pollTimer);
+
+                var html = '<div style="font-weight:900;margin-bottom:6px;">🎉 ফলাফল এসে গেছে!</div>';
+                if (!data.winners.length) {
+                    html += '<p class="text-muted" style="font-size:13px;">এই রাউন্ডে কোনো টিকিট বিক্রি হয়নি।</p>';
+                } else {
+                    data.winners.forEach(function (w) {
+                        var medal = w.rank == 1 ? '🥇 ১ম' : (w.rank == 2 ? '🥈 ২য়' : '🥉 ৩য়');
+                        html += '<div class="winner-row"><span>' + medal + ' — ' + w.name + ' (টিকিট #' + w.code + ')</span>' +
+                            '<span class="text-success">$' + w.prize_amount.toFixed(4) + '</span></div>';
+                    });
+                }
+                reveal.innerHTML = html;
+
+                setTimeout(function () { location.reload(); }, 4000);
+            });
+        }, 3000);
+    }
 
     $(document).on('click', '.ld-buy-btn', function () {
         var btn = $(this);
