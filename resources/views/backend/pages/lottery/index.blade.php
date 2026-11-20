@@ -84,23 +84,23 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <div class="btn-group">
-                                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editModal{{ $data->id }}"><i class="fas fa-edit"></i></button>
+                                    <div class="d-flex flex-column" style="gap:4px;min-width:150px;">
+                                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editModal{{ $data->id }}"><i class="fas fa-edit"></i> Edit</button>
 
                                         @if(!$data->drawn_at)
                                             @if($data->status == 1)
-                                                <a href="{{ route('admin.lottery.deactive', $data->id) }}" class="btn btn-sm btn-warning" title="Deactivate"><i class="fas fa-pause"></i></a>
+                                                <a href="{{ route('admin.lottery.deactive', $data->id) }}" class="btn btn-sm btn-warning"><i class="fas fa-pause"></i> Deactivate (stop ticket sales)</a>
                                             @else
-                                                <a href="{{ route('admin.lottery.active', $data->id) }}" class="btn btn-sm btn-info" title="Activate"><i class="fas fa-play"></i></a>
+                                                <a href="{{ route('admin.lottery.active', $data->id) }}" class="btn btn-sm btn-info"><i class="fas fa-play"></i> Activate (allow ticket sales)</a>
                                             @endif
 
-                                            <a href="{{ route('admin.lottery.draw-now', $data->id) }}" class="btn btn-sm btn-success" onclick="return confirm('Draw this round right now? This cannot be undone.');" title="Draw Now"><i class="fas fa-dice"></i></a>
+                                            <a href="{{ route('admin.lottery.draw-now', $data->id) }}" class="btn btn-sm btn-success" onclick="return confirm('Draw this round right now? This cannot be undone.');"><i class="fas fa-dice"></i> Draw Now</a>
                                         @endif
 
-                                        <a href="{{ route('admin.lottery-bought-user', $data->id) }}" class="btn btn-sm btn-secondary" title="View Tickets / Winners"><i class="fas fa-list"></i></a>
+                                        <a href="{{ route('admin.lottery-bought-user', $data->id) }}" class="btn btn-sm btn-secondary"><i class="fas fa-list"></i> View Tickets / Winners</a>
 
                                         @if(!$data->tickets_sold)
-                                            <a href="{{ route('admin.lottery.delete', $data->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this round?');" title="Delete"><i class="fas fa-trash"></i></a>
+                                            <a href="{{ route('admin.lottery.delete', $data->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this round?');"><i class="fas fa-trash"></i> Delete</a>
                                         @endif
                                     </div>
                                 </td>
