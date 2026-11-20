@@ -4347,8 +4347,10 @@ Route::get('/system-lucky-draw-cron/{token}', function ($token) {
     // Recorded on every hit (whether or not a round was actually due) so
     // /system-lucky-draw-cron-last-hit can answer "is cPanel's Cron Job
     // actually reaching this URL at all" independently of whether any
-    // round happened to be due at the time.
-    \Illuminate\Support\Facades\Cache::put('lucky_draw_cron_last_hit', now()->toDateTimeString(), now()->addDays(30));
+    // round happened to be due at the time. Plain file write (not the
+    // Cache facade) so this doesn't depend on whatever cache driver this
+    // install happens to be configured with.
+    @file_put_contents(storage_path('app/lucky_draw_cron_last_hit.txt'), now()->toDateTimeString());
 
     $results = [];
     foreach (\App\Library\LotteryDrawer::dueRounds() as $lottery) {
@@ -4370,8 +4372,10 @@ Route::get('/system-lucky-draw-cron-last-hit/{token}', function ($token) {
         abort(403);
     }
 
+    $path = storage_path('app/lucky_draw_cron_last_hit.txt');
+
     return response()->json([
-        'last_hit_at' => \Illuminate\Support\Facades\Cache::get('lucky_draw_cron_last_hit', 'never hit yet'),
+        'last_hit_at' => file_exists($path) ? file_get_contents($path) : 'never hit yet',
         'checked_at' => (string) now(),
     ]);
 });
