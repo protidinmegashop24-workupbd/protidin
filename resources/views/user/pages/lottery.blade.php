@@ -83,25 +83,26 @@
                         <div class="ld-prizes">
                             <div class="ld-prize-box">
                                 <div class="rank">🥇</div>
-                                <div class="pct">{{ $round->prize_percent_1st }}%</div>
-                                <small>১ম পুরস্কার</small>
+                                <div class="pct">${{ number_format($round->pool * $round->prize_percent_1st / 100, 4) }}</div>
+                                <small>১ম পুরস্কার ({{ $round->prize_percent_1st }}%)</small>
                             </div>
                             <div class="ld-prize-box">
                                 <div class="rank">🥈</div>
-                                <div class="pct">{{ $round->prize_percent_2nd }}%</div>
-                                <small>২য় পুরস্কার</small>
+                                <div class="pct">${{ number_format($round->pool * $round->prize_percent_2nd / 100, 4) }}</div>
+                                <small>২য় পুরস্কার ({{ $round->prize_percent_2nd }}%)</small>
                             </div>
                             <div class="ld-prize-box">
                                 <div class="rank">🥉</div>
-                                <div class="pct">{{ $round->prize_percent_3rd }}%</div>
-                                <small>৩য় পুরস্কার</small>
+                                <div class="pct">${{ number_format($round->pool * $round->prize_percent_3rd / 100, 4) }}</div>
+                                <small>৩য় পুরস্কার ({{ $round->prize_percent_3rd }}%)</small>
                             </div>
                             <div class="ld-prize-box">
                                 <div class="rank">🎟️</div>
-                                <div class="pct">{{ $round->prize_percent_top_buyer }}%</div>
-                                <small>সর্বোচ্চ টিকিট ক্রেতা</small>
+                                <div class="pct">${{ number_format($round->pool * $round->prize_percent_top_buyer / 100, 4) }}</div>
+                                <small>সর্বোচ্চ টিকিট ক্রেতা ({{ $round->prize_percent_top_buyer }}%)</small>
                             </div>
                         </div>
+                        <p class="text-center text-muted" style="font-size:11px;margin-top:-6px;">টিকিট বিক্রি যত বাড়বে, পুরস্কারের টাকাও তত বাড়বে।</p>
 
                         <p class="text-center" style="font-weight:800;">আপনার টিকিট: {{ $round->my_tickets }}টা</p>
 
