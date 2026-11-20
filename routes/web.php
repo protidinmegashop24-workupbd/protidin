@@ -4347,10 +4347,19 @@ Route::get('/system-lucky-draw-cron/{token}', function ($token) {
     // Recorded on every hit (whether or not a round was actually due) so
     // /system-lucky-draw-cron-last-hit can answer "is cPanel's Cron Job
     // actually reaching this URL at all" independently of whether any
-    // round happened to be due at the time. Plain file write (not the
-    // Cache facade) so this doesn't depend on whatever cache driver this
-    // install happens to be configured with.
-    @file_put_contents(storage_path('app/lucky_draw_cron_last_hit.txt'), now()->toDateTimeString());
+    // round happened to be due at the time. Not suppressed with @ this
+    // time, and reported back in the response, so a filesystem/permission
+    // problem shows up here instead of failing silently.
+    $writeError = null;
+    try {
+        $dir = storage_path('app');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        file_put_contents($dir . '/lucky_draw_cron_last_hit.txt', now()->toDateTimeString());
+    } catch (\Throwable $e) {
+        $writeError = $e->getMessage();
+    }
 
     $results = [];
     foreach (\App\Library\LotteryDrawer::dueRounds() as $lottery) {
@@ -4361,7 +4370,7 @@ Route::get('/system-lucky-draw-cron/{token}', function ($token) {
         ];
     }
 
-    return response()->json(['drawn' => $results, 'ran_at' => (string) now()]);
+    return response()->json(['drawn' => $results, 'ran_at' => (string) now(), 'last_hit_write_error' => $writeError]);
 });
 
 // Read-only: shows the last time the cron URL above was actually hit, so
