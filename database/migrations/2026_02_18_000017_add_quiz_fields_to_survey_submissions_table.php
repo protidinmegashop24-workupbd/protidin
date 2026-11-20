@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        Schema::table('survey_submissions', function (Blueprint $table) {
+            $table->json('selected_question_ids')->nullable()->after('answers');
+            $table->unsignedInteger('correct_count')->default(0)->after('selected_question_ids');
+            $table->unsignedInteger('total_questions')->default(0)->after('correct_count');
+            $table->decimal('earned_amount', 10, 4)->default(0)->after('total_questions');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('survey_submissions', function (Blueprint $table) {
+            $table->dropColumn(['selected_question_ids','correct_count','total_questions','earned_amount']);
+        });
+    }
+};
