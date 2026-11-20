@@ -4297,7 +4297,23 @@ Route::get('/system-setup-lucky-draw/{token}', function ($token) {
         $log[] = 'lotteries table does not exist!';
     }
 
-    if (\Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books')) {
+    if (!\Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books')) {
+        \Illuminate\Support\Facades\Schema::create('lottery_ticket_books', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('lottery_id');
+            $table->string('code');
+            $table->unsignedTinyInteger('status')->default(0);
+            $table->text('reason')->nullable();
+            $table->boolean('is_winner')->default(false);
+            $table->unsignedTinyInteger('prize_rank')->nullable();
+            $table->decimal('prize_amount', 10, 4)->nullable();
+            $table->timestamps();
+
+            $table->index(['lottery_id', 'user_id']);
+        });
+        $log[] = 'Created lottery_ticket_books table (it did not exist at all).';
+    } else {
         \Illuminate\Support\Facades\Schema::table('lottery_ticket_books', function ($table) use (&$log) {
             foreach ([
                 'is_winner' => fn($t) => $t->boolean('is_winner')->default(false),
@@ -4312,8 +4328,6 @@ Route::get('/system-setup-lucky-draw/{token}', function ($token) {
                 }
             }
         });
-    } else {
-        $log[] = 'lottery_ticket_books table does not exist!';
     }
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
@@ -4350,7 +4364,11 @@ Route::get('/system-inspect-lotteries-schema/{token}', function ($token) {
     }
 
     return response()->json([
-        'lotteries' => \Illuminate\Support\Facades\DB::select('DESCRIBE lotteries'),
-        'lottery_ticket_books' => \Illuminate\Support\Facades\DB::select('DESCRIBE lottery_ticket_books'),
+        'lotteries' => \Illuminate\Support\Facades\Schema::hasTable('lotteries')
+            ? \Illuminate\Support\Facades\DB::select('DESCRIBE lotteries')
+            : 'table does not exist',
+        'lottery_ticket_books' => \Illuminate\Support\Facades\Schema::hasTable('lottery_ticket_books')
+            ? \Illuminate\Support\Facades\DB::select('DESCRIBE lottery_ticket_books')
+            : 'table does not exist',
     ]);
 });
