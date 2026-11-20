@@ -62,6 +62,7 @@ class LotteryController extends Controller
 
         $data = new Lottery();
         $data->user_id = Auth::id();
+        $data->lottery_number = (int) (Lottery::max('lottery_number') ?? 0) + 1;
         $data->title = $request->input('title');
         $data->price = $request->input('price');
         $data->prize_percent_1st = $request->input('prize_percent_1st');

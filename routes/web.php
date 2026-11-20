@@ -4339,3 +4339,18 @@ Route::get('/system-lucky-draw-cron/{token}', function ($token) {
 
     return response()->json(['drawn' => $results, 'ran_at' => (string) now()]);
 });
+
+// Read-only diagnostic: the live `lotteries` table pre-dates Laravel
+// migrations (no migration file defines it) and keeps surfacing NOT NULL
+// columns one error at a time (user_id, lottery_number, ...) -- this dumps
+// every column so the rest can be handled in one pass instead of guessing.
+Route::get('/system-inspect-lotteries-schema/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    return response()->json([
+        'lotteries' => \Illuminate\Support\Facades\DB::select('DESCRIBE lotteries'),
+        'lottery_ticket_books' => \Illuminate\Support\Facades\DB::select('DESCRIBE lottery_ticket_books'),
+    ]);
+});
