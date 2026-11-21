@@ -87,6 +87,24 @@
                 <div class="text-center text-muted py-5">এখন কোনো ভিডিও টেমপ্লেট নেই। পরে আবার চেক করুন।</div>
             @endforelse
 
+            @if($imageTemplates->count())
+                <div class="vm-category-title">🖼️ হাদিস ইমেজ ব্যাকগ্রাউন্ড (ছবি বাছাই করুন)</div>
+                <div class="row">
+                    @foreach($imageTemplates as $imageTemplate)
+                        <div class="col-md-3 col-6 mb-4">
+                            <div class="vm-card">
+                                <img src="{{ asset($imageTemplate->background_path) }}" class="vm-thumb" alt="{{ $imageTemplate->name }}">
+                                <div class="vm-body">
+                                    <div class="vm-title">{{ $imageTemplate->name }}</div>
+                                    <div class="vm-cost">${{ number_format($hadithImageCost, 4) }}</div>
+                                    <a href="{{ route('user.video-maker.hadith-image-create', $imageTemplate->id) }}" class="vm-btn">Use This</a>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
         </div>
     </div>
 </div>

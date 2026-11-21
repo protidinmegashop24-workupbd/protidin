@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Library\HadithMatcher;
 use App\Library\QuranAudioMatcher;
+use App\Models\ImageTemplate;
 use App\Models\User;
 use App\Models\UserVideo;
 use App\Models\VideoMakerSetting;
@@ -19,8 +20,10 @@ class VideoMakerController extends Controller
     public function index()
     {
         $templates = VideoTemplate::where('enabled', true)->orderBy('category')->get()->groupBy('category');
+        $imageTemplates = ImageTemplate::where('enabled', true)->get();
+        $hadithImageCost = (float) (VideoMakerSetting::first()->hadith_image_cost ?? 0.01);
         $title = 'Video Maker';
-        return view('user.pages.video-maker.index', compact('templates', 'title'));
+        return view('user.pages.video-maker.index', compact('templates', 'imageTemplates', 'hadithImageCost', 'title'));
     }
 
     public function create($id)
@@ -30,6 +33,21 @@ class VideoMakerController extends Controller
         $reciters = QuranAudioMatcher::RECITERS;
         $hadithImageCost = (float) (VideoMakerSetting::first()->hadith_image_cost ?? 0.01);
         return view('user.pages.video-maker.create', compact('template', 'title', 'reciters', 'hadithImageCost'));
+    }
+
+    /**
+     * Entry point from clicking a specific Image Template tile on the
+     * Video Maker page -- unlike create()/the "হাদিস ইমেজ" tab there
+     * (which picks a random enabled background), this commits to the
+     * exact picture the user clicked, carried through to the render via
+     * UserVideo::image_template_id.
+     */
+    public function createHadithImage($id)
+    {
+        $imageTemplate = ImageTemplate::where('enabled', true)->findOrFail($id);
+        $title = 'Make a Hadith Image';
+        $hadithImageCost = (float) (VideoMakerSetting::first()->hadith_image_cost ?? 0.01);
+        return view('user.pages.video-maker.hadith-image-create', compact('imageTemplate', 'title', 'hadithImageCost'));
     }
 
     /** JSON list of surahs (number, names, ayah count) for the picker's Surah dropdown. */
@@ -175,6 +193,62 @@ class VideoMakerController extends Controller
             : 'Your video is being created. This usually takes a few minutes -- check back here.';
 
         return redirect()->route('user.video-maker.my-videos')->with('message', $message);
+    }
+
+    /**
+     * Submits from createHadithImage()'s form -- a specific background
+     * the user picked by clicking its Image Template tile, carried
+     * through via image_template_id so the render uses that exact
+     * picture instead of a random one. template_id still has to be set
+     * (NOT NULL column) even though it's never read for this video's
+     * background -- any existing template satisfies it.
+     */
+    public function storeHadithImage(Request $request)
+    {
+        $request->validate([
+            'image_template_id' => 'required|integer',
+            'arabic_text' => 'required|string|max:1000',
+            'translation_text' => 'nullable|string|max:1000',
+            'reference_text' => 'nullable|string|max:255',
+        ]);
+
+        $imageTemplate = ImageTemplate::where('enabled', true)->find($request->image_template_id);
+        if (!$imageTemplate) {
+            return redirect()->back()->withInput()->with('error', 'Selected background is no longer available.');
+        }
+
+        $fillerTemplateId = VideoTemplate::value('id');
+        if (!$fillerTemplateId) {
+            return redirect()->back()->withInput()->with('error', 'No video templates exist yet -- ask admin to add one first.');
+        }
+
+        $cost = (float) (VideoMakerSetting::first()->hadith_image_cost ?? 0.01);
+
+        if ((float) Auth::user()->earning_balance < $cost) {
+            return redirect()->back()->withInput()->with('error', 'You do not have enough balance to make this.');
+        }
+
+        $user = User::find(Auth::id());
+        $user->earning_balance = (float) $user->earning_balance - $cost;
+        $user->save();
+
+        $arabicText = $request->arabic_text;
+        $translationText = $request->translation_text;
+
+        $video = new UserVideo();
+        $video->user_id = Auth::id();
+        $video->template_id = $fillerTemplateId;
+        $video->image_template_id = $imageTemplate->id;
+        $video->text_content = trim($arabicText . "\n" . $translationText);
+        $video->cost = $cost;
+        $video->status = 'pending';
+        $video->source_type = 'hadith_image';
+        $video->arabic_text = $arabicText;
+        $video->translation_text = $translationText;
+        $video->reference_text = $request->reference_text;
+        $video->save();
+
+        return redirect()->route('user.video-maker.my-videos')->with('message', 'Your image is being created. This usually takes a minute or two -- check back here.');
     }
 
     public function myVideos()

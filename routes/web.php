@@ -930,6 +930,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/video-maker', [VideoMakerController::class, 'index'])->name('user.video-maker.index');
     Route::get('/video-maker/create/{id}', [VideoMakerController::class, 'create'])->name('user.video-maker.create');
     Route::post('/video-maker/store', [VideoMakerController::class, 'store'])->name('user.video-maker.store');
+    Route::get('/video-maker/hadith-image/create/{id}', [VideoMakerController::class, 'createHadithImage'])->name('user.video-maker.hadith-image-create');
+    Route::post('/video-maker/hadith-image/store', [VideoMakerController::class, 'storeHadithImage'])->name('user.video-maker.hadith-image-store');
     Route::get('/video-maker/surahs', [VideoMakerController::class, 'surahs'])->name('user.video-maker.surahs');
     Route::get('/video-maker/ayah-preview', [VideoMakerController::class, 'ayahPreview'])->name('user.video-maker.ayah-preview');
     Route::get('/video-maker/hadith-collections', [VideoMakerController::class, 'hadithCollections'])->name('user.video-maker.hadith-collections');
@@ -3448,6 +3450,7 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
             $table->text('arabic_text')->nullable();
             $table->text('translation_text')->nullable();
             $table->string('reference_text', 255)->nullable();
+            $table->unsignedBigInteger('image_template_id')->nullable();
             $table->timestamps();
             $table->index(['user_id', 'status']);
             $table->index('status');
@@ -3465,6 +3468,7 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
             'arabic_text' => fn($t) => $t->text('arabic_text')->nullable()->after('reciter'),
             'translation_text' => fn($t) => $t->text('translation_text')->nullable()->after('arabic_text'),
             'reference_text' => fn($t) => $t->string('reference_text', 255)->nullable()->after('translation_text'),
+            'image_template_id' => fn($t) => $t->unsignedBigInteger('image_template_id')->nullable()->after('reference_text'),
         ];
         foreach ($newColumns as $column => $definer) {
             if (!\Illuminate\Support\Facades\Schema::hasColumn('user_videos', $column)) {

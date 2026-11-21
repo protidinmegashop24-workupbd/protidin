@@ -19,6 +19,10 @@ class UserVideo extends Model
         'quran_ayah_from',
         'quran_ayah_to',
         'reciter',
+        'arabic_text',
+        'translation_text',
+        'reference_text',
+        'image_template_id',
     ];
 
     protected $casts = [
@@ -28,6 +32,11 @@ class UserVideo extends Model
     public function template()
     {
         return $this->belongsTo(VideoTemplate::class, 'template_id');
+    }
+
+    public function imageTemplate()
+    {
+        return $this->belongsTo(ImageTemplate::class, 'image_template_id');
     }
 
     public function user()

@@ -632,20 +632,35 @@ SVG;
     }
 
     /**
-     * Picks a hadith image's background: prefers a random ENABLED
-     * ImageTemplate (a real still picture, uploaded specifically for
-     * this) over grabbing a frame out of a video template's background
-     * loop -- a video frame can land mid-motion-blur or otherwise look
-     * worse as a standalone picture than purpose-made art does. Falls
-     * back to a video template (same random pick as Quran mode) only if
-     * no image template is enabled yet, so the feature keeps working
-     * before an admin has uploaded any, then to no background (plain
-     * black) if neither resolves to an existing file.
+     * Picks a hadith image's background, in priority order:
+     *  1. The specific ImageTemplate the user picked by clicking its
+     *     tile on the Video Maker page (UserVideo::image_template_id) --
+     *     not random, since picking a specific picture was the whole
+     *     point of that entry point.
+     *  2. A random ENABLED ImageTemplate, for the older entry point
+     *     (picking a video template tile, then the "হাদিস ইমেজ" tab)
+     *     that doesn't commit to one background up front.
+     *  3. A frame grabbed from a video template's background loop (same
+     *     random pick as Quran mode), only if no image template is
+     *     enabled yet, so the feature keeps working before an admin has
+     *     uploaded any.
+     *  4. No background at all (plain black), if nothing above resolves
+     *     to an existing file.
      *
      * @return array{path: ?string, is_video: bool}
      */
-    protected function pickHadithBackgroundPath(): array
+    protected function pickHadithBackgroundPath(UserVideo $video): array
     {
+        if ($video->image_template_id) {
+            $chosen = \App\Models\ImageTemplate::find($video->image_template_id);
+            if ($chosen && $chosen->background_path) {
+                $candidate = base_path($chosen->background_path);
+                if (file_exists($candidate)) {
+                    return ['path' => $candidate, 'is_video' => false];
+                }
+            }
+        }
+
         $imageTemplate = \App\Models\ImageTemplate::where('enabled', true)->inRandomOrder()->first();
         if ($imageTemplate && $imageTemplate->background_path) {
             $candidate = base_path($imageTemplate->background_path);
@@ -816,7 +831,7 @@ SVG;
         $svgFile = tempnam(sys_get_temp_dir(), 'vt_') . '.svg';
         file_put_contents($svgFile, $svg);
 
-        $background = $this->pickHadithBackgroundPath();
+        $background = $this->pickHadithBackgroundPath($video);
 
         if ($background['path']) {
             $filterComplex = sprintf(
