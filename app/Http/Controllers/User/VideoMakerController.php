@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Library\HadithMatcher;
 use App\Library\QuranAudioMatcher;
 use App\Models\User;
 use App\Models\UserVideo;
@@ -59,6 +60,28 @@ class VideoMakerController extends Controller
         }
 
         return response()->json(['text' => $text]);
+    }
+
+    /** JSON list of hadith collections (key, Bengali name, how many hadiths) for the picker's dropdown. */
+    public function hadithCollections()
+    {
+        return response()->json((new HadithMatcher())->collectionList());
+    }
+
+    /** JSON preview (Arabic + Bengali translation + reference) for one picked hadith, before submitting. */
+    public function hadithPreview(Request $request)
+    {
+        $request->validate([
+            'collection' => 'required|string',
+            'number' => 'required|integer|min:1',
+        ]);
+
+        $hadith = (new HadithMatcher())->getHadith($request->collection, (int) $request->number);
+        if ($hadith === null) {
+            return response()->json(['error' => 'এই হাদিসটা পাওয়া যায়নি -- নম্বর ঠিক আছে কিনা দেখুন, অথবা অ্যাডমিনকে হাদিস সেটআপ চালাতে বলুন।'], 404);
+        }
+
+        return response()->json($hadith);
     }
 
     public function store(Request $request)

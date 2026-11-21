@@ -104,17 +104,33 @@
                     </div>
 
                     <div id="vmCustomSection">
+                        <div class="form-group" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
+                            <label style="font-weight:bold;">হাদিস খুঁজে বসান (ঐচ্ছিক)</label>
+                            <div class="form-row">
+                                <div class="form-group col-7">
+                                    <select class="form-control" id="vmHadithCollection">
+                                        <option value="">সংগ্রহ বাছাই করুন...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-5">
+                                    <input type="number" min="1" class="form-control" id="vmHadithNumber" placeholder="হাদিস নং">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="vmLoadHadithBtn">এই হাদিসটা বসান</button>
+                            <div id="vmHadithLoadMsg" class="mt-2" style="font-size:13px;"></div>
+                        </div>
+
                         <div class="form-group">
                             <label>আরবি হাদিস (Arabic)</label>
-                            <textarea name="arabic_text" id="vmArabicText" class="form-control" rows="3" maxlength="1000" dir="rtl" placeholder="হাদিসের আরবি লেখা এখানে বসান...">{{ old('arabic_text') }}</textarea>
+                            <textarea name="arabic_text" id="vmArabicText" class="form-control" rows="3" maxlength="1000" dir="rtl" placeholder="উপর থেকে হাদিস বাছাই করুন, অথবা নিজে লিখুন...">{{ old('arabic_text') }}</textarea>
                         </div>
                         <div class="form-group">
                             <label>বাংলা অনুবাদ (ঐচ্ছিক)</label>
-                            <textarea name="translation_text" class="form-control" rows="3" maxlength="1000" placeholder="বাংলা অনুবাদ লিখুন...">{{ old('translation_text') }}</textarea>
+                            <textarea name="translation_text" id="vmTranslationText" class="form-control" rows="3" maxlength="1000" placeholder="বাংলা অনুবাদ লিখুন...">{{ old('translation_text') }}</textarea>
                         </div>
                         <div class="form-group">
                             <label>রেফারেন্স (ঐচ্ছিক)</label>
-                            <input type="text" name="reference_text" class="form-control" maxlength="255" placeholder="যেমন: সহীহ বুখারী, হাদিস নং ১" value="{{ old('reference_text') }}">
+                            <input type="text" name="reference_text" id="vmReferenceText" class="form-control" maxlength="255" placeholder="যেমন: সহীহ বুখারী, হাদিস নং ১" value="{{ old('reference_text') }}">
                         </div>
                         <small class="text-muted">এটা একটা স্থির ছবি (ভিডিও না) বানাবে, ডাউনলোড করে পোস্ট করা যাবে।</small>
                     </div>
@@ -167,6 +183,8 @@
 (function () {
     var surahsUrl = @json(route('user.video-maker.surahs'));
     var previewUrl = @json(route('user.video-maker.ayah-preview'));
+    var hadithCollectionsUrl = @json(route('user.video-maker.hadith-collections'));
+    var hadithPreviewUrl = @json(route('user.video-maker.hadith-preview'));
     var surahList = [];
 
     var surahSelect = document.getElementById('vmSurah');
@@ -174,6 +192,63 @@
     var toSelect = document.getElementById('vmToAyah');
     var previewBox = document.getElementById('vmAyahPreview');
     var arabicTextArea = document.getElementById('vmArabicText');
+
+    var hadithCollectionSelect = document.getElementById('vmHadithCollection');
+    var hadithNumberInput = document.getElementById('vmHadithNumber');
+    var hadithLoadMsg = document.getElementById('vmHadithLoadMsg');
+    var translationTextArea = document.getElementById('vmTranslationText');
+    var referenceTextInput = document.getElementById('vmReferenceText');
+
+    fetch(hadithCollectionsUrl)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            hadithCollectionSelect.innerHTML = '<option value="">সংগ্রহ বাছাই করুন...</option>';
+            if (!data.length) {
+                hadithCollectionSelect.innerHTML = '<option value="">এখনো সেটআপ হয়নি -- অ্যাডমিনকে জানান</option>';
+                return;
+            }
+            data.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.key;
+                opt.textContent = c.name + ' (' + c.count + 'টা হাদিস)';
+                hadithCollectionSelect.appendChild(opt);
+            });
+        })
+        .catch(function () {
+            hadithCollectionSelect.innerHTML = '<option value="">লোড করা যায়নি</option>';
+        });
+
+    document.getElementById('vmLoadHadithBtn').addEventListener('click', function () {
+        var collection = hadithCollectionSelect.value;
+        var number = hadithNumberInput.value;
+        if (!collection || !number) {
+            hadithLoadMsg.className = 'mt-2 text-danger';
+            hadithLoadMsg.textContent = 'সংগ্রহ আর হাদিস নম্বর দুটোই বাছাই করুন।';
+            return;
+        }
+
+        hadithLoadMsg.className = 'mt-2 text-muted';
+        hadithLoadMsg.textContent = 'লোড হচ্ছে...';
+
+        fetch(hadithPreviewUrl + '?collection=' + encodeURIComponent(collection) + '&number=' + encodeURIComponent(number))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    hadithLoadMsg.className = 'mt-2 text-danger';
+                    hadithLoadMsg.textContent = data.error;
+                    return;
+                }
+                arabicTextArea.value = data.arabic || '';
+                translationTextArea.value = data.translation || '';
+                referenceTextInput.value = data.reference || '';
+                hadithLoadMsg.className = 'mt-2 text-success';
+                hadithLoadMsg.textContent = 'বসানো হয়েছে -- নিচে দেখুন, চাইলে এডিট করতে পারবেন।';
+            })
+            .catch(function () {
+                hadithLoadMsg.className = 'mt-2 text-danger';
+                hadithLoadMsg.textContent = 'লোড করা যায়নি, আবার চেষ্টা করুন।';
+            });
+    });
 
     var templateCost = {{ (float) $template->cost }};
     var hadithImageCost = {{ (float) $hadithImageCost }};

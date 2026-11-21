@@ -927,6 +927,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/video-maker/store', [VideoMakerController::class, 'store'])->name('user.video-maker.store');
     Route::get('/video-maker/surahs', [VideoMakerController::class, 'surahs'])->name('user.video-maker.surahs');
     Route::get('/video-maker/ayah-preview', [VideoMakerController::class, 'ayahPreview'])->name('user.video-maker.ayah-preview');
+    Route::get('/video-maker/hadith-collections', [VideoMakerController::class, 'hadithCollections'])->name('user.video-maker.hadith-collections');
+    Route::get('/video-maker/hadith-preview', [VideoMakerController::class, 'hadithPreview'])->name('user.video-maker.hadith-preview');
     Route::get('/video-maker/my-videos', [VideoMakerController::class, 'myVideos'])->name('user.video-maker.my-videos');
     Route::get('/video-maker/download/{id}', [VideoMakerController::class, 'download'])->name('user.video-maker.download');
     Route::delete('/video-maker/{id}', [VideoMakerController::class, 'destroy'])->name('user.video-maker.destroy');
@@ -4420,4 +4422,134 @@ Route::get('/system-inspect-lotteries-schema/{token}', function ($token) {
             ? \Illuminate\Support\Facades\DB::select('DESCRIBE lottery_ticket_books')
             : 'table does not exist',
     ]);
+});
+
+// One-off: fetches hadith reference data (Arabic + Bengali translation,
+// where available) from a public hadith API, same reasoning as
+// /system-setup-quran-audio -- large text data best fetched directly by
+// the production server rather than shipped as a static asset. The exact
+// shape of this particular API hasn't been confirmed live (this sandbox
+// can't reach it), so every collection's attempt is reported back in
+// full under "diagnostics" -- if a collection's Arabic fetch succeeds but
+// zero hadiths get imported, "arabic_top_level_keys"/"arabic_sample" show
+// the real response shape so the field-name guesses below can be
+// corrected in one pass instead of guessing blindly again.
+Route::get('/system-setup-hadith-data/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    set_time_limit(280);
+
+    $dataPath = storage_path('app/hadith-data.json');
+    $collectionsPath = storage_path('app/hadith-collections.json');
+    if (!is_dir(dirname($dataPath))) {
+        mkdir(dirname($dataPath), 0755, true);
+    }
+
+    $fetchJson = function (string $url) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 60, CURLOPT_FOLLOWLOCATION => true]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        $decoded = $response !== false ? json_decode($response, true) : null;
+
+        return [
+            'ok' => $response !== false && $httpCode === 200 && is_array($decoded),
+            'data' => $decoded,
+            'http_code' => $httpCode,
+            'curl_error' => $curlError,
+            'raw_preview' => $response !== false ? substr((string) $response, 0, 400) : null,
+        ];
+    };
+
+    $base = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
+
+    $fetchEdition = function (string $edition) use ($fetchJson, $base) {
+        $attempt = $fetchJson("$base/$edition.min.json");
+        if ($attempt['ok']) {
+            return $attempt;
+        }
+        return $fetchJson("$base/$edition/$edition.min.json");
+    };
+
+    $allRows = [];
+    $collectionsMeta = [];
+    $diagnostics = [];
+
+    foreach (\App\Library\HadithMatcher::COLLECTIONS as $slug => $displayName) {
+        $ar = $fetchEdition('ara-' . $slug);
+        $bn = $fetchEdition('ben-' . $slug);
+
+        $diagnostics[$slug] = [
+            'arabic_ok' => $ar['ok'],
+            'arabic_http_code' => $ar['http_code'],
+            'bengali_ok' => $bn['ok'],
+            'bengali_http_code' => $bn['http_code'],
+        ];
+
+        if (!$ar['ok']) {
+            $diagnostics[$slug]['arabic_curl_error'] = $ar['curl_error'];
+            $diagnostics[$slug]['arabic_raw_preview'] = $ar['raw_preview'];
+            continue;
+        }
+
+        $arHadiths = $ar['data']['hadiths'] ?? null;
+        if (!is_array($arHadiths)) {
+            $diagnostics[$slug]['arabic_shape_unexpected'] = true;
+            $diagnostics[$slug]['arabic_top_level_keys'] = is_array($ar['data']) ? array_keys($ar['data']) : null;
+            $diagnostics[$slug]['arabic_sample'] = is_array($ar['data']) ? array_slice($ar['data'], 0, 1) : null;
+            continue;
+        }
+
+        $bnByNumber = [];
+        if ($bn['ok'] && is_array($bn['data']['hadiths'] ?? null)) {
+            foreach ($bn['data']['hadiths'] as $h) {
+                $num = $h['hadithnumber'] ?? $h['number'] ?? null;
+                if ($num !== null) {
+                    $bnByNumber[$num] = $h['text'] ?? $h['body'] ?? '';
+                }
+            }
+        }
+
+        $count = 0;
+        foreach ($arHadiths as $h) {
+            $num = $h['hadithnumber'] ?? $h['number'] ?? null;
+            $text = $h['text'] ?? $h['body'] ?? '';
+            if ($num === null || $text === '') {
+                continue;
+            }
+
+            $refHadith = $h['reference']['hadith'] ?? $num;
+            $reference = $displayName . ', হাদিস নং ' . $refHadith;
+
+            $allRows[] = [
+                'collection' => $slug,
+                'number' => (int) $num,
+                'arabic' => $text,
+                'translation_bn' => $bnByNumber[$num] ?? '',
+                'reference' => $reference,
+            ];
+            $count++;
+        }
+
+        $diagnostics[$slug]['imported_count'] = $count;
+        $diagnostics[$slug]['bengali_translation_found'] = !empty($bnByNumber);
+
+        if ($count > 0) {
+            $collectionsMeta[] = ['key' => $slug, 'name' => $displayName, 'count' => $count];
+        }
+    }
+
+    file_put_contents($dataPath, json_encode($allRows, JSON_UNESCAPED_UNICODE));
+    file_put_contents($collectionsPath, json_encode($collectionsMeta, JSON_UNESCAPED_UNICODE));
+
+    return response()->json([
+        'total_hadiths_saved' => count($allRows),
+        'collections' => $collectionsMeta,
+        'diagnostics' => $diagnostics,
+    ], 200, [], JSON_PRETTY_PRINT);
 });
