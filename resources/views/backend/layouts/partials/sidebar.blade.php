@@ -137,6 +137,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.image-templates') }}" class="nav-link {{ Route::is('admin.image-templates*') ? 'active' : '' }}">
+                        <i class="fa fa-image" aria-hidden="true"></i>
+                        <p>&nbsp;Image Templates</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.reviews') }}" class="nav-link {{ Route::is('admin.reviews*') || Route::is('admin.review-*') ? 'active' : '' }}">
                         <i class="fa fa-star" aria-hidden="true"></i>
                         <p>&nbsp;Reviews</p>

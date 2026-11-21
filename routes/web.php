@@ -339,6 +339,11 @@ Route::group(['prefix' => 'super-admin', 'as' => 'admin.', 'middleware' => ['aut
     Route::delete('video-templates-delete-{id}', [AdminVideoTemplateController::class, 'destroy'])->name('video-templates.delete');
     Route::post('video-templates-tts-settings', [AdminVideoTemplateController::class, 'saveTtsSettings'])->name('video-templates.tts-settings');
 
+    Route::get('image-templates', [\App\Http\Controllers\Backend\ImageTemplateController::class, 'index'])->name('image-templates');
+    Route::post('image-templates-store', [\App\Http\Controllers\Backend\ImageTemplateController::class, 'store'])->name('image-templates.store');
+    Route::post('image-templates-update-{id}', [\App\Http\Controllers\Backend\ImageTemplateController::class, 'update'])->name('image-templates.update');
+    Route::delete('image-templates-delete-{id}', [\App\Http\Controllers\Backend\ImageTemplateController::class, 'destroy'])->name('image-templates.delete');
+
     Route::get('google-ad', [GoogleAdController::class, 'index'])->name('google-ad');
     Route::post('google-ad-store', [GoogleAdController::class, 'store'])->name('google-ad.store');
     Route::post('google-ad-update-{id}', [GoogleAdController::class, 'update'])->name('google-ad.update');
@@ -4552,4 +4557,33 @@ Route::get('/system-setup-hadith-data/{token}', function ($token) {
         'collections' => $collectionsMeta,
         'diagnostics' => $diagnostics,
     ], 200, [], JSON_PRETTY_PRINT);
+});
+
+Route::get('/system-setup-image-templates/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $log = [];
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('image_templates')) {
+        \Illuminate\Support\Facades\Schema::create('image_templates', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('background_path');
+            $table->boolean('enabled')->default(false);
+            $table->timestamps();
+        });
+        $log[] = 'Created image_templates table.';
+    } else {
+        $log[] = 'image_templates table already exists.';
+    }
+
+    $dir = base_path('uploads/image-templates');
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+        $log[] = 'Created uploads/image-templates directory.';
+    }
+
+    return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });

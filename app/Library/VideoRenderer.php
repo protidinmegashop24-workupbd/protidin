@@ -636,6 +636,40 @@ SVG;
     }
 
     /**
+     * Picks a hadith image's background: prefers a random ENABLED
+     * ImageTemplate (a real still picture, uploaded specifically for
+     * this) over grabbing a frame out of a video template's background
+     * loop -- a video frame can land mid-motion-blur or otherwise look
+     * worse as a standalone picture than purpose-made art does. Falls
+     * back to a video template (same random pick as Quran mode) only if
+     * no image template is enabled yet, so the feature keeps working
+     * before an admin has uploaded any, then to no background (plain
+     * black) if neither resolves to an existing file.
+     *
+     * @return array{path: ?string, is_video: bool}
+     */
+    protected function pickHadithBackgroundPath(): array
+    {
+        $imageTemplate = \App\Models\ImageTemplate::where('enabled', true)->inRandomOrder()->first();
+        if ($imageTemplate && $imageTemplate->background_path) {
+            $candidate = base_path($imageTemplate->background_path);
+            if (file_exists($candidate)) {
+                return ['path' => $candidate, 'is_video' => false];
+            }
+        }
+
+        $videoTemplate = \App\Models\VideoTemplate::where('enabled', true)->inRandomOrder()->first();
+        if ($videoTemplate && $videoTemplate->background_path) {
+            $candidate = base_path($videoTemplate->background_path);
+            if (file_exists($candidate)) {
+                return ['path' => $candidate, 'is_video' => true];
+            }
+        }
+
+        return ['path' => null, 'is_video' => false];
+    }
+
+    /**
      * Slide-by-slide Quran video: one frame per ayah (buildQuranFrameSvg()
      * with a single-element ayah array, transparent outside its text
      * box) composited over a randomly-picked enabled template's scenic
@@ -786,19 +820,20 @@ SVG;
         $svgFile = tempnam(sys_get_temp_dir(), 'vt_') . '.svg';
         file_put_contents($svgFile, $svg);
 
-        $backgroundPath = $this->pickQuranBackgroundPath($video);
+        $background = $this->pickHadithBackgroundPath();
 
-        if ($backgroundPath) {
+        if ($background['path']) {
             $filterComplex = sprintf(
                 '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d,setsar=1[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0,format=yuv420p[vout]',
                 self::CANVAS_WIDTH,
                 self::CANVAS_HEIGHT
             );
             $cmd = sprintf(
-                'FONTCONFIG_FILE=%s %s -y -ss 1.5 -i %s -i %s -filter_complex %s -map %s -frames:v 1 -threads 1 %s 2>&1',
+                'FONTCONFIG_FILE=%s %s -y %s-i %s -i %s -filter_complex %s -map %s -frames:v 1 -threads 1 %s 2>&1',
                 escapeshellarg($fontconfigFile),
                 escapeshellcmd($ffmpeg),
-                escapeshellarg($backgroundPath),
+                $background['is_video'] ? '-ss 1.5 ' : '',
+                escapeshellarg($background['path']),
                 escapeshellarg($svgFile),
                 escapeshellarg($filterComplex),
                 escapeshellarg('[vout]'),
