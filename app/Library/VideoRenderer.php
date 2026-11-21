@@ -606,24 +606,20 @@ SVG;
     }
 
     /**
-     * Picks the scenic background for a Quran video at random from every
-     * ENABLED template (not necessarily the one the user clicked to get
-     * to the create-video form) -- the background is purely cosmetic
-     * for Quran mode now (see buildQuranFrameSvg()/renderQuranVideo()),
-     * so letting it vary keeps different users' (or the same user's
-     * repeat) videos from all looking identical just because they share
-     * a background clip. The same random pick is used for every ayah
-     * segment within one video (chosen once, outside the per-ayah loop),
-     * so a single video's slides don't jump between backgrounds.
+     * The scenic background for a Quran video -- the template the user
+     * actually selected to get to the create-video form, not a random
+     * one (randomizing across all enabled templates previously here kept
+     * landing on the same one or two heavy on blue/black tones and
+     * skipping other uploaded templates, which read as broken even
+     * though it was "working as designed").
      *
-     * Falls back to the video's own originally-selected template, then
-     * to no background at all (plain black) only if neither resolves to
-     * an existing file -- a render never hard-fails over this.
+     * Falls back to no background at all (plain black) only if the
+     * selected template's file doesn't resolve -- a render never
+     * hard-fails over this.
      */
     protected function pickQuranBackgroundPath(UserVideo $video): ?string
     {
-        $template = \App\Models\VideoTemplate::where('enabled', true)->inRandomOrder()->first()
-            ?: $video->template;
+        $template = $video->template;
 
         if ($template && $template->background_path) {
             $candidate = base_path($template->background_path);
