@@ -356,14 +356,10 @@
                 </li>
                 @endif
 
-                @if(offer_wall_available())
-                 <li>
-                    <a href="@if(Auth::user()->status == 0) javascript:; @else {{ route('offer-wall.index') }} @endif" @if(Auth::user()->status == 0) onclick="return alert('Your Account is blocked! {{ Auth::user()->reason }}. Please Contact with authority!')" @endif class=" waves-effect">
-                        <i class="fa fa-dollar-sign" aria-hidden="true"></i>
-                        <span>স্পেশাল অফার জব</span>
-                    </a>
-                </li>
-                @endif
+                {{-- "স্পেশাল অফার জব" (Offer Wall) menu link intentionally removed
+                     from the sidebar -- the offer_wall_available() provider
+                     itself must stay enabled for another feature, so the
+                     link is hidden here rather than disabling the provider. --}}
 
                 @if(video_maker_available())
                  <li>
