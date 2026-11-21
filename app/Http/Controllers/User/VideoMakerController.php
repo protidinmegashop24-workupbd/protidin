@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Library\QuranAudioMatcher;
 use App\Models\User;
 use App\Models\UserVideo;
+use App\Models\VideoMakerSetting;
 use App\Models\VideoTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +27,8 @@ class VideoMakerController extends Controller
         $template = VideoTemplate::where('enabled', true)->findOrFail($id);
         $title = 'Make a Video';
         $reciters = QuranAudioMatcher::RECITERS;
-        return view('user.pages.video-maker.create', compact('template', 'title', 'reciters'));
+        $hadithImageCost = (float) (VideoMakerSetting::first()->hadith_image_cost ?? 0.01);
+        return view('user.pages.video-maker.create', compact('template', 'title', 'reciters', 'hadithImageCost'));
     }
 
     /** JSON list of surahs (number, names, ayah count) for the picker's Surah dropdown. */
@@ -63,7 +65,7 @@ class VideoMakerController extends Controller
     {
         $request->validate([
             'template_id' => 'required|integer',
-            'source_type' => 'required|in:custom_text,quran_ayah',
+            'source_type' => 'required|in:hadith_image,quran_ayah',
         ]);
 
         $template = VideoTemplate::where('enabled', true)->find($request->template_id);
@@ -76,6 +78,9 @@ class VideoMakerController extends Controller
         $quranFrom = null;
         $quranTo = null;
         $reciter = null;
+        $arabicText = null;
+        $translationText = null;
+        $referenceText = null;
 
         if ($request->source_type === 'quran_ayah') {
             $request->validate([
@@ -101,17 +106,25 @@ class VideoMakerController extends Controller
             if ($textContent === null) {
                 return redirect()->back()->withInput()->with('error', 'That ayah range is not available. Ask admin to run the Quran setup, or check the ayah numbers.');
             }
+
+            $cost = (float) $template->cost;
         } else {
             $request->validate([
-                'text_content' => 'required|string|max:400',
+                'arabic_text' => 'required|string|max:1000',
+                'translation_text' => 'nullable|string|max:1000',
+                'reference_text' => 'nullable|string|max:255',
             ]);
-            $textContent = $request->text_content;
+
+            $arabicText = $request->arabic_text;
+            $translationText = $request->translation_text;
+            $referenceText = $request->reference_text;
+            $textContent = trim($arabicText . "\n" . $translationText);
+
+            $cost = (float) (VideoMakerSetting::first()->hadith_image_cost ?? 0.01);
         }
 
-        $cost = (float) $template->cost;
-
         if ((float) Auth::user()->earning_balance < $cost) {
-            return redirect()->back()->withInput()->with('error', 'You do not have enough balance to make this video.');
+            return redirect()->back()->withInput()->with('error', 'You do not have enough balance to make this.');
         }
 
         $user = User::find(Auth::id());
@@ -129,9 +142,16 @@ class VideoMakerController extends Controller
         $video->quran_ayah_from = $quranFrom;
         $video->quran_ayah_to = $quranTo;
         $video->reciter = $reciter;
+        $video->arabic_text = $arabicText;
+        $video->translation_text = $translationText;
+        $video->reference_text = $referenceText;
         $video->save();
 
-        return redirect()->route('user.video-maker.my-videos')->with('message', 'Your video is being created. This usually takes a few minutes -- check back here.');
+        $message = $request->source_type === 'hadith_image'
+            ? 'Your image is being created. This usually takes a minute or two -- check back here.'
+            : 'Your video is being created. This usually takes a few minutes -- check back here.';
+
+        return redirect()->route('user.video-maker.my-videos')->with('message', $message);
     }
 
     public function myVideos()
@@ -150,7 +170,10 @@ class VideoMakerController extends Controller
             abort(404);
         }
 
-        return response()->download($fullPath, 'video-' . $video->id . '.mp4');
+        $ext = pathinfo($video->output_path, PATHINFO_EXTENSION) ?: 'mp4';
+        $label = $video->source_type === 'hadith_image' ? 'hadith-image' : 'video';
+
+        return response()->download($fullPath, $label . '-' . $video->id . '.' . $ext);
     }
 
     public function destroy($id)

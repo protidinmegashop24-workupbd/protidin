@@ -96,19 +96,27 @@
                 <form action="{{ route('user.video-maker.store') }}" method="POST" id="vmForm">
                     @csrf
                     <input type="hidden" name="template_id" value="{{ $template->id }}">
-                    <input type="hidden" name="source_type" id="vmSourceType" value="custom_text">
+                    <input type="hidden" name="source_type" id="vmSourceType" value="hadith_image">
 
                     <div class="vm-source-tabs">
-                        <div class="vm-source-tab active" id="vmTabCustom" onclick="vmSwitchTab('custom_text')">✍️ Write My Own Text</div>
+                        <div class="vm-source-tab active" id="vmTabCustom" onclick="vmSwitchTab('hadith_image')">📜 হাদিস ইমেজ</div>
                         <div class="vm-source-tab" id="vmTabQuran" onclick="vmSwitchTab('quran_ayah')">📖 Pick a Quran Ayah</div>
                     </div>
 
                     <div id="vmCustomSection">
                         <div class="form-group">
-                            <label>Your Text (Bengali, Arabic, or English)</label>
-                            <textarea name="text_content" id="vmTextContent" class="form-control" rows="4" maxlength="400" placeholder="Write the text you want shown on the video...">{{ old('text_content') }}</textarea>
-                            <small class="text-muted">Max 400 characters. Keep it short for best results (1-2 sentences). A voice reads this aloud automatically if an AI voice is configured.</small>
+                            <label>আরবি হাদিস (Arabic)</label>
+                            <textarea name="arabic_text" id="vmArabicText" class="form-control" rows="3" maxlength="1000" dir="rtl" placeholder="হাদিসের আরবি লেখা এখানে বসান...">{{ old('arabic_text') }}</textarea>
                         </div>
+                        <div class="form-group">
+                            <label>বাংলা অনুবাদ (ঐচ্ছিক)</label>
+                            <textarea name="translation_text" class="form-control" rows="3" maxlength="1000" placeholder="বাংলা অনুবাদ লিখুন...">{{ old('translation_text') }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>রেফারেন্স (ঐচ্ছিক)</label>
+                            <input type="text" name="reference_text" class="form-control" maxlength="255" placeholder="যেমন: সহীহ বুখারী, হাদিস নং ১" value="{{ old('reference_text') }}">
+                        </div>
+                        <small class="text-muted">এটা একটা স্থির ছবি (ভিডিও না) বানাবে, ডাউনলোড করে পোস্ট করা যাবে।</small>
                     </div>
 
                     <div id="vmQuranSection" style="display:none;">
@@ -141,11 +149,11 @@
                     </div>
 
                     <div class="vm-cost-box">
-                        এই ভিডিও বানাতে খরচ হবে <strong>${{ number_format($template->cost, 4) }}</strong> (আপনার earning balance থেকে কাটবে)।
+                        এটা বানাতে খরচ হবে <strong id="vmCostAmount">${{ number_format($hadithImageCost, 4) }}</strong> (আপনার earning balance থেকে কাটবে)।
                         আপনার বর্তমান ব্যালেন্স: ${{ number_format(Auth::user()->earning_balance, 4) }}
                     </div>
 
-                    <button type="submit" class="btn btn-success btn-lg btn-block mt-4">Generate Video</button>
+                    <button type="submit" class="btn btn-success btn-lg btn-block mt-4" id="vmSubmitBtn">Generate Image</button>
                 </form>
             </div>
 
@@ -165,7 +173,10 @@
     var fromSelect = document.getElementById('vmFromAyah');
     var toSelect = document.getElementById('vmToAyah');
     var previewBox = document.getElementById('vmAyahPreview');
-    var textArea = document.getElementById('vmTextContent');
+    var arabicTextArea = document.getElementById('vmArabicText');
+
+    var templateCost = {{ (float) $template->cost }};
+    var hadithImageCost = {{ (float) $hadithImageCost }};
 
     window.vmSwitchTab = function (mode) {
         document.getElementById('vmSourceType').value = mode;
@@ -174,7 +185,10 @@
         document.getElementById('vmQuranSection').style.display = isQuran ? 'block' : 'none';
         document.getElementById('vmTabCustom').classList.toggle('active', !isQuran);
         document.getElementById('vmTabQuran').classList.toggle('active', isQuran);
-        textArea.required = !isQuran;
+        arabicTextArea.required = !isQuran;
+
+        document.getElementById('vmCostAmount').textContent = '$' + (isQuran ? templateCost : hadithImageCost).toFixed(4);
+        document.getElementById('vmSubmitBtn').textContent = isQuran ? 'Generate Video' : 'Generate Image';
     };
 
     function fillAyahSelect(select, count, selected) {

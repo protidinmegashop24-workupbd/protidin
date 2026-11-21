@@ -3433,11 +3433,14 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
             $table->string('output_path')->nullable();
             $table->decimal('cost', 10, 4)->default(0);
             $table->text('error_message')->nullable();
-            $table->string('source_type', 20)->default('custom_text'); // custom_text, quran_ayah
+            $table->string('source_type', 20)->default('custom_text'); // custom_text, quran_ayah, hadith_image
             $table->unsignedSmallInteger('quran_surah')->nullable();
             $table->unsignedSmallInteger('quran_ayah_from')->nullable();
             $table->unsignedSmallInteger('quran_ayah_to')->nullable();
             $table->string('reciter', 30)->nullable();
+            $table->text('arabic_text')->nullable();
+            $table->text('translation_text')->nullable();
+            $table->string('reference_text', 255)->nullable();
             $table->timestamps();
             $table->index(['user_id', 'status']);
             $table->index('status');
@@ -3452,6 +3455,9 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
             'quran_ayah_from' => fn($t) => $t->unsignedSmallInteger('quran_ayah_from')->nullable()->after('quran_surah'),
             'quran_ayah_to' => fn($t) => $t->unsignedSmallInteger('quran_ayah_to')->nullable()->after('quran_ayah_from'),
             'reciter' => fn($t) => $t->string('reciter', 30)->nullable()->after('quran_ayah_to'),
+            'arabic_text' => fn($t) => $t->text('arabic_text')->nullable()->after('reciter'),
+            'translation_text' => fn($t) => $t->text('translation_text')->nullable()->after('arabic_text'),
+            'reference_text' => fn($t) => $t->string('reference_text', 255)->nullable()->after('translation_text'),
         ];
         foreach ($newColumns as $column => $definer) {
             if (!\Illuminate\Support\Facades\Schema::hasColumn('user_videos', $column)) {
@@ -3467,12 +3473,20 @@ Route::get('/system-add-video-maker/{token}', function ($token) {
         \Illuminate\Support\Facades\Schema::create('video_maker_settings', function ($table) {
             $table->id();
             $table->string('google_tts_api_key')->nullable();
+            $table->decimal('hadith_image_cost', 10, 4)->default(0.01);
             $table->timestamps();
         });
-        \App\Models\VideoMakerSetting::create(['google_tts_api_key' => null]);
+        \App\Models\VideoMakerSetting::create(['google_tts_api_key' => null, 'hadith_image_cost' => 0.01]);
         $log[] = 'Created video_maker_settings table.';
     } else {
         $log[] = 'video_maker_settings table already exists.';
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('video_maker_settings', 'hadith_image_cost')) {
+            \Illuminate\Support\Facades\Schema::table('video_maker_settings', function ($table) {
+                $table->decimal('hadith_image_cost', 10, 4)->default(0.01)->after('google_tts_api_key');
+            });
+            $log[] = 'Added video_maker_settings.hadith_image_cost column.';
+        }
     }
 
     foreach (['uploads/video-templates', 'uploads/user-videos'] as $dir) {

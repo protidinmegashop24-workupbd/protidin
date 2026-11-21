@@ -10,5 +10,6 @@ class VideoMakerSetting extends Model
 
     protected $fillable = [
         'google_tts_api_key',
+        'hadith_image_cost',
     ];
 }

@@ -41,7 +41,7 @@
 
         <div class="card mb-3">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-microphone"></i> Voice / Narration Settings</h3>
+                <h3 class="card-title"><i class="fas fa-microphone"></i> Voice / Hadith Image Settings</h3>
             </div>
             <div class="card-body">
                 <p class="text-muted" style="font-size:13px;">
@@ -51,8 +51,13 @@
                     @csrf
                     <label class="mr-2">Google Cloud TTS API Key</label>
                     <input type="text" class="form-control mr-2" style="min-width:320px;" name="google_tts_api_key" value="{{ $ttsSetting->google_tts_api_key ?? '' }}" placeholder="Paste API key here">
+
+                    <label class="mr-2 ml-md-4">Hadith Image Cost ($)</label>
+                    <input type="number" step="0.0001" min="0" class="form-control mr-2" style="width:140px;" name="hadith_image_cost" value="{{ $ttsSetting->hadith_image_cost ?? 0.01 }}" required>
+
                     <button type="submit" class="btn btn-primary">Save</button>
                 </form>
+                <small class="text-muted d-block mt-2">The "Hadith Image" option (Arabic + translation + reference on a styled picture, not a video) always charges this flat cost, regardless of which template tile the user clicked into to get there -- its background picture is picked at random from all enabled templates anyway, same as the Quran-ayah video option.</small>
             </div>
         </div>
 

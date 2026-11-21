@@ -22,13 +22,15 @@ class VideoTemplateController extends Controller
     {
         $request->validate([
             'google_tts_api_key' => 'nullable|string|max:255',
+            'hadith_image_cost' => 'required|numeric|min:0',
         ]);
 
         $setting = VideoMakerSetting::first() ?: new VideoMakerSetting();
         $setting->google_tts_api_key = $request->google_tts_api_key ?: null;
+        $setting->hadith_image_cost = $request->hadith_image_cost;
         $setting->save();
 
-        return redirect()->back()->with('success', 'Voice settings saved.');
+        return redirect()->back()->with('success', 'Settings saved.');
     }
 
     public function store(Request $request)

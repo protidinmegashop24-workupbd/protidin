@@ -76,8 +76,11 @@
 
             @forelse($videos as $video)
                 <div class="mv-card">
+                    @if($video->status == 'completed' && $video->source_type === 'hadith_image')
+                        <img src="{{ asset($video->output_path) }}" style="width:70px;height:124px;object-fit:cover;border-radius:6px;">
+                    @endif
                     <div class="mv-text">
-                        <strong>{{ $video->template->name ?? 'Template' }}</strong><br>
+                        <strong>{{ $video->source_type === 'hadith_image' ? 'হাদিস ইমেজ' : ($video->template->name ?? 'Template') }}</strong><br>
                         {{ \Illuminate\Support\Str::limit($video->text_content, 80) }}<br>
                         <small class="text-muted">{{ $video->created_at->format('d/m/Y g:i A') }} &middot; ${{ number_format($video->cost, 4) }}</small>
                     </div>

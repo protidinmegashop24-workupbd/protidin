@@ -415,6 +415,120 @@ SVG;
     }
 
     /**
+     * A single still "hadith card" frame -- same sizing/wrapping/box
+     * approach as buildQuranFrameSvg() (auto-shrinks to fit, semi-opaque
+     * box over the composited background), but laid out top-to-bottom as
+     * Arabic, then translation, then the reference citation in italics
+     * at the bottom -- there's no per-ayah number decoration here since
+     * a hadith isn't numbered the way an ayah is.
+     */
+    protected function buildHadithFrameSvg(string $arabicText, string $translationText, string $referenceText): string
+    {
+        $arabicText = trim($arabicText);
+        $translationText = trim($translationText);
+        $referenceText = trim($referenceText);
+
+        $gold = '#d4af37';
+        $cream = '#f0e6d2';
+        $marginX = 70;
+        $contentWidth = self::CANVAS_WIDTH - ($marginX * 2);
+        $maxContentHeight = (int) round(self::CANVAS_HEIGHT * 0.85);
+
+        $arabicSize = 80;
+        $translationSize = 42;
+        $referenceSize = 32;
+        $minArabicSize = 32;
+        $minTranslationSize = 24;
+        $minReferenceSize = 20;
+
+        do {
+            $arabicMaxChars = max(8, (int) floor($contentWidth / (0.30 * $arabicSize)));
+            $arabicLines = $arabicText !== '' ? $this->wrapLines($arabicText, $arabicMaxChars) : [];
+            $translationLines = $translationText !== '' ? $this->wrapLines($translationText, 34) : [];
+            $referenceLines = $referenceText !== '' ? $this->wrapLines($referenceText, 40) : [];
+
+            $arabicLineHeight = (int) round($arabicSize * 1.7);
+            $arabicHeight = count($arabicLines) * $arabicLineHeight;
+            $translationLineHeight = (int) round($translationSize * 1.5);
+            $translationHeight = count($translationLines) * $translationLineHeight;
+            $referenceLineHeight = (int) round($referenceSize * 1.4);
+            $referenceHeight = $referenceLines ? (count($referenceLines) * $referenceLineHeight) + 40 : 0;
+            $dividerHeight = $arabicLines && $translationLines ? 70 : 0;
+
+            $totalHeight = $arabicHeight + ($translationLines ? $dividerHeight + $translationHeight : 0) + $referenceHeight;
+
+            $atFloor = $arabicSize <= $minArabicSize && $translationSize <= $minTranslationSize && $referenceSize <= $minReferenceSize;
+            if ($totalHeight <= $maxContentHeight || $atFloor) {
+                break;
+            }
+            if ($arabicSize > $minArabicSize) {
+                $arabicSize -= 2;
+            }
+            if ($translationSize > $minTranslationSize) {
+                $translationSize -= 1;
+            }
+            if ($referenceSize > $minReferenceSize) {
+                $referenceSize -= 1;
+            }
+        } while (true);
+
+        $boxPaddingX = 50;
+        $boxPaddingY = 50;
+        $boxTop = (int) round((self::CANVAS_HEIGHT - $totalHeight) / 2) - $boxPaddingY;
+        $y = (int) round((self::CANVAS_HEIGHT - $totalHeight) / 2);
+        $elements = '';
+
+        foreach ($arabicLines as $line) {
+            $y += $arabicLineHeight;
+            $elements .= sprintf(
+                '<text x="%d" y="%d" font-size="%d" font-family="Amiri Quran" text-anchor="middle" fill="%s">%s</text>' . "\n",
+                self::CANVAS_WIDTH / 2, $y, $arabicSize, $gold, htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8')
+            );
+        }
+
+        if ($translationLines) {
+            $y += 35;
+            $elements .= sprintf(
+                '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1" stroke-opacity="0.5"/>' . "\n",
+                self::CANVAS_WIDTH / 2 - 100, $y, self::CANVAS_WIDTH / 2 + 100, $y, $gold
+            );
+            $y += 35;
+
+            foreach ($translationLines as $line) {
+                $y += $translationLineHeight;
+                $elements .= sprintf(
+                    '<text x="%d" y="%d" font-size="%d" font-family="Noto Sans Bengali" text-anchor="middle" fill="%s">%s</text>' . "\n",
+                    self::CANVAS_WIDTH / 2, $y, $translationSize, $cream, htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8')
+                );
+            }
+        }
+
+        if ($referenceLines) {
+            $y += 40;
+            foreach ($referenceLines as $line) {
+                $y += $referenceLineHeight;
+                $elements .= sprintf(
+                    '<text x="%d" y="%d" font-size="%d" font-family="Noto Sans Bengali" font-style="italic" text-anchor="middle" fill="%s">%s</text>' . "\n",
+                    self::CANVAS_WIDTH / 2, $y, $referenceSize, $gold, htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8')
+                );
+            }
+        }
+
+        $boxBottom = min(self::CANVAS_HEIGHT, $y + $boxPaddingY);
+        $boxTop = max(0, $boxTop);
+        $boxWidth = min($contentWidth + ($boxPaddingX * 2), self::CANVAS_WIDTH - 40);
+        $boxX = (int) round((self::CANVAS_WIDTH - $boxWidth) / 2);
+        $boxHeight = $boxBottom - $boxTop;
+
+        return <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="{$this->canvasWidth()}" height="{$this->canvasHeight()}">
+<rect x="{$boxX}" y="{$boxTop}" width="{$boxWidth}" height="{$boxHeight}" rx="28" fill="black" fill-opacity="0.5"/>
+{$elements}
+</svg>
+SVG;
+    }
+
+    /**
      * Picks a custom-text video's audio track, in priority order:
      *  1. A real reciter's recitation if the free-typed text happens to
      *     exactly match a known ayah (QuranAudioMatcher's fuzzy match)
@@ -476,9 +590,14 @@ SVG;
             mkdir($outDir, 0755, true);
         }
 
-        $outputFilename = 'video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
-        $outputFullPath = $outDir . '/' . $outputFilename;
         $fontconfigFile = $this->ensureFontconfig();
+
+        if ($video->source_type === 'hadith_image') {
+            $outputFullPath = $outDir . '/image_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.jpg';
+            return $this->renderHadithImage($video, $ffmpeg, $fontconfigFile, $outputFullPath);
+        }
+
+        $outputFullPath = $outDir . '/video_' . $video->id . '_' . bin2hex(random_bytes(6)) . '.mp4';
 
         if ($video->source_type === 'quran_ayah') {
             return $this->renderQuranVideo($video, $ffmpeg, $fontconfigFile, $outputFullPath);
@@ -646,6 +765,67 @@ SVG;
                 @unlink($f);
             }
         }
+    }
+
+    /**
+     * A single still "hadith card" image: buildHadithFrameSvg() overlaid
+     * on one frame grabbed from a randomly-picked enabled template's
+     * background (same pickQuranBackgroundPath() as the Quran video uses,
+     * so it isn't tied to whichever template tile the user happened to
+     * click into), falling back to plain black if no background
+     * resolves. No audio, no looping, no concat -- just one frame out.
+     */
+    protected function renderHadithImage(UserVideo $video, string $ffmpeg, string $fontconfigFile, string $outputFullPath): string
+    {
+        $svg = $this->buildHadithFrameSvg(
+            (string) $video->arabic_text,
+            (string) $video->translation_text,
+            (string) $video->reference_text
+        );
+
+        $svgFile = tempnam(sys_get_temp_dir(), 'vt_') . '.svg';
+        file_put_contents($svgFile, $svg);
+
+        $backgroundPath = $this->pickQuranBackgroundPath($video);
+
+        if ($backgroundPath) {
+            $filterComplex = sprintf(
+                '[0:v]scale=%1$d:%2$d:force_original_aspect_ratio=increase,crop=%1$d:%2$d,setsar=1[bg];[1:v]format=rgba[txt];[bg][txt]overlay=0:0,format=yuv420p[vout]',
+                self::CANVAS_WIDTH,
+                self::CANVAS_HEIGHT
+            );
+            $cmd = sprintf(
+                'FONTCONFIG_FILE=%s %s -y -ss 1.5 -i %s -i %s -filter_complex %s -map %s -frames:v 1 -threads 1 %s 2>&1',
+                escapeshellarg($fontconfigFile),
+                escapeshellcmd($ffmpeg),
+                escapeshellarg($backgroundPath),
+                escapeshellarg($svgFile),
+                escapeshellarg($filterComplex),
+                escapeshellarg('[vout]'),
+                escapeshellarg($outputFullPath)
+            );
+        } else {
+            $cmd = sprintf(
+                'FONTCONFIG_FILE=%s %s -y -f lavfi -i %s -i %s -filter_complex %s -map %s -frames:v 1 -threads 1 %s 2>&1',
+                escapeshellarg($fontconfigFile),
+                escapeshellcmd($ffmpeg),
+                escapeshellarg(sprintf('color=c=black:s=%dx%d', self::CANVAS_WIDTH, self::CANVAS_HEIGHT)),
+                escapeshellarg($svgFile),
+                escapeshellarg('[1:v]format=rgba[txt];[0:v][txt]overlay=0:0,format=yuv420p[vout]'),
+                escapeshellarg('[vout]'),
+                escapeshellarg($outputFullPath)
+            );
+        }
+
+        exec($cmd, $outputLines, $exitCode);
+        @unlink($svgFile);
+
+        if ($exitCode !== 0 || !file_exists($outputFullPath) || filesize($outputFullPath) < 500) {
+            $tail = implode("\n", array_slice($outputLines, -40));
+            throw new RuntimeException('Image render failed (exit ' . $exitCode . '): ' . $tail);
+        }
+
+        return 'uploads/user-videos/' . basename($outputFullPath);
     }
 
     protected function renderCustomTextVideo(UserVideo $video, string $ffmpeg, string $fontconfigFile, string $outputFullPath): string
