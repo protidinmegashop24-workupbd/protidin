@@ -4687,3 +4687,60 @@ Route::get('/system-login-ip-explosion-diagnostic/{token}', function ($token) {
         'explosion_test_on_heaviest_user' => $explosion,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Read-only diagnostic, round 3: neither users.ip_address nor
+// login_logs' any-time IP overlap explains the "1159 other accounts"
+// report. Remaining suspects in duplicateMatches() are the
+// brand+model exact match and the device_fingerprint exact match --
+// either could explode if DeviceDetector (or the fingerprint cookie)
+// falls back to the same non-empty "generic" value for huge numbers of
+// users whose exact device it can't identify (that value would pass the
+// !empty() guard meant to exclude unknowns, since it isn't actually
+// empty, just uninformative). This shows the most-shared values for all
+// three signals directly.
+Route::get('/system-device-match-diagnostic/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $topBrandModel = \Illuminate\Support\Facades\DB::table('users')
+        ->select('device_brand', 'device_model', \Illuminate\Support\Facades\DB::raw('COUNT(*) as user_count'))
+        ->whereNotNull('device_brand')
+        ->where('device_brand', '!=', '')
+        ->whereNotNull('device_model')
+        ->where('device_model', '!=', '')
+        ->groupBy('device_brand', 'device_model')
+        ->orderByDesc('user_count')
+        ->limit(10)
+        ->get();
+
+    $topFingerprints = [];
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'device_fingerprint')) {
+        $topFingerprints = \Illuminate\Support\Facades\DB::table('users')
+            ->select('device_fingerprint', \Illuminate\Support\Facades\DB::raw('COUNT(*) as user_count'))
+            ->whereNotNull('device_fingerprint')
+            ->where('device_fingerprint', '!=', '')
+            ->groupBy('device_fingerprint')
+            ->orderByDesc('user_count')
+            ->limit(10)
+            ->get();
+    }
+
+    $topLoginLogFingerprints = [];
+    if (\Illuminate\Support\Facades\Schema::hasTable('login_logs') && \Illuminate\Support\Facades\Schema::hasColumn('login_logs', 'device_fingerprint')) {
+        $topLoginLogFingerprints = \Illuminate\Support\Facades\DB::table('login_logs')
+            ->select('device_fingerprint', \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT user_id) as user_count'))
+            ->whereNotNull('device_fingerprint')
+            ->where('device_fingerprint', '!=', '')
+            ->groupBy('device_fingerprint')
+            ->orderByDesc('user_count')
+            ->limit(10)
+            ->get();
+    }
+
+    return response()->json([
+        'top_10_shared_brand_model_combos' => $topBrandModel,
+        'top_10_shared_users_device_fingerprint' => $topFingerprints,
+        'top_10_shared_login_logs_device_fingerprint' => $topLoginLogFingerprints,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
