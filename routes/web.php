@@ -4591,3 +4591,38 @@ Route::get('/system-setup-image-templates/{token}', function ($token) {
 
     return response()->json(['result' => $log, 'ran_at' => (string) now()]);
 });
+
+// Read-only diagnostic: the admin's "duplicate account" withdraw check is
+// flagging nearly every account as sharing a device/IP with ~1159 others
+// -- the likely cause is that this server sits behind a reverse proxy
+// (common on shared hosting) and Laravel's TrustProxies isn't configured
+// to trust it, so $request->ip() (and therefore every stored
+// users.ip_address / login_logs.ip_address) resolves to the PROXY's own
+// IP for nearly every visitor instead of their real one. This confirms
+// it directly: if request_ip is the same for everyone AND a handful of
+// ip_address values in the DB account for a huge share of all users,
+// that's the proxy-IP bug, not real mass fraud.
+Route::get('/system-ip-diagnostic/{token}', function (\Illuminate\Http\Request $request, $token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $topIps = \Illuminate\Support\Facades\DB::table('users')
+        ->select('ip_address', \Illuminate\Support\Facades\DB::raw('COUNT(*) as user_count'))
+        ->whereNotNull('ip_address')
+        ->where('ip_address', '!=', '')
+        ->groupBy('ip_address')
+        ->orderByDesc('user_count')
+        ->limit(10)
+        ->get();
+
+    return response()->json([
+        'this_request_resolved_ip' => $request->ip(),
+        'remote_addr' => $request->server('REMOTE_ADDR'),
+        'x_forwarded_for' => $request->header('X-Forwarded-For'),
+        'cf_connecting_ip' => $request->header('CF-Connecting-IP'),
+        'x_real_ip' => $request->header('X-Real-IP'),
+        'total_users' => \App\Models\User::count(),
+        'top_10_shared_ip_addresses' => $topIps,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
