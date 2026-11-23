@@ -4626,3 +4626,64 @@ Route::get('/system-ip-diagnostic/{token}', function (\Illuminate\Http\Request $
         'top_10_shared_ip_addresses' => $topIps,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Read-only diagnostic, round 2: raw users.ip_address looks healthy (max
+// 7 users sharing any one IP), so the "1159 other accounts" explosion
+// must come from the login_logs-based matching instead -- specifically
+// WithdrawController::duplicateMatches()'s "match on ANY IP this user has
+// EVER logged in from, against ANY IP any other user has EVER logged in
+// from" step. A mobile user's IP changes constantly, and over months of
+// logins their login_logs can accumulate dozens of distinct carrier IPs
+// -- cross-referencing that whole history with no time correlation can
+// snowball into huge coincidental matches purely from carrier IP
+// rotation/CGNAT, without any real shared-device fraud. This confirms it
+// directly against the heaviest real user's login history.
+Route::get('/system-login-ip-explosion-diagnostic/{token}', function ($token) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('login_logs')) {
+        return response()->json(['error' => 'login_logs table does not exist.']);
+    }
+
+    $totalLogs = \Illuminate\Support\Facades\DB::table('login_logs')->count();
+
+    $heaviestUsers = \Illuminate\Support\Facades\DB::table('login_logs')
+        ->select('user_id', \Illuminate\Support\Facades\DB::raw('COUNT(*) as login_count'), \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT ip_address) as distinct_ips'))
+        ->groupBy('user_id')
+        ->orderByDesc('distinct_ips')
+        ->limit(5)
+        ->get();
+
+    $sample = $heaviestUsers->first();
+    $explosion = null;
+
+    if ($sample) {
+        $myIps = \Illuminate\Support\Facades\DB::table('login_logs')
+            ->where('user_id', $sample->user_id)
+            ->whereNotNull('ip_address')
+            ->where('ip_address', '!=', '')
+            ->distinct()
+            ->pluck('ip_address');
+
+        $matchingUserIds = \Illuminate\Support\Facades\DB::table('login_logs')
+            ->where('user_id', '!=', $sample->user_id)
+            ->whereIn('ip_address', $myIps)
+            ->distinct()
+            ->pluck('user_id');
+
+        $explosion = [
+            'sample_user_id' => $sample->user_id,
+            'their_login_count' => $sample->login_count,
+            'their_distinct_historical_ip_count' => $myIps->count(),
+            'other_users_matched_via_any_time_ip_overlap' => $matchingUserIds->count(),
+        ];
+    }
+
+    return response()->json([
+        'total_login_logs' => $totalLogs,
+        'heaviest_users_by_distinct_ip' => $heaviestUsers,
+        'explosion_test_on_heaviest_user' => $explosion,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
