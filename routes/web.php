@@ -4744,3 +4744,127 @@ Route::get('/system-device-match-diagnostic/{token}', function ($token) {
         'top_10_shared_login_logs_device_fingerprint' => $topLoginLogFingerprints,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
+// Read-only diagnostic, round 4: none of the aggregate "most shared"
+// stats across the whole table came anywhere near 1159, so this
+// replicates WithdrawController::duplicateMatches() step by step for ONE
+// specific user (confirmed from the actual report: id 12493), reporting
+// each sub-query's match count separately -- whichever one is huge here
+// is the actual culprit, no more guessing from aggregates.
+Route::get('/system-duplicate-match-breakdown/{token}/{userId}', function ($token, $userId) {
+    if (!hash_equals('sRGOELHdF3jvfuekDV5sezqOGNNHhsnz', (string) $token)) {
+        abort(403);
+    }
+
+    $user = \App\Models\User::find($userId);
+    if (!$user) {
+        return response()->json(['error' => 'User not found.']);
+    }
+
+    $hasFingerprintCol = \Illuminate\Support\Facades\Schema::hasColumn('users', 'device_fingerprint');
+    $hasLoginLogs = \Illuminate\Support\Facades\Schema::hasTable('login_logs');
+    $hasLoginFingerprintCol = $hasLoginLogs && \Illuminate\Support\Facades\Schema::hasColumn('login_logs', 'device_fingerprint');
+
+    $result = [
+        'user' => [
+            'id' => $user->id,
+            'code' => $user->code,
+            'ip_address' => $user->ip_address,
+            'device_name' => $user->device_name,
+            'device_brand' => $user->device_brand,
+            'device_model' => $user->device_model,
+            'device_fingerprint' => $hasFingerprintCol ? $user->device_fingerprint : '(column missing)',
+        ],
+    ];
+
+    // 1) users.device_fingerprint exact match
+    $myFingerprints = collect([$user->device_fingerprint ?? null])->filter()->unique()->values();
+    $result['step1_users_fingerprint_match_count'] = ($myFingerprints->count() > 0 && $hasFingerprintCol)
+        ? \App\Models\User::where('id', '!=', $user->id)->whereIn('device_fingerprint', $myFingerprints)->count()
+        : 0;
+
+    // 2) users brand+model exact match
+    $hasDeviceSignature = !empty($user->device_brand) && !empty($user->device_model);
+    $result['step2_users_brand_model_match_count'] = $hasDeviceSignature
+        ? \App\Models\User::where('id', '!=', $user->id)
+            ->where('device_name', $user->device_name)
+            ->where('device_brand', $user->device_brand)
+            ->where('device_model', $user->device_model)
+            ->whereNotNull('device_name')
+            ->count()
+        : 0;
+
+    // 3) users same ip + same device_name ("medium")
+    $result['step3_users_ip_plus_devicename_match_count'] = (!empty($user->ip_address) && !empty($user->device_name))
+        ? \App\Models\User::where('id', '!=', $user->id)
+            ->where('ip_address', $user->ip_address)
+            ->where('device_name', $user->device_name)
+            ->count()
+        : 0;
+
+    // 4) users same ip alone ("ip_only")
+    $result['step4_users_ip_only_match_count'] = !empty($user->ip_address)
+        ? \App\Models\User::where('id', '!=', $user->id)->where('ip_address', $user->ip_address)->count()
+        : 0;
+
+    if ($hasLoginLogs) {
+        $myLogins = \App\Models\LoginLog::where('user_id', $user->id)->get();
+        $result['my_login_logs_count'] = $myLogins->count();
+
+        if ($hasLoginFingerprintCol) {
+            $myFingerprints = $myFingerprints->merge($myLogins->pluck('device_fingerprint')->filter())->unique()->values();
+        }
+        $result['combined_fingerprints_from_logins'] = $myFingerprints->values();
+
+        // 5) login_logs device_fingerprint match (either direction)
+        $matchingFingerprintUserIds = collect();
+        if ($myFingerprints->count() > 0) {
+            if ($hasFingerprintCol) {
+                $matchingFingerprintUserIds = $matchingFingerprintUserIds->merge(
+                    \App\Models\User::where('id', '!=', $user->id)->whereIn('device_fingerprint', $myFingerprints)->pluck('id')
+                );
+            }
+            if ($hasLoginFingerprintCol) {
+                $matchingFingerprintUserIds = $matchingFingerprintUserIds->merge(
+                    \App\Models\LoginLog::where('user_id', '!=', $user->id)->whereIn('device_fingerprint', $myFingerprints)->pluck('user_id')
+                );
+            }
+        }
+        $result['step5_login_fingerprint_match_user_count'] = $matchingFingerprintUserIds->unique()->count();
+
+        // 6) login_logs ip|device_name combo match ("medium" via history)
+        $ipDeviceCombos = $myLogins->filter(fn($l) => $l->ip_address && $l->device_name)
+            ->map(fn($l) => $l->ip_address . '|' . $l->device_name)->unique()->values();
+        $result['my_ip_device_combos'] = $ipDeviceCombos;
+        if ($ipDeviceCombos->count() > 0) {
+            $placeholders = implode(',', array_fill(0, $ipDeviceCombos->count(), '?'));
+            $result['step6_login_ip_devicename_combo_match_user_count'] = \App\Models\LoginLog::where('user_id', '!=', $user->id)
+                ->whereRaw("CONCAT(ip_address, '|', device_name) IN ($placeholders)", $ipDeviceCombos->all())
+                ->distinct('user_id')->count('user_id');
+        } else {
+            $result['step6_login_ip_devicename_combo_match_user_count'] = 0;
+        }
+
+        // 7) login_logs device_name|brand|model combo match ("device" via history)
+        $deviceCombos = $myLogins->filter(fn($l) => $l->device_name && $l->device_brand && $l->device_model)
+            ->map(fn($l) => $l->device_name . '|' . $l->device_brand . '|' . $l->device_model)->unique()->values();
+        $result['my_device_combos'] = $deviceCombos;
+        if ($deviceCombos->count() > 0) {
+            $placeholders = implode(',', array_fill(0, $deviceCombos->count(), '?'));
+            $result['step7_login_device_combo_match_user_count'] = \App\Models\LoginLog::where('user_id', '!=', $user->id)
+                ->whereRaw("CONCAT(device_name, '|', device_brand, '|', device_model) IN ($placeholders)", $deviceCombos->all())
+                ->distinct('user_id')->count('user_id');
+        } else {
+            $result['step7_login_device_combo_match_user_count'] = 0;
+        }
+
+        // 8) login_logs plain ip_address overlap ("ip_only" via history)
+        $ips = $myLogins->pluck('ip_address')->filter()->unique()->values();
+        $result['my_historical_ips'] = $ips;
+        $result['step8_login_ip_only_match_user_count'] = $ips->count() > 0
+            ? \App\Models\LoginLog::where('user_id', '!=', $user->id)->whereIn('ip_address', $ips)->distinct('user_id')->count('user_id')
+            : 0;
+    }
+
+    return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+});
